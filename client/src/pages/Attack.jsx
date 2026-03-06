@@ -21,6 +21,8 @@ export default function Attack({ province, troops = [], refresh }) {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
 
+  useEffect(() => { document.title = 'Attack — Realm of Dominion'; }, []);
+
   useEffect(() => {
     async function loadProvinces() {
       try {
@@ -149,10 +151,15 @@ export default function Attack({ province, troops = [], refresh }) {
                 <button
                   key={at.id}
                   onClick={() => setAttackType(at.id)}
-                  className={`p-2 rounded border text-sm text-left transition-all ${
-                    attackType === at.id ? 'border-realm-gold bg-realm-gold-dark/20' : 'border-realm-border hover:border-realm-gold/50'
+                  className={`p-2 rounded text-sm text-left transition-all relative ${
+                    attackType === at.id
+                      ? 'border-2 border-realm-gold bg-realm-gold/10'
+                      : 'border border-realm-border hover:border-realm-gold/50'
                   }`}
                 >
+                  {attackType === at.id && (
+                    <span className="absolute top-1 right-1 text-realm-gold text-xs font-bold">✓</span>
+                  )}
                   <div>{at.icon} <span className="text-realm-gold">{at.label}</span></div>
                   <div className="text-realm-text-dim text-xs mt-1">{at.desc}</div>
                 </button>
@@ -167,24 +174,31 @@ export default function Attack({ province, troops = [], refresh }) {
             ) : (
               <div className="space-y-2">
                 {homeTroops.map(t => (
-                  <div key={t.troop_type_id} className="flex items-center gap-2">
-                    <span className="text-realm-text-muted text-sm w-28 truncate">{t.name}</span>
-                    <span className="text-realm-text-dim text-xs">({t.count_home})</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max={t.count_home}
-                      className="realm-input text-xs w-24 py-1"
-                      value={deployment[t.troop_type_id] || ''}
-                      onChange={e => setDeployment({ ...deployment, [t.troop_type_id]: e.target.value })}
-                      placeholder="0"
-                    />
-                    <button
-                      className="text-xs text-realm-text-dim hover:text-realm-gold"
-                      onClick={() => setDeployment({ ...deployment, [t.troop_type_id]: t.count_home })}
-                    >
-                      Max
-                    </button>
+                  <div key={t.troop_type_id} className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-realm-text-muted text-sm w-28 truncate">{t.name}</span>
+                      <span className="text-realm-text-dim text-xs">({t.count_home})</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max={t.count_home}
+                        className="realm-input text-xs w-20 py-1"
+                        value={deployment[t.troop_type_id] || ''}
+                        onChange={e => setDeployment({ ...deployment, [t.troop_type_id]: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="flex gap-1 ml-0">
+                      {[25, 50, 75, 100].map(pct => (
+                        <button
+                          key={pct}
+                          className="text-xs text-realm-text-dim hover:text-realm-gold border border-realm-border/50 rounded px-1.5 py-0.5"
+                          onClick={() => setDeployment({ ...deployment, [t.troop_type_id]: Math.floor(t.count_home * pct / 100) })}
+                        >
+                          {pct === 100 ? 'Max' : `${pct}%`}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 ))}
                 <div className="text-xs text-realm-text-dim mt-1">
@@ -194,6 +208,9 @@ export default function Attack({ province, troops = [], refresh }) {
             )}
           </div>
 
+          {!target && (
+            <p className="text-realm-text-dim text-sm text-center">← Select a target province to continue</p>
+          )}
           <button
             onClick={handleAttack}
             disabled={loading || !target || !totalDeployed || (province?.action_points || 0) < 5}

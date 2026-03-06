@@ -61,14 +61,14 @@ export default function BuildingCard({ building, onBuild, gold, production_point
     <div className="realm-panel flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <h3 className="text-realm-gold font-display">{label}</h3>
-        <div className="flex gap-1">
+        <div className="flex gap-1.5 items-center">
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
-              className={`w-3 h-3 rounded-sm border ${
+              className={`w-2.5 h-2.5 rounded-full border ${
                 i < building.level
                   ? 'bg-realm-gold border-realm-gold'
-                  : 'bg-realm-surface border-realm-border'
+                  : 'bg-transparent border-realm-border'
               }`}
             />
           ))}

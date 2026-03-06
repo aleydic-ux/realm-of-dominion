@@ -15,7 +15,10 @@ export default function Alliance({ province }) {
   const [createName, setCreateName] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [alliances, setAlliances] = useState([]);
   const chatEndRef = useRef(null);
+
+  useEffect(() => { document.title = 'Alliance — Realm of Dominion'; }, []);
 
   useEffect(() => {
     if (alliance) {
@@ -79,6 +82,12 @@ export default function Alliance({ province }) {
     } catch {}
   }
 
+  useEffect(() => {
+    if (!alliance) {
+      api.get('/leaderboard').then(({ data }) => setAlliances(data.alliances || [])).catch(() => {});
+    }
+  }, [alliance]);
+
   if (!alliance) {
     return (
       <div className="space-y-4">
@@ -92,8 +101,29 @@ export default function Alliance({ province }) {
               onChange={e => setCreateName(e.target.value)} required />
             <button type="submit" className="realm-btn-gold whitespace-nowrap">Create</button>
           </form>
-          <p className="text-realm-text-dim text-xs mt-2">Or ask an existing leader to invite you.</p>
+          <p className="text-realm-text-dim text-xs mt-2">Or ask an existing leader to invite you by Province ID.</p>
         </div>
+
+        {alliances.length > 0 && (
+          <div className="realm-panel overflow-x-auto">
+            <h2 className="text-realm-gold font-display mb-3">Existing Alliances</h2>
+            <table className="realm-table">
+              <thead>
+                <tr><th>#</th><th>Alliance</th><th>Members</th><th>Total Networth</th></tr>
+              </thead>
+              <tbody>
+                {alliances.map((a, i) => (
+                  <tr key={a.id}>
+                    <td className="text-realm-text-dim">{i + 1}</td>
+                    <td className="text-realm-text font-medium">{a.name}</td>
+                    <td className="text-realm-text-muted">{a.member_count}</td>
+                    <td className="text-realm-gold">{formatNumber(a.total_networth)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     );
   }

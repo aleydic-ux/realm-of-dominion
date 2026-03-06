@@ -22,6 +22,7 @@ export default function Marketplace({ province, refresh }) {
     } catch {}
   }
 
+  useEffect(() => { document.title = 'Marketplace — Realm of Dominion'; }, []);
   useEffect(() => { loadListings(); }, []);
 
   async function handleList(e) {

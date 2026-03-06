@@ -31,12 +31,12 @@ function ProtectedLayout({ onLogout }) {
           <Route path="/military" element={<Military province={province} troops={troops} refresh={refresh} />} />
           <Route path="/buildings" element={<Buildings province={province} buildings={buildings} refresh={refresh} />} />
           <Route path="/research" element={<Research province={province} research={research} refresh={refresh} />} />
-          <Route path="/kingdom" element={<Kingdom />} />
+          <Route path="/kingdom" element={<Kingdom province={province} />} />
           <Route path="/attack" element={<Attack province={province} troops={troops} refresh={refresh} />} />
           <Route path="/marketplace" element={<Marketplace province={province} refresh={refresh} />} />
           <Route path="/alliance" element={<Alliance province={province} alliance={alliance} />} />
           <Route path="/reports" element={<Reports province={province} />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/leaderboard" element={<Leaderboard province={province} />} />
           <Route path="/world" element={<WorldFeed province={province} />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

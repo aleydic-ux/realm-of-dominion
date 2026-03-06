@@ -24,6 +24,8 @@ export default function WorldFeed({ province }) {
     } catch {}
   }
 
+  useEffect(() => { document.title = 'World — Realm of Dominion'; }, []);
+
   useEffect(() => {
     loadFeed();
     const interval = setInterval(loadFeed, 10000);
@@ -70,7 +72,11 @@ export default function WorldFeed({ province }) {
           </div>
           <div style={{overflowY:'auto', maxHeight:'500px'}}>
             {events.length === 0 && (
-              <p className="text-realm-text-dim text-xs py-4 text-center">No battles recorded yet.</p>
+              <div className="py-6 text-center space-y-1">
+                <div className="text-2xl">🏰</div>
+                <p className="text-realm-text-muted text-xs font-medium">The realm is quiet...</p>
+                <p className="text-realm-text-dim text-xs">No battles recorded yet. Be the first to make history.</p>
+              </div>
             )}
             {[...events].reverse().map(entry => (
               <div key={entry.id} style={{

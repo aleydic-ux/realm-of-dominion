@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { formatNumber, RACE_ICONS } from '../utils/formatters';
 
-export default function Leaderboard() {
+export default function Leaderboard({ province }) {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState('overall');
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => { document.title = 'Leaderboard — Realm of Dominion'; }, []);
 
   useEffect(() => {
     async function load() {
@@ -42,9 +44,9 @@ export default function Leaderboard() {
             <thead><tr><th>#</th><th>Province</th><th>Player</th><th>Race</th><th>Land</th><th>Networth</th><th>Alliance</th></tr></thead>
             <tbody>
               {data.overall.map((p, i) => (
-                <tr key={p.id}>
+                <tr key={p.id} className={p.id === province?.id ? 'border-l-2 border-realm-gold bg-realm-gold/5' : ''}>
                   <td className="text-realm-gold font-bold">{i + 1}</td>
-                  <td className="text-realm-text">{p.name}</td>
+                  <td className="text-realm-text">{p.name}{p.id === province?.id && <span className="text-realm-text-dim text-xs ml-1">(you)</span>}</td>
                   <td className="text-realm-text-muted">{p.username}</td>
                   <td className={`race-${p.race}`}>{RACE_ICONS[p.race]} {p.race}</td>
                   <td>{formatNumber(p.land)}</td>

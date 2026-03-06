@@ -4,11 +4,13 @@ import api from '../utils/api';
 import { formatNumber, RACE_ICONS } from '../utils/formatters';
 import ProtectionBadge from '../components/ProtectionBadge';
 
-export default function Kingdom() {
+export default function Kingdom({ province }) {
   const [provinces, setProvinces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => { document.title = 'Kingdom — Realm of Dominion'; }, []);
 
   useEffect(() => {
     async function load() {
@@ -73,12 +75,16 @@ export default function Kingdom() {
                     {p.is_in_war && <span className="text-red-400 ml-1">⚔️</span>}
                   </td>
                   <td>
-                    <button
-                      onClick={() => navigate('/attack', { state: { target: p } })}
-                      className="realm-btn-outline text-xs py-1 px-2"
-                    >
-                      Attack
-                    </button>
+                    {p.id === province?.id ? (
+                      <span className="text-realm-text-dim text-xs">(you)</span>
+                    ) : (
+                      <button
+                        onClick={() => navigate('/attack', { state: { target: p } })}
+                        className="realm-btn-outline text-xs py-1 px-2"
+                      >
+                        Attack
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

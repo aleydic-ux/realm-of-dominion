@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import TroopTable from '../components/TroopTable';
 import { formatNumber, formatTime, formatDuration } from '../utils/formatters';
 import api from '../utils/api';
@@ -9,6 +9,8 @@ export default function Military({ province, troops = [], refresh }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => { document.title = 'Military — Realm of Dominion'; }, []);
 
   if (!province) return null;
 
@@ -66,7 +68,7 @@ export default function Military({ province, troops = [], refresh }) {
         <TroopTable
           troops={troops}
           showDeploy={true}
-          onDeploy={(t) => { setTrainModal(t); setTrainQty(1); setError(''); }}
+          onDeploy={(t, qty) => { setTrainModal(t); setTrainQty(qty || 1); setError(''); }}
         />
 
         {/* Training timers */}

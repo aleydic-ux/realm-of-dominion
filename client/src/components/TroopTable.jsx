@@ -1,9 +1,19 @@
+import { useState } from 'react';
 import { formatNumber, formatDuration } from '../utils/formatters';
 
 export default function TroopTable({ troops, showDeploy = false, onDeploy }) {
+  const [qtys, setQtys] = useState({});
+
   if (!troops || !troops.length) {
     return <p className="text-realm-text-dim text-sm">No troops available.</p>;
   }
+
+  const totalHome = troops.reduce((s, t) => s + (t.count_home || 0), 0);
+  const totalTraining = troops.reduce((s, t) => s + (t.count_training || 0), 0);
+  const totalDeployed = troops.reduce((s, t) => s + (t.count_deployed || 0), 0);
+  const totalAtk = troops.reduce((s, t) => s + t.offense_power * (t.count_home || 0), 0);
+  const totalDef = troops.reduce((s, t) => s + t.defense_power * (t.count_home || 0), 0);
+  const totalFood = troops.reduce((s, t) => s + t.food_upkeep * ((t.count_home || 0) + (t.count_deployed || 0)), 0);
 
   return (
     <table className="realm-table">
@@ -14,12 +24,13 @@ export default function TroopTable({ troops, showDeploy = false, onDeploy }) {
           <th>ATK</th>
           <th>DEF</th>
           <th>Cost</th>
-          <th>Train</th>
+          <th>Train Time</th>
           <th>Home</th>
           {showDeploy && <th>Training</th>}
           {showDeploy && <th>Deployed</th>}
           <th>Food/hr</th>
           <th>Ability</th>
+          {showDeploy && <th>Qty</th>}
           {showDeploy && <th></th>}
         </tr>
       </thead>
@@ -39,12 +50,26 @@ export default function TroopTable({ troops, showDeploy = false, onDeploy }) {
             {showDeploy && (
               <td className="text-orange-400">{formatNumber(t.count_deployed)}</td>
             )}
-            <td className="text-green-400">{t.food_upkeep}</td>
+            <td className="text-green-400">
+              {showDeploy ? formatNumber(t.food_upkeep * ((t.count_home || 0) + (t.count_deployed || 0))) : t.food_upkeep}
+            </td>
             <td className="text-realm-text-dim text-xs max-w-xs truncate">{t.special_ability || '—'}</td>
+            {showDeploy && (
+              <td>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="1"
+                  className="realm-input text-xs w-16 py-0.5"
+                  value={qtys[t.troop_type_id] || ''}
+                  onChange={e => setQtys({ ...qtys, [t.troop_type_id]: e.target.value })}
+                />
+              </td>
+            )}
             {showDeploy && onDeploy && (
               <td>
                 <button
-                  onClick={() => onDeploy(t)}
+                  onClick={() => onDeploy(t, parseInt(qtys[t.troop_type_id]) || 1)}
                   className="realm-btn-outline text-xs py-1 px-2"
                 >
                   Train
@@ -54,6 +79,21 @@ export default function TroopTable({ troops, showDeploy = false, onDeploy }) {
           </tr>
         ))}
       </tbody>
+      {showDeploy && (
+        <tfoot>
+          <tr className="border-t-2 border-realm-border font-bold text-sm">
+            <td colSpan={2} className="text-realm-text-dim pt-2">Totals</td>
+            <td className="text-red-400 pt-2">{formatNumber(totalAtk)}</td>
+            <td className="text-blue-400 pt-2">{formatNumber(totalDef)}</td>
+            <td colSpan={2}></td>
+            <td className="text-realm-gold pt-2">{formatNumber(totalHome)}</td>
+            <td className="text-yellow-400 pt-2">{formatNumber(totalTraining)}</td>
+            <td className="text-orange-400 pt-2">{formatNumber(totalDeployed)}</td>
+            <td className="text-green-400 pt-2">{formatNumber(totalFood)}</td>
+            <td colSpan={3}></td>
+          </tr>
+        </tfoot>
+      )}
     </table>
   );
 }

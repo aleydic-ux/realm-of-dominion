@@ -1,11 +1,13 @@
 import { formatNumber, formatTime, formatDateTime, RACE_ICONS } from '../utils/formatters';
 import ProtectionBadge from '../components/ProtectionBadge';
 import api from '../utils/api';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Dashboard({ province, loading, refresh }) {
   const [exploreLoading, setExploreLoading] = useState(false);
   const [message, setMessage] = useState('');
+
+  useEffect(() => { document.title = 'Province — Realm of Dominion'; }, []);
 
   if (loading) return <div className="text-realm-text-muted">Loading province...</div>;
   if (!province) return <div className="text-red-400">No province found for the active Age.</div>;
@@ -80,17 +82,17 @@ export default function Dashboard({ province, loading, refresh }) {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Land', value: `${formatNumber(province.land)} acres`, color: 'text-amber-400' },
-          { label: 'Gold', value: formatNumber(province.gold), color: 'text-yellow-400' },
-          { label: 'Food', value: formatNumber(province.food), color: province.food < 0 ? 'text-red-400' : 'text-green-400' },
-          { label: 'Mana', value: formatNumber(province.mana), color: 'text-blue-400' },
-          { label: 'Industry', value: formatNumber(province.production_points), color: 'text-gray-300' },
-          { label: 'Population', value: formatNumber(province.population), color: 'text-pink-400' },
-          { label: 'Morale', value: `${province.morale}%`, color: province.morale >= 80 ? 'text-green-400' : 'text-red-400' },
-          { label: 'Networth', value: formatNumber(province.networth), color: 'text-realm-gold' },
-        ].map(({ label, value, color }) => (
+          { label: 'Land', icon: '🗺️', value: `${formatNumber(province.land)} acres`, color: 'text-amber-400' },
+          { label: 'Gold', icon: '💰', value: formatNumber(province.gold), color: 'text-yellow-400' },
+          { label: 'Food', icon: '🌾', value: formatNumber(province.food), color: province.food < 0 ? 'text-red-400' : 'text-green-400' },
+          { label: 'Mana', icon: '🔮', value: formatNumber(province.mana), color: 'text-blue-400' },
+          { label: 'Industry', icon: '⚙️', value: formatNumber(province.production_points), color: 'text-gray-300' },
+          { label: 'Population', icon: '👥', value: formatNumber(province.population), color: 'text-pink-400' },
+          { label: 'Morale', icon: '❤️', value: `${province.morale}%`, color: province.morale >= 80 ? 'text-green-400' : 'text-red-400' },
+          { label: 'Networth', icon: '📈', value: formatNumber(province.networth), color: 'text-realm-gold' },
+        ].map(({ label, icon, value, color }) => (
           <div key={label} className="realm-panel">
-            <div className="text-realm-text-dim text-xs mb-1">{label}</div>
+            <div className="text-realm-text-dim text-xs mb-1">{icon} {label}</div>
             <div className={`text-lg font-bold ${color}`}>{value}</div>
           </div>
         ))}

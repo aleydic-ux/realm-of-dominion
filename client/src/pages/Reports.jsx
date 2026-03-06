@@ -8,6 +8,8 @@ export default function Reports({ province }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
 
+  useEffect(() => { document.title = 'Reports — Realm of Dominion'; }, []);
+
   useEffect(() => {
     async function load() {
       try {
@@ -71,7 +73,13 @@ export default function Reports({ province }) {
               </tbody>
             </table>
           )}
-          {!loading && !filtered.length && <p className="text-realm-text-dim text-sm py-4 text-center">No reports.</p>}
+          {!loading && !filtered.length && (
+            <div className="py-6 text-center space-y-2">
+              <div className="text-2xl">⚔️</div>
+              <p className="text-realm-text-muted text-sm font-medium">No combat reports yet.</p>
+              <p className="text-realm-text-dim text-xs">Reports appear here after you launch an attack or are attacked.</p>
+            </div>
+          )}
         </div>
 
         {/* Detail */}

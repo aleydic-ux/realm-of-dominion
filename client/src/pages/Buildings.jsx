@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import BuildingCard from '../components/BuildingCard';
 import api from '../utils/api';
 import { formatNumber } from '../utils/formatters';
@@ -6,6 +6,8 @@ import { formatNumber } from '../utils/formatters';
 export default function Buildings({ province, buildings = [], refresh }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => { document.title = 'Buildings — Realm of Dominion'; }, []);
 
   if (!province) return null;
 

@@ -8,6 +8,8 @@ export default function Research({ province, research = [], refresh }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
+  useEffect(() => { document.title = 'Research — Realm of Dominion'; }, []);
+
   useEffect(() => {
     async function loadTechs() {
       try {
