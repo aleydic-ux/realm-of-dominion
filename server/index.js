@@ -64,14 +64,12 @@ app.use('/api/diplomacy', diplomacyRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/tech-tree', techTreeRoutes);
 
-// Serve React in production
-if (process.env.NODE_ENV === 'production') {
-  const clientDist = path.join(__dirname, '..', 'client', 'dist');
-  app.use(express.static(clientDist));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(clientDist, 'index.html'));
-  });
-}
+// Serve React frontend
+const clientDist = path.join(__dirname, '..', 'client', 'dist');
+app.use(express.static(clientDist));
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientDist, 'index.html'));
+});
 
 // Global error handler
 app.use((err, req, res, next) => {
