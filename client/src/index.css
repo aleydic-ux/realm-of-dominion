@@ -5,106 +5,119 @@
 @layer base {
   html, body {
     @apply bg-realm-bg text-realm-text;
-    font-family: 'Trebuchet MS', 'Verdana', Arial, sans-serif;
-    font-size: 14px;
+    font-family: Verdana, Arial, sans-serif;
+    font-size: 12px;
     min-height: 100vh;
-    background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' viewBox='0 0 4 4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0' y='0' width='1' height='1' fill='rgba(0,0,0,0.04)'/%3E%3C/svg%3E");
+    background-image: linear-gradient(180deg, #0a1020 0%, #0d1428 100%);
   }
 
   ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: #d6c9a8; }
-  ::-webkit-scrollbar-thumb { background: #a08050; border-radius: 0; }
-  ::-webkit-scrollbar-thumb:hover { background: #7a4f00; }
+  ::-webkit-scrollbar-track { background: #111828; }
+  ::-webkit-scrollbar-thumb { background: #243650; }
+  ::-webkit-scrollbar-thumb:hover { background: #3a5880; }
 
   h1, h2, h3, h4 { font-family: 'Cinzel', Georgia, serif; @apply text-realm-gold; }
-  a { @apply text-realm-blue underline hover:text-realm-blue-light; }
+  a { @apply text-realm-blue-light hover:text-realm-gold; text-decoration: none; }
+  a:hover { text-decoration: underline; }
 }
 
 @layer components {
   .realm-panel {
-    @apply bg-realm-panel border-2 border-realm-border p-4;
-    box-shadow: 2px 2px 0 rgba(0,0,0,0.15), inset 0 0 0 1px rgba(255,255,255,0.5);
+    @apply bg-realm-panel border border-realm-border p-3;
+    border-top: 2px solid #3a5878;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.4);
   }
 
   .realm-btn {
-    @apply px-4 py-1.5 border-2 transition-colors duration-100 text-sm cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed font-semibold;
-    font-family: 'Cinzel', Georgia, serif;
-    letter-spacing: 0.05em;
+    @apply px-3 py-1 border transition-colors duration-100 text-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed;
+    font-family: Verdana, Arial, sans-serif;
+    font-weight: bold;
   }
 
   .realm-btn-gold {
-    @apply realm-btn border-realm-gold text-realm-panel bg-realm-gold hover:bg-realm-gold-dark hover:border-realm-gold-dark;
-    background: linear-gradient(to bottom, #c8960c, #7a4f00);
-    color: #fdf8ef;
-    border-color: #4a2e00;
-    text-shadow: 1px 1px 0 rgba(0,0,0,0.4);
+    @apply realm-btn;
+    background: linear-gradient(to bottom, #d4a840, #8a6820);
+    border-color: #6a4810;
+    color: #fff8e0;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.6);
   }
-  .realm-btn-gold:hover {
-    background: linear-gradient(to bottom, #7a4f00, #4a2e00);
+  .realm-btn-gold:hover:not(:disabled) {
+    background: linear-gradient(to bottom, #e8c050, #a07828);
   }
 
   .realm-btn-red {
-    @apply realm-btn border-realm-crimson text-realm-panel;
-    background: linear-gradient(to bottom, #cc2200, #6b0000);
-    color: #fdf8ef;
-    border-color: #4a0000;
-    text-shadow: 1px 1px 0 rgba(0,0,0,0.4);
+    @apply realm-btn;
+    background: linear-gradient(to bottom, #c03030, #801818);
+    border-color: #601010;
+    color: #ffe0e0;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.6);
   }
-  .realm-btn-red:hover {
-    background: linear-gradient(to bottom, #6b0000, #3a0000);
+  .realm-btn-red:hover:not(:disabled) {
+    background: linear-gradient(to bottom, #d84040, #a02020);
   }
 
   .realm-btn-outline {
-    @apply realm-btn bg-realm-surface border-realm-border text-realm-text-muted hover:border-realm-gold hover:text-realm-gold hover:bg-realm-panel;
+    @apply realm-btn bg-realm-surface border-realm-border text-realm-text-muted hover:border-realm-blue-light hover:text-realm-text;
   }
 
   .realm-input {
-    @apply bg-realm-panel border-2 border-realm-border text-realm-text px-3 py-2 w-full text-sm
-           focus:outline-none focus:border-realm-gold placeholder:text-realm-text-dim;
-    font-family: 'Trebuchet MS', 'Verdana', Arial, sans-serif;
+    @apply bg-realm-surface border border-realm-border text-realm-text px-2 py-1 w-full text-xs
+           focus:outline-none focus:border-realm-blue-light placeholder:text-realm-text-dim;
+    font-family: Verdana, Arial, sans-serif;
   }
 
   .realm-table {
-    @apply w-full text-sm border-collapse border-2 border-realm-border;
+    @apply w-full text-xs border-collapse border border-realm-border;
   }
   .realm-table th {
-    @apply text-realm-panel text-left py-2 px-3 border border-realm-gold-dark text-sm font-semibold;
-    font-family: 'Cinzel', Georgia, serif;
-    background: linear-gradient(to bottom, #a08050, #7a4f00);
-    text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+    @apply text-left py-1.5 px-3 border border-realm-border text-xs font-bold;
+    background: linear-gradient(to bottom, #1e3050, #162440);
+    color: #c8d8e8;
+    border-bottom: 1px solid #3a5878;
   }
   .realm-table td {
-    @apply py-2 px-3 border border-realm-border text-realm-text;
-    background: #fdf8ef;
+    @apply py-1.5 px-3 border-b border-realm-border;
+    color: #b0c0d0;
+    background: #162030;
   }
   .realm-table tr:nth-child(even) td {
-    background: #f0e8d4;
+    background: #111828;
   }
   .realm-table tr:hover td {
-    background: #e8ddc0;
+    background: #1e2e42;
+    color: #d8e8f8;
   }
 
   .realm-badge {
-    @apply text-xs px-2 py-0.5 border-2 font-semibold;
-    font-family: 'Cinzel', Georgia, serif;
+    @apply text-xs px-2 py-0.5 border font-bold;
+    font-family: Verdana, Arial, sans-serif;
   }
 
   .resource-bar {
-    @apply flex items-center gap-1 text-sm;
+    @apply flex items-center gap-1 text-xs;
   }
 
-  /* Section divider */
   .realm-divider {
     border: none;
-    border-top: 2px solid #a08050;
-    border-bottom: 1px solid #e8dfc8;
-    margin: 1rem 0;
+    border-top: 1px solid #243650;
+    margin: 0.75rem 0;
+  }
+
+  /* Section header bar — like Utopia's colored section headers */
+  .realm-section-header {
+    @apply px-3 py-1.5 text-xs font-bold uppercase tracking-wider;
+    background: linear-gradient(to right, #1e3050, #162440);
+    border-left: 3px solid #c8a048;
+    border-bottom: 1px solid #3a5878;
+    color: #c8d8e8;
+    font-family: 'Cinzel', Georgia, serif;
+    letter-spacing: 0.08em;
   }
 }
 
 /* Race color accents */
-.race-human { color: #00008b; }
-.race-orc { color: #1a4a1a; }
-.race-undead { color: #3a0060; }
-.race-elf { color: #006633; }
-.race-dwarf { color: #7a4f00; }
+.race-human { color: #4080c0; }
+.race-orc { color: #408040; }
+.race-undead { color: #9040c0; }
+.race-elf { color: #40c080; }
+.race-dwarf { color: #c0a040; }

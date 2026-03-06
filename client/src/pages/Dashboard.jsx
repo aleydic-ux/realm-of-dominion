@@ -30,8 +30,9 @@ export default function Dashboard({ province, loading, refresh }) {
       {/* Castle Banner */}
       <div style={{
         height: '160px',
-        background: 'linear-gradient(to bottom, #1a0e04 0%, #2c1a08 40%, #4a3010 70%, #d6c9a8 100%)',
-        border: '2px solid #a08050',
+        background: 'linear-gradient(to bottom, #060e1c 0%, #0a1428 40%, #162038 70%, #1e3050 100%)',
+        border: '1px solid #243650',
+        borderTop: '2px solid #c8a048',
         display: 'flex',
         alignItems: 'flex-end',
         justifyContent: 'space-between',
@@ -42,7 +43,7 @@ export default function Dashboard({ province, loading, refresh }) {
         {/* Castle silhouette (CSS art) */}
         <div style={{position:'absolute', bottom:0, left:0, right:0, display:'flex', alignItems:'flex-end', justifyContent:'center', opacity:0.35}}>
           {[40,65,55,80,55,65,40].map((h,i) => (
-            <div key={i} style={{width: i===3?'28px':'18px', height:`${h}px`, background:'#1a0e04', margin:'0 2px', flexShrink:0}} />
+            <div key={i} style={{width: i===3?'28px':'18px', height:`${h}px`, background:'#06101e', margin:'0 2px', flexShrink:0}} />
           ))}
         </div>
         <div style={{position:'relative', zIndex:1}}>

@@ -19,21 +19,22 @@ export default function NavBar({ onLogout }) {
   return (
     <div>
       {/* Title bar */}
-      <div className="px-4 py-2 flex items-center justify-between" style={{background:'linear-gradient(to bottom, #2c1a0a, #1a0e04)', borderBottom:'2px solid #a08050'}}>
-        <span style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8960c', fontSize:'1.4rem', letterSpacing:'0.15em', textShadow:'1px 1px 2px #000, 0 0 8px rgba(200,150,12,0.4)'}}>
+      <div style={{background:'linear-gradient(to bottom, #0a1428, #060e1c)', borderBottom:'1px solid #1e3050', padding:'6px 16px', display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+        <span style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8a048', fontSize:'1.25rem', letterSpacing:'0.12em', textShadow:'0 0 12px rgba(200,160,72,0.4), 1px 1px 2px #000'}}>
           ⚔ Realm of Dominion ⚔
         </span>
         <button
           onClick={onLogout}
-          style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8960c', fontSize:'0.75rem', letterSpacing:'0.08em', border:'1px solid #7a4f00', padding:'2px 12px', background:'transparent'}}
-          className="hover:bg-realm-gold-dark hover:text-realm-panel transition-colors"
+          style={{fontFamily:'Verdana, Arial, sans-serif', color:'#8090a8', fontSize:'0.68rem', border:'1px solid #243650', padding:'2px 10px', background:'transparent', cursor:'pointer'}}
+          onMouseOver={e => e.target.style.color='#c8d8e8'}
+          onMouseOut={e => e.target.style.color='#8090a8'}
         >
           Logout
         </button>
       </div>
 
       {/* Nav tabs */}
-      <nav className="flex overflow-x-auto" style={{background:'linear-gradient(to bottom, #4a3010, #2c1a08)', borderBottom:'3px solid #a08050'}}>
+      <nav style={{background:'linear-gradient(to bottom, #162038, #0e1828)', borderBottom:'2px solid #c8a048', display:'flex', overflowX:'auto'}}>
         {navLinks.map(({ path, label }) => {
           const active = location.pathname === path;
           return (
@@ -41,17 +42,19 @@ export default function NavBar({ onLogout }) {
               key={path}
               to={path}
               style={{
-                fontFamily: 'Cinzel, Georgia, serif',
-                fontSize: '0.72rem',
-                letterSpacing: '0.06em',
-                padding: '7px 14px',
+                fontFamily: 'Verdana, Arial, sans-serif',
+                fontSize: '0.68rem',
+                fontWeight: active ? 'bold' : 'normal',
+                padding: '6px 14px',
                 whiteSpace: 'nowrap',
-                borderRight: '1px solid #7a4f00',
-                transition: 'background 0.1s',
-                background: active ? 'linear-gradient(to bottom, #c8960c, #7a4f00)' : 'transparent',
-                color: active ? '#fdf8ef' : '#c8960c',
-                textShadow: active ? '1px 1px 0 rgba(0,0,0,0.5)' : 'none',
-                fontWeight: active ? '700' : '400',
+                borderRight: '1px solid #1e3050',
+                color: active ? '#c8a048' : '#8090a8',
+                background: active ? 'linear-gradient(to bottom, #1e3050, #162040)' : 'transparent',
+                borderBottom: active ? '2px solid #c8a048' : '2px solid transparent',
+                textDecoration: 'none',
+                display: 'inline-block',
+                transition: 'all 0.1s',
+                marginBottom: '-2px',
               }}
             >
               {label}

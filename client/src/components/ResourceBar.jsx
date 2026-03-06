@@ -5,57 +5,42 @@ export default function ResourceBar({ province }) {
 
   const maxAp = 20;
   const apPct = (province.action_points / maxAp) * 100;
-  const apColor = apPct > 50 ? '#1a4a1a' : apPct > 20 ? '#7a4f00' : '#6b0000';
+  const apColor = apPct > 50 ? '#2a8a48' : apPct > 20 ? '#c8a048' : '#cc2828';
 
-  const statStyle = { borderRight: '1px solid #c0a882', padding: '4px 16px', display: 'inline-block' };
-  const labelStyle = { color: '#8a7050', fontSize: '0.68rem', display: 'block', fontFamily: 'Cinzel, Georgia, serif', letterSpacing: '0.05em' };
-  const valueStyle = { color: '#1a0e00', fontSize: '0.9rem', fontWeight: '600' };
+  const cell = { padding: '3px 14px', borderRight: '1px solid #1e3050' };
+  const lbl = { color: '#485868', fontSize: '0.6rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.06em' };
+  const val = { fontSize: '0.78rem', fontWeight: 'bold', color: '#c8d8e8' };
 
   return (
-    <div className="sticky top-0 z-10" style={{background:'linear-gradient(to bottom, #fdf8ef, #f0e8d4)', borderBottom:'2px solid #a08050', boxShadow:'0 2px 4px rgba(0,0,0,0.15)'}}>
-      {/* Province name */}
-      <div className="px-4 py-1.5 flex items-center gap-3 border-b" style={{borderBottomColor:'#c0a882'}}>
-        <span style={{fontFamily:'Cinzel, Georgia, serif', color:'#7a4f00', fontSize:'1.1rem', fontWeight:'700', letterSpacing:'0.08em'}}>
+    <div className="sticky top-0 z-10" style={{background:'linear-gradient(to bottom, #111828, #0e1620)', borderBottom:'1px solid #243650', boxShadow:'0 2px 8px rgba(0,0,0,0.5)'}}>
+      {/* Province name bar */}
+      <div style={{padding:'4px 14px', borderBottom:'1px solid #1e3050', display:'flex', alignItems:'center', gap:'10px', background:'rgba(255,255,255,0.02)'}}>
+        <span style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8a048', fontSize:'0.95rem', fontWeight:'700', letterSpacing:'0.08em'}}>
           {province.name}
         </span>
-        <span className={`race-${province.race} text-xs font-semibold border px-2 py-0.5`} style={{fontFamily:'Cinzel, Georgia, serif', fontSize:'0.65rem', letterSpacing:'0.08em', borderColor:'currentColor'}}>
+        <span className={`race-${province.race}`} style={{fontSize:'0.6rem', fontWeight:'bold', border:'1px solid currentColor', padding:'1px 6px', fontFamily:'Verdana, Arial, sans-serif', letterSpacing:'0.06em'}}>
           {province.race.toUpperCase()}
         </span>
         {province.protection_ends_at && new Date(province.protection_ends_at) > new Date() && (
-          <span className="text-xs border px-2 py-0.5" style={{color:'#00008b', borderColor:'#00008b', fontFamily:'Cinzel, Georgia, serif', fontSize:'0.65rem', letterSpacing:'0.05em'}}>
+          <span style={{fontSize:'0.6rem', color:'#3070c0', border:'1px solid #3070c0', padding:'1px 6px', letterSpacing:'0.05em'}}>
             SHIELD: {formatTime(province.protection_ends_at)}
           </span>
         )}
       </div>
 
       {/* Stats row */}
-      <div className="flex flex-wrap items-center text-sm">
-        <span style={statStyle}>
-          <span style={labelStyle}>Gold</span>
-          <span style={{...valueStyle, color:'#7a4f00'}}>{formatNumber(province.gold)}</span>
-        </span>
-        <span style={statStyle}>
-          <span style={labelStyle}>Food</span>
-          <span style={{...valueStyle, color: province.food < 0 ? '#6b0000' : '#1a4a1a'}}>{formatNumber(province.food)}</span>
-        </span>
-        <span style={statStyle}>
-          <span style={labelStyle}>Mana</span>
-          <span style={{...valueStyle, color:'#3a0060'}}>{formatNumber(province.mana)}</span>
-        </span>
-        <span style={statStyle}>
-          <span style={labelStyle}>Prod</span>
-          <span style={valueStyle}>{formatNumber(province.production_points)}</span>
-        </span>
-        <span style={{...statStyle, borderRight:'none'}}>
-          <span style={labelStyle}>Land</span>
-          <span style={valueStyle}>{formatNumber(province.land)} ac</span>
-        </span>
+      <div style={{display:'flex', flexWrap:'wrap', alignItems:'stretch'}}>
+        <span style={cell}><span style={lbl}>Gold</span><span style={{...val, color:'#c8a048'}}>{formatNumber(province.gold)}</span></span>
+        <span style={cell}><span style={lbl}>Food</span><span style={{...val, color: province.food < 0 ? '#cc2828' : '#2a8a48'}}>{formatNumber(province.food)}</span></span>
+        <span style={cell}><span style={lbl}>Mana</span><span style={{...val, color:'#8830cc'}}>{formatNumber(province.mana)}</span></span>
+        <span style={cell}><span style={lbl}>Production</span><span style={val}>{formatNumber(province.production_points)}</span></span>
+        <span style={{...cell, borderRight:'none'}}><span style={lbl}>Land</span><span style={val}>{formatNumber(province.land)} ac</span></span>
 
         {/* AP */}
-        <span className="ml-auto flex items-center gap-2 px-4">
-          <span style={labelStyle}>Action Points</span>
-          <span style={{...valueStyle, color: apColor}}>{province.action_points}/{maxAp}</span>
-          <div style={{width:'80px', height:'8px', border:'1px solid #a08050', background:'#e8dfc8', overflow:'hidden', display:'inline-block'}}>
+        <span style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:'6px', padding:'4px 14px'}}>
+          <span style={lbl}>AP</span>
+          <span style={{...val, color: apColor}}>{province.action_points}/{maxAp}</span>
+          <div style={{width:'70px', height:'6px', border:'1px solid #243650', background:'#0a1020', overflow:'hidden'}}>
             <div style={{width:`${apPct}%`, height:'100%', background: apColor, transition:'width 0.3s'}} />
           </div>
         </span>
