@@ -6,68 +6,95 @@
   html, body {
     @apply bg-realm-bg text-realm-text font-mono;
     min-height: 100vh;
+    /* CRT scanline effect */
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(0, 0, 0, 0.08) 3px,
+      rgba(0, 0, 0, 0.08) 4px
+    );
   }
 
   /* Scrollbar styling */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { @apply bg-realm-surface; }
-  ::-webkit-scrollbar-thumb { @apply bg-realm-border rounded; }
-  ::-webkit-scrollbar-thumb:hover { @apply bg-realm-gold-dark; }
+  ::-webkit-scrollbar-thumb { background: #0f3d0f; }
+  ::-webkit-scrollbar-thumb:hover { background: #33ff66; }
 
   h1, h2, h3 { @apply font-display; }
 }
 
 @layer components {
   .realm-panel {
-    @apply bg-realm-panel border border-realm-border rounded p-4;
+    @apply bg-realm-panel border border-realm-border p-4;
+    border-style: solid;
+    box-shadow: inset 0 0 20px rgba(0, 255, 66, 0.03), 0 0 0 1px rgba(0, 255, 66, 0.05);
   }
 
   .realm-btn {
-    @apply px-4 py-2 rounded border transition-colors duration-150 font-mono text-sm cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply px-4 py-1.5 border transition-colors duration-100 font-mono text-sm cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed uppercase tracking-widest;
   }
 
   .realm-btn-gold {
-    @apply realm-btn bg-realm-gold-dark border-realm-gold text-realm-gold hover:bg-realm-gold hover:text-realm-bg;
+    @apply realm-btn bg-transparent border-realm-gold text-realm-gold hover:bg-realm-gold hover:text-realm-bg;
   }
 
   .realm-btn-red {
-    @apply realm-btn bg-realm-crimson border-realm-crimson-light text-red-300 hover:bg-realm-crimson-light hover:text-white;
+    @apply realm-btn bg-transparent border-red-600 text-red-400 hover:bg-red-700 hover:text-white;
   }
 
   .realm-btn-outline {
-    @apply realm-btn bg-transparent border-realm-border text-realm-text-muted hover:border-realm-gold hover:text-realm-gold;
+    @apply realm-btn bg-transparent border-realm-border text-realm-text-muted hover:border-realm-text hover:text-realm-text;
   }
 
   .realm-input {
-    @apply bg-realm-surface border border-realm-border text-realm-text rounded px-3 py-2 w-full font-mono text-sm
-           focus:outline-none focus:border-realm-gold placeholder:text-realm-text-dim;
+    @apply bg-realm-surface border border-realm-border text-realm-text px-3 py-2 w-full font-mono text-sm
+           focus:outline-none focus:border-realm-text placeholder:text-realm-text-dim;
   }
 
   .realm-table {
     @apply w-full text-sm border-collapse;
   }
   .realm-table th {
-    @apply text-realm-gold-dark text-left py-2 px-3 border-b border-realm-border font-normal uppercase text-xs tracking-wider;
+    @apply text-realm-gold text-left py-2 px-3 border-b border-realm-border font-normal uppercase text-xs tracking-widest;
+    background: rgba(0, 255, 66, 0.04);
   }
   .realm-table td {
-    @apply py-2 px-3 border-b border-realm-border/50 text-realm-text-muted;
+    @apply py-2 px-3 border-b border-realm-border text-realm-text-muted;
   }
   .realm-table tr:hover td {
-    @apply bg-realm-border/20;
+    background: rgba(0, 255, 66, 0.05);
+    @apply text-realm-text;
   }
 
   .realm-badge {
-    @apply text-xs px-2 py-0.5 rounded-full border;
+    @apply text-xs px-2 py-0.5 border uppercase tracking-wider;
   }
 
   .resource-bar {
     @apply flex items-center gap-1 text-sm;
   }
+
+  /* Retro section header */
+  .retro-header {
+    @apply font-display text-realm-gold tracking-widest uppercase;
+    font-size: 1.4rem;
+    text-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+  }
+
+  /* Phosphor glow on active/important elements */
+  .glow-green {
+    text-shadow: 0 0 8px rgba(51, 255, 102, 0.7);
+  }
+  .glow-gold {
+    text-shadow: 0 0 8px rgba(255, 193, 7, 0.7);
+  }
 }
 
 /* Race color accents */
-.race-human { @apply text-blue-300; }
-.race-orc { @apply text-green-400; }
-.race-undead { @apply text-purple-400; }
-.race-elf { @apply text-emerald-300; }
-.race-dwarf { @apply text-amber-400; }
+.race-human { color: #44aaff; }
+.race-orc { color: #44ff88; }
+.race-undead { color: #cc44ff; }
+.race-elf { color: #00ffcc; }
+.race-dwarf { color: #ffaa00; }
