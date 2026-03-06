@@ -26,9 +26,42 @@ export default function Dashboard({ province, loading, refresh }) {
 
   return (
     <div className="space-y-4">
+
+      {/* Castle Banner */}
+      <div style={{
+        height: '160px',
+        background: 'linear-gradient(to bottom, #1a0e04 0%, #2c1a08 40%, #4a3010 70%, #d6c9a8 100%)',
+        border: '2px solid #a08050',
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+        padding: '12px 20px',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* Castle silhouette (CSS art) */}
+        <div style={{position:'absolute', bottom:0, left:0, right:0, display:'flex', alignItems:'flex-end', justifyContent:'center', opacity:0.35}}>
+          {[40,65,55,80,55,65,40].map((h,i) => (
+            <div key={i} style={{width: i===3?'28px':'18px', height:`${h}px`, background:'#1a0e04', margin:'0 2px', flexShrink:0}} />
+          ))}
+        </div>
+        <div style={{position:'relative', zIndex:1}}>
+          <div style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8960c', fontSize:'1.6rem', fontWeight:'700', textShadow:'2px 2px 4px #000, 0 0 12px rgba(200,150,12,0.5)', letterSpacing:'0.1em'}}>
+            {province.name}
+          </div>
+          <div className={`race-${province.race}`} style={{fontFamily:'Cinzel, Georgia, serif', fontSize:'0.8rem', letterSpacing:'0.12em', textShadow:'1px 1px 2px #000'}}>
+            {RACE_ICONS[province.race]} {province.race.toUpperCase()} PROVINCE
+          </div>
+        </div>
+        <div style={{position:'relative', zIndex:1, textAlign:'right'}}>
+          <div style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8960c', fontSize:'0.7rem', letterSpacing:'0.08em'}}>NETWORTH</div>
+          <div style={{fontFamily:'Cinzel, Georgia, serif', color:'#fdf8ef', fontSize:'1.2rem', fontWeight:'700', textShadow:'1px 1px 2px #000'}}>{formatNumber(province.networth)}</div>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-display text-realm-gold">
-          {RACE_ICONS[province.race]} {province.name}
+          Province Overview
         </h1>
         <div className="flex gap-2 items-center flex-wrap">
           <ProtectionBadge protection_ends_at={province.protection_ends_at} />

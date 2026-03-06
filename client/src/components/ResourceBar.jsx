@@ -5,56 +5,58 @@ export default function ResourceBar({ province }) {
 
   const maxAp = 20;
   const apPct = (province.action_points / maxAp) * 100;
-  const apColor = apPct > 50 ? '#33ff66' : apPct > 20 ? '#ffc107' : '#cc2200';
+  const apColor = apPct > 50 ? '#1a4a1a' : apPct > 20 ? '#7a4f00' : '#6b0000';
+
+  const statStyle = { borderRight: '1px solid #c0a882', padding: '4px 16px', display: 'inline-block' };
+  const labelStyle = { color: '#8a7050', fontSize: '0.68rem', display: 'block', fontFamily: 'Cinzel, Georgia, serif', letterSpacing: '0.05em' };
+  const valueStyle = { color: '#1a0e00', fontSize: '0.9rem', fontWeight: '600' };
 
   return (
-    <div className="bg-realm-surface border-b-2 border-realm-border sticky top-0 z-10" style={{borderBottomColor:'#0f3d0f'}}>
-      {/* Province name bar */}
-      <div className="px-4 py-1 border-b border-realm-border flex items-center gap-3" style={{borderBottomColor:'#0f3d0f', background:'rgba(0,255,66,0.03)'}}>
-        <span className="font-display text-realm-gold text-xl tracking-widest glow-gold uppercase">
+    <div className="sticky top-0 z-10" style={{background:'linear-gradient(to bottom, #fdf8ef, #f0e8d4)', borderBottom:'2px solid #a08050', boxShadow:'0 2px 4px rgba(0,0,0,0.15)'}}>
+      {/* Province name */}
+      <div className="px-4 py-1.5 flex items-center gap-3 border-b" style={{borderBottomColor:'#c0a882'}}>
+        <span style={{fontFamily:'Cinzel, Georgia, serif', color:'#7a4f00', fontSize:'1.1rem', fontWeight:'700', letterSpacing:'0.08em'}}>
           {province.name}
         </span>
-        <span className={`text-xs uppercase tracking-widest race-${province.race} border border-current px-2 py-0.5`}>
-          {province.race}
+        <span className={`race-${province.race} text-xs font-semibold border px-2 py-0.5`} style={{fontFamily:'Cinzel, Georgia, serif', fontSize:'0.65rem', letterSpacing:'0.08em', borderColor:'currentColor'}}>
+          {province.race.toUpperCase()}
         </span>
         {province.protection_ends_at && new Date(province.protection_ends_at) > new Date() && (
-          <span className="text-xs text-realm-blue-light uppercase tracking-wider border border-blue-700 px-2 py-0.5 text-blue-400">
+          <span className="text-xs border px-2 py-0.5" style={{color:'#00008b', borderColor:'#00008b', fontFamily:'Cinzel, Georgia, serif', fontSize:'0.65rem', letterSpacing:'0.05em'}}>
             SHIELD: {formatTime(province.protection_ends_at)}
           </span>
         )}
       </div>
 
       {/* Stats row */}
-      <div className="px-4 py-1.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs uppercase tracking-wider">
-        <span>
-          <span className="text-realm-text-dim">GOLD: </span>
-          <span className="text-realm-gold glow-gold">{formatNumber(province.gold)}</span>
+      <div className="flex flex-wrap items-center text-sm">
+        <span style={statStyle}>
+          <span style={labelStyle}>Gold</span>
+          <span style={{...valueStyle, color:'#7a4f00'}}>{formatNumber(province.gold)}</span>
         </span>
-        <span>
-          <span className="text-realm-text-dim">FOOD: </span>
-          <span className={province.food < 0 ? 'text-red-400' : 'text-realm-text'}>{formatNumber(province.food)}</span>
+        <span style={statStyle}>
+          <span style={labelStyle}>Food</span>
+          <span style={{...valueStyle, color: province.food < 0 ? '#6b0000' : '#1a4a1a'}}>{formatNumber(province.food)}</span>
         </span>
-        <span>
-          <span className="text-realm-text-dim">MANA: </span>
-          <span className="text-realm-purple-light" style={{color:'#aa44ff'}}>{formatNumber(province.mana)}</span>
+        <span style={statStyle}>
+          <span style={labelStyle}>Mana</span>
+          <span style={{...valueStyle, color:'#3a0060'}}>{formatNumber(province.mana)}</span>
         </span>
-        <span>
-          <span className="text-realm-text-dim">PROD: </span>
-          <span className="text-realm-text-muted">{formatNumber(province.production_points)}</span>
+        <span style={statStyle}>
+          <span style={labelStyle}>Prod</span>
+          <span style={valueStyle}>{formatNumber(province.production_points)}</span>
         </span>
-        <span>
-          <span className="text-realm-text-dim">LAND: </span>
-          <span className="text-realm-text-muted">{formatNumber(province.land)} AC</span>
+        <span style={{...statStyle, borderRight:'none'}}>
+          <span style={labelStyle}>Land</span>
+          <span style={valueStyle}>{formatNumber(province.land)} ac</span>
         </span>
 
         {/* AP */}
-        <span className="ml-auto flex items-center gap-2">
-          <span className="text-realm-text-dim">AP:</span>
-          <span style={{color: apColor}} className="font-bold">{province.action_points}</span>
-          <span className="text-realm-text-dim">/</span>
-          <span className="text-realm-text-dim">{maxAp}</span>
-          <div className="w-20 h-2 bg-realm-surface border border-realm-border overflow-hidden">
-            <div className="h-full transition-all" style={{ width: `${apPct}%`, background: apColor }} />
+        <span className="ml-auto flex items-center gap-2 px-4">
+          <span style={labelStyle}>Action Points</span>
+          <span style={{...valueStyle, color: apColor}}>{province.action_points}/{maxAp}</span>
+          <div style={{width:'80px', height:'8px', border:'1px solid #a08050', background:'#e8dfc8', overflow:'hidden', display:'inline-block'}}>
+            <div style={{width:`${apPct}%`, height:'100%', background: apColor, transition:'width 0.3s'}} />
           </div>
         </span>
       </div>

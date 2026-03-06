@@ -17,31 +17,48 @@ export default function NavBar({ onLogout }) {
   const location = useLocation();
 
   return (
-    <nav className="bg-realm-surface border-b-2 border-realm-border px-3 py-0 flex items-center overflow-x-auto" style={{borderBottomColor: '#0f3d0f'}}>
-      <span className="font-display text-realm-gold pr-4 whitespace-nowrap text-2xl tracking-widest glow-gold border-r border-realm-border mr-2">
-        R.O.D
-      </span>
-      <div className="flex flex-1">
-        {navLinks.map(({ path, label }) => (
-          <Link
-            key={path}
-            to={path}
-            className={`px-3 py-2 text-xs whitespace-nowrap uppercase tracking-widest transition-colors border-r border-realm-border ${
-              location.pathname === path
-                ? 'text-realm-bg bg-realm-text font-bold'
-                : 'text-realm-text-muted hover:text-realm-text hover:bg-realm-panel'
-            }`}
-          >
-            {location.pathname === path ? `>${label}<` : label}
-          </Link>
-        ))}
+    <div>
+      {/* Title bar */}
+      <div className="px-4 py-2 flex items-center justify-between" style={{background:'linear-gradient(to bottom, #2c1a0a, #1a0e04)', borderBottom:'2px solid #a08050'}}>
+        <span style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8960c', fontSize:'1.4rem', letterSpacing:'0.15em', textShadow:'1px 1px 2px #000, 0 0 8px rgba(200,150,12,0.4)'}}>
+          ⚔ Realm of Dominion ⚔
+        </span>
+        <button
+          onClick={onLogout}
+          style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8960c', fontSize:'0.75rem', letterSpacing:'0.08em', border:'1px solid #7a4f00', padding:'2px 12px', background:'transparent'}}
+          className="hover:bg-realm-gold-dark hover:text-realm-panel transition-colors"
+        >
+          Logout
+        </button>
       </div>
-      <button
-        onClick={onLogout}
-        className="text-red-700 text-xs px-4 py-2 uppercase tracking-widest hover:text-red-400 hover:bg-realm-panel transition-colors whitespace-nowrap border-l border-realm-border"
-      >
-        [EXIT]
-      </button>
-    </nav>
+
+      {/* Nav tabs */}
+      <nav className="flex overflow-x-auto" style={{background:'linear-gradient(to bottom, #4a3010, #2c1a08)', borderBottom:'3px solid #a08050'}}>
+        {navLinks.map(({ path, label }) => {
+          const active = location.pathname === path;
+          return (
+            <Link
+              key={path}
+              to={path}
+              style={{
+                fontFamily: 'Cinzel, Georgia, serif',
+                fontSize: '0.72rem',
+                letterSpacing: '0.06em',
+                padding: '7px 14px',
+                whiteSpace: 'nowrap',
+                borderRight: '1px solid #7a4f00',
+                transition: 'background 0.1s',
+                background: active ? 'linear-gradient(to bottom, #c8960c, #7a4f00)' : 'transparent',
+                color: active ? '#fdf8ef' : '#c8960c',
+                textShadow: active ? '1px 1px 0 rgba(0,0,0,0.5)' : 'none',
+                fontWeight: active ? '700' : '400',
+              }}
+            >
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
   );
 }

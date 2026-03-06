@@ -4,97 +4,107 @@
 
 @layer base {
   html, body {
-    @apply bg-realm-bg text-realm-text font-mono;
+    @apply bg-realm-bg text-realm-text;
+    font-family: 'Crimson Text', Georgia, serif;
+    font-size: 15px;
     min-height: 100vh;
-    /* CRT scanline effect */
-    background-image: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 3px,
-      rgba(0, 0, 0, 0.08) 3px,
-      rgba(0, 0, 0, 0.08) 4px
-    );
+    background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' viewBox='0 0 4 4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0' y='0' width='1' height='1' fill='rgba(0,0,0,0.04)'/%3E%3C/svg%3E");
   }
 
-  /* Scrollbar styling */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { @apply bg-realm-surface; }
-  ::-webkit-scrollbar-thumb { background: #0f3d0f; }
-  ::-webkit-scrollbar-thumb:hover { background: #33ff66; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #d6c9a8; }
+  ::-webkit-scrollbar-thumb { background: #a08050; border-radius: 0; }
+  ::-webkit-scrollbar-thumb:hover { background: #7a4f00; }
 
-  h1, h2, h3 { @apply font-display; }
+  h1, h2, h3, h4 { font-family: 'Cinzel', Georgia, serif; @apply text-realm-gold; }
+  a { @apply text-realm-blue underline hover:text-realm-blue-light; }
 }
 
 @layer components {
   .realm-panel {
-    @apply bg-realm-panel border border-realm-border p-4;
-    border-style: solid;
-    box-shadow: inset 0 0 20px rgba(0, 255, 66, 0.03), 0 0 0 1px rgba(0, 255, 66, 0.05);
+    @apply bg-realm-panel border-2 border-realm-border p-4;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.15), inset 0 0 0 1px rgba(255,255,255,0.5);
   }
 
   .realm-btn {
-    @apply px-4 py-1.5 border transition-colors duration-100 font-mono text-sm cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed uppercase tracking-widest;
+    @apply px-4 py-1.5 border-2 transition-colors duration-100 text-sm cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed font-semibold;
+    font-family: 'Cinzel', Georgia, serif;
+    letter-spacing: 0.05em;
   }
 
   .realm-btn-gold {
-    @apply realm-btn bg-transparent border-realm-gold text-realm-gold hover:bg-realm-gold hover:text-realm-bg;
+    @apply realm-btn border-realm-gold text-realm-panel bg-realm-gold hover:bg-realm-gold-dark hover:border-realm-gold-dark;
+    background: linear-gradient(to bottom, #c8960c, #7a4f00);
+    color: #fdf8ef;
+    border-color: #4a2e00;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.4);
+  }
+  .realm-btn-gold:hover {
+    background: linear-gradient(to bottom, #7a4f00, #4a2e00);
   }
 
   .realm-btn-red {
-    @apply realm-btn bg-transparent border-red-600 text-red-400 hover:bg-red-700 hover:text-white;
+    @apply realm-btn border-realm-crimson text-realm-panel;
+    background: linear-gradient(to bottom, #cc2200, #6b0000);
+    color: #fdf8ef;
+    border-color: #4a0000;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.4);
+  }
+  .realm-btn-red:hover {
+    background: linear-gradient(to bottom, #6b0000, #3a0000);
   }
 
   .realm-btn-outline {
-    @apply realm-btn bg-transparent border-realm-border text-realm-text-muted hover:border-realm-text hover:text-realm-text;
+    @apply realm-btn bg-realm-surface border-realm-border text-realm-text-muted hover:border-realm-gold hover:text-realm-gold hover:bg-realm-panel;
   }
 
   .realm-input {
-    @apply bg-realm-surface border border-realm-border text-realm-text px-3 py-2 w-full font-mono text-sm
-           focus:outline-none focus:border-realm-text placeholder:text-realm-text-dim;
+    @apply bg-realm-panel border-2 border-realm-border text-realm-text px-3 py-2 w-full text-sm
+           focus:outline-none focus:border-realm-gold placeholder:text-realm-text-dim;
+    font-family: 'Crimson Text', Georgia, serif;
   }
 
   .realm-table {
-    @apply w-full text-sm border-collapse;
+    @apply w-full text-sm border-collapse border-2 border-realm-border;
   }
   .realm-table th {
-    @apply text-realm-gold text-left py-2 px-3 border-b border-realm-border font-normal uppercase text-xs tracking-widest;
-    background: rgba(0, 255, 66, 0.04);
+    @apply text-realm-panel text-left py-2 px-3 border border-realm-gold-dark text-sm font-semibold;
+    font-family: 'Cinzel', Georgia, serif;
+    background: linear-gradient(to bottom, #a08050, #7a4f00);
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
   }
   .realm-table td {
-    @apply py-2 px-3 border-b border-realm-border text-realm-text-muted;
+    @apply py-2 px-3 border border-realm-border text-realm-text;
+    background: #fdf8ef;
+  }
+  .realm-table tr:nth-child(even) td {
+    background: #f0e8d4;
   }
   .realm-table tr:hover td {
-    background: rgba(0, 255, 66, 0.05);
-    @apply text-realm-text;
+    background: #e8ddc0;
   }
 
   .realm-badge {
-    @apply text-xs px-2 py-0.5 border uppercase tracking-wider;
+    @apply text-xs px-2 py-0.5 border-2 font-semibold;
+    font-family: 'Cinzel', Georgia, serif;
   }
 
   .resource-bar {
     @apply flex items-center gap-1 text-sm;
   }
 
-  /* Retro section header */
-  .retro-header {
-    @apply font-display text-realm-gold tracking-widest uppercase;
-    font-size: 1.4rem;
-    text-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
-  }
-
-  /* Phosphor glow on active/important elements */
-  .glow-green {
-    text-shadow: 0 0 8px rgba(51, 255, 102, 0.7);
-  }
-  .glow-gold {
-    text-shadow: 0 0 8px rgba(255, 193, 7, 0.7);
+  /* Section divider */
+  .realm-divider {
+    border: none;
+    border-top: 2px solid #a08050;
+    border-bottom: 1px solid #e8dfc8;
+    margin: 1rem 0;
   }
 }
 
 /* Race color accents */
-.race-human { color: #44aaff; }
-.race-orc { color: #44ff88; }
-.race-undead { color: #cc44ff; }
-.race-elf { color: #00ffcc; }
-.race-dwarf { color: #ffaa00; }
+.race-human { color: #00008b; }
+.race-orc { color: #1a4a1a; }
+.race-undead { color: #3a0060; }
+.race-elf { color: #006633; }
+.race-dwarf { color: #7a4f00; }
