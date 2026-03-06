@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 
 const MAX_AP = parseInt(process.env.MAX_AP || '20');
-const AP_REGEN_MINUTES = parseInt(process.env.AP_REGEN_MINUTES || '30');
+const AP_REGEN_MINUTES = parseInt(process.env.AP_REGEN_MINUTES || '12');
 
 /**
  * Recalculates AP lazily based on elapsed time.
