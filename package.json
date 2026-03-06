@@ -1,0 +1,30 @@
+{
+  "name": "realm-of-dominion",
+  "version": "1.0.0",
+  "description": "Realm of Dominion - Web-based text kingdom builder",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
+    "server:dev": "nodemon server/index.js",
+    "client:dev": "cd client && npm run dev",
+    "start": "node server/index.js",
+    "build": "cd client && npm run build",
+    "db:migrate": "node server/db/migrate.js",
+    "db:seed": "node server/db/seeds/troop_types.js && node server/db/seeds/tech_tree.js",
+    "db:seed:age": "node server/db/seeds/age.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.3",
+    "socket.io": "^4.6.2"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.2"
+  }
+}

@@ -1,0 +1,118 @@
+import { formatTime, formatNumber, formatDuration } from '../utils/formatters';
+
+const RACE_BUILD_MULTIPLIER = { human: 0.90, dwarf: 0.75, orc: 1.0, undead: 1.0, elf: 1.0 };
+
+function calcUpgradeCost(currentLevel, race) {
+  const targetLevel = currentLevel + 1;
+  const mult = RACE_BUILD_MULTIPLIER[race] || 1.0;
+  const exp = Math.pow(1.8, targetLevel - 1);
+  const timeSeconds = Math.round(20 * Math.pow(3, targetLevel - 1));
+  return {
+    gold: Math.ceil(500 * exp * mult),
+    pp: Math.ceil(200 * exp * mult),
+    time_hours: timeSeconds / 3600,
+  };
+}
+
+const BUILDING_LABELS = {
+  farm: 'Farm',
+  barracks: 'Barracks',
+  treasury: 'Treasury',
+  marketplace_stall: 'Marketplace Stall',
+  watchtower: 'Watchtower',
+  walls: 'Walls',
+  library: 'Library',
+  mine_quarry: 'Mine/Quarry',
+  temple_altar: 'Temple/Altar',
+  war_hall: 'War Hall',
+  royal_bank: 'Royal Bank',
+  warchief_pit: 'Warchief Pit',
+  crypt: 'Crypt',
+  ancient_grove: 'Ancient Grove',
+  runic_forge: 'Runic Forge',
+};
+
+const BUILDING_EFFECTS = {
+  farm: '+5% food per level',
+  barracks: '+10% train speed, +5% troop cap per level',
+  treasury: '+8% gold cap, +4% income per level',
+  marketplace_stall: '+1 trade slot, +5% trade value per level',
+  watchtower: '+10% spy detect, +5% all defense per level',
+  walls: '+15% defense bonus per level',
+  library: '+10% research speed per level',
+  mine_quarry: '+8% production points per level',
+  temple_altar: '+10% mana regen, +5% morale recovery per level',
+  war_hall: '+5% troop attack; unlocks T4@L3, T5@L5',
+  royal_bank: '+15% gold income per level',
+  warchief_pit: '+10% Warchief/Berserker power per level',
+  crypt: '+7% skeleton raise chance per level',
+  ancient_grove: '+15% mana regen, +10% land yield per level',
+  runic_forge: '+3 ATK/DEF to Runic Warriors per level',
+};
+
+export default function BuildingCard({ building, onBuild, gold, production_points, race }) {
+  const isMax = building.level >= 5;
+  const isUpgrading = building.is_upgrading;
+  const label = BUILDING_LABELS[building.building_type] || building.building_type;
+  const effect = BUILDING_EFFECTS[building.building_type] || '';
+  const nextCost = !isMax && !isUpgrading ? calcUpgradeCost(building.level, race) : null;
+
+  return (
+    <div className="realm-panel flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-realm-gold font-display">{label}</h3>
+        <div className="flex gap-1">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className={`w-3 h-3 rounded-sm border ${
+                i < building.level
+                  ? 'bg-realm-gold border-realm-gold'
+                  : 'bg-realm-surface border-realm-border'
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+
+      <p className="text-realm-text-dim text-xs">{effect}</p>
+
+      {isUpgrading && (
+        <p className="text-yellow-400 text-xs">
+          Upgrading... {formatTime(building.upgrade_completes_at)}
+        </p>
+      )}
+
+      {nextCost && (
+        <div className="text-xs space-y-0.5 border-t border-realm-border/50 pt-2 mt-1">
+          <div className="flex justify-between text-realm-text-dim">
+            <span>Cost:</span>
+            <span>
+              <span className={gold >= nextCost.gold ? 'text-yellow-400' : 'text-red-400'}>{formatNumber(nextCost.gold)}g</span>
+              {' + '}
+              <span className={production_points >= nextCost.pp ? 'text-gray-300' : 'text-red-400'}>{formatNumber(nextCost.pp)}pp</span>
+            </span>
+          </div>
+          <div className="flex justify-between text-realm-text-dim">
+            <span>Time:</span>
+            <span className="text-realm-text-muted">{formatDuration(nextCost.time_hours)}</span>
+          </div>
+        </div>
+      )}
+
+      {!isMax && !isUpgrading && (
+        <button
+          onClick={() => onBuild(building.building_type)}
+          disabled={gold < nextCost.gold || production_points < nextCost.pp}
+          className="realm-btn-gold text-xs w-full"
+        >
+          Upgrade to L{building.level + 1}
+        </button>
+      )}
+
+      {isMax && (
+        <span className="text-realm-gold text-xs text-center">MAX</span>
+      )}
+    </div>
+  );
+}

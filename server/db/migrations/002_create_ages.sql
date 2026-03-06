@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS ages (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(50),
+  starts_at TIMESTAMP NOT NULL,
+  ends_at TIMESTAMP NOT NULL,
+  is_active BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
