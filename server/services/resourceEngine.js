@@ -3,10 +3,10 @@ const raceConfig = require('../config/raceConfig');
 const { applyTechModifiers } = require('./techEngine');
 
 // Base resource generation rates (per hour)
-const BASE_GOLD_PER_LAND = 1.5;
-const BASE_FOOD_PER_LAND = 0.8;
-const BASE_MANA_PER_HOUR = 3;
-const BASE_PRODUCTION_PER_LAND = 0.5;
+const BASE_GOLD_PER_LAND = 1.65;
+const BASE_FOOD_PER_LAND = 0.88;
+const BASE_MANA_PER_HOUR = 3.3;
+const BASE_PRODUCTION_PER_LAND = 0.55;
 const FOOD_PER_POPULATION_HOUR = 0.02;
 
 /**

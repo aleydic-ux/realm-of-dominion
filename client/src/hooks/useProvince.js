@@ -10,10 +10,11 @@ export function useProvince() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const troopsRef = useRef([]);
+  const initialLoadDone = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!initialLoadDone.current) setLoading(true);
       const { data } = await api.get('/province/me');
       setProvince(data.province);
       setBuildings(data.buildings || []);
@@ -22,6 +23,7 @@ export function useProvince() {
       setResearch(data.research || []);
       setAlliance(data.alliance || null);
       setError(null);
+      initialLoadDone.current = true;
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load province');
     } finally {
