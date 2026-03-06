@@ -92,7 +92,7 @@ export default function Military({ province, troops = [], refresh }) {
             <div className="text-sm text-realm-text-muted space-y-1">
               <div>ATK: <span className="text-red-400">{trainModal.offense_power}</span> | DEF: <span className="text-blue-400">{trainModal.defense_power}</span></div>
               <div>Cost per unit: <span className="text-yellow-400">{formatNumber(trainModal.gold_cost)} gold</span></div>
-              <div>Training time: <span className="text-realm-text">1s per troop</span></div>
+              <div>Training time: <span className="text-realm-text">{Math.pow(3, (trainModal.tier || 1) - 1)}s per troop</span></div>
               <div className="text-xs text-realm-text-dim">{trainModal.special_ability}</div>
             </div>
             <div>
