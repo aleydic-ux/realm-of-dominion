@@ -69,13 +69,13 @@ export default function Research({ province, research = [], refresh }) {
             )}
           </div>
           <div className="text-right text-xs shrink-0">
-            <div className="text-yellow-400">{formatNumber(tech.gold_cost)}g{tech.mana_cost > 0 ? ` + ${formatNumber(tech.mana_cost)}m` : ''}</div>
+            <div className="text-yellow-400">{formatNumber(tech.gold_cost)}g</div>
             <div className="text-realm-text-dim">{formatDuration(tech.research_hours)}</div>
           </div>
         </div>
         {!isComplete && !isInProgress && prereqMet && (
           <button onClick={() => startResearch(tech.id)} className="realm-btn-gold text-xs mt-2">
-            Research (3 AP)
+            Research (1 AP)
           </button>
         )}
       </div>
@@ -87,7 +87,7 @@ export default function Research({ province, research = [], refresh }) {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-display text-realm-gold">Research</h1>
         <div className="text-sm text-realm-text-muted">
-          AP: <span className="text-realm-gold">{province?.action_points}</span> | 3 AP to research
+          AP: <span className="text-realm-gold">{province?.action_points}</span> | 1 AP to research
         </div>
       </div>
 

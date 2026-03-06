@@ -364,14 +364,14 @@ router.post('/train', async (req, res) => {
   });
 });
 
-// POST /api/province/research - Start research (3 AP)
+// POST /api/province/research - Start research (1 AP)
 router.post('/research', async (req, res) => {
   if (!req.province) return res.status(404).json({ error: 'No province found' });
   const province = req.province;
   const { tech_id } = req.body;
 
   if (!tech_id) return res.status(400).json({ error: 'tech_id required' });
-  if (province.action_points < 3) return res.status(400).json({ error: 'Not enough AP (need 3)' });
+  if (province.action_points < 1) return res.status(400).json({ error: 'Not enough AP (need 1)' });
 
   // Get tech
   const { rows: [tech] } = await pool.query(
@@ -446,15 +446,12 @@ router.post('/research', async (req, res) => {
 
   // Timeless Wisdom: -30% research cost
   let goldCost = tech.gold_cost;
-  let manaCost = tech.mana_cost;
   const timelessWisdom = techEffects.find(e => e && e.target === 'research_cost');
   if (timelessWisdom) {
     goldCost = Math.ceil(goldCost * (1 + timelessWisdom.value));
-    manaCost = Math.ceil(manaCost * (1 + timelessWisdom.value));
   }
 
   if (province.gold < goldCost) return res.status(400).json({ error: `Not enough gold (need ${goldCost})` });
-  if (province.mana < manaCost) return res.status(400).json({ error: `Not enough mana (need ${manaCost})` });
 
   // Research time: hours / (library_bonus * race_research_speed)
   const libraryBonus = 1 + (libraryLevel * 0.10);
@@ -462,9 +459,9 @@ router.post('/research', async (req, res) => {
   const completesAt = new Date(Date.now() + researchHours * 3600000);
 
   await pool.query(
-    `UPDATE provinces SET action_points = action_points - 3, gold = gold - $1, mana = mana - $2, updated_at = NOW()
-     WHERE id = $3`,
-    [goldCost, manaCost, province.id]
+    `UPDATE provinces SET action_points = action_points - 1, gold = gold - $1, updated_at = NOW()
+     WHERE id = $2`,
+    [goldCost, province.id]
   );
 
   await pool.query(
