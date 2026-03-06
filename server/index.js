@@ -5,6 +5,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const cron = require('node-cron');
 
 const authRoutes = require('./routes/auth');
 const provinceRoutes = require('./routes/province');
@@ -91,6 +92,20 @@ async function clearStuckTimers() {
     console.error('Failed to clear stuck timers:', err.message);
   }
 }
+
+// Resource production cron tick — runs every 10 minutes
+const { lazyResourceUpdate } = require('./services/resourceEngine');
+cron.schedule('*/10 * * * *', async () => {
+  try {
+    const { rows } = await pool.query('SELECT id FROM provinces');
+    for (const { id } of rows) {
+      await lazyResourceUpdate(id).catch(() => {});
+    }
+    console.log(`[cron] Resource tick complete for ${rows.length} provinces`);
+  } catch (err) {
+    console.error('[cron] Resource tick failed:', err.message);
+  }
+});
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, async () => {

@@ -71,7 +71,7 @@ async function lazyResourceUpdate(provinceId, techEffects = []) {
       [provinceId, nowTs]
     );
 
-    if (hoursElapsed < 0.01) return; // Skip resource generation if recently updated
+    if (hoursElapsed <= 0) return;
 
     const buildings = await getBuildingLevels(provinceId);
     const race = province.race;
@@ -150,12 +150,12 @@ async function lazyResourceUpdate(provinceId, techEffects = []) {
 
 /**
  * Calculate building cost for a given level.
- * base_cost = { gold: 500, production_points: 200 }
+ * base_cost = { gold: 500, production_points: 50 }
  * level_cost = base_cost * (1.8 ^ (target_level - 1))
  */
 function calculateBuildingCost(targetLevel, race) {
   const cfg = raceConfig[race];
-  const base = { gold: 500, production_points: 200 };
+  const base = { gold: 500, production_points: 50 };
   const multiplier = Math.pow(1.8, targetLevel - 1);
   // L1=20s, L2=60s, L3=3min, L4=9min, L5=27min (×3 per level)
   const timeSeconds = Math.round(20 * Math.pow(3, targetLevel - 1));

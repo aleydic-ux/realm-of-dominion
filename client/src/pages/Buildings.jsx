@@ -14,7 +14,7 @@ export default function Buildings({ province, buildings = [], refresh }) {
     setError('');
     try {
       const { data } = await api.post('/province/build', { building_type });
-      setMessage(data.message + `. Cost: ${formatNumber(data.cost?.gold)} gold, ${formatNumber(data.cost?.production_points)} PP`);
+      setMessage(data.message + `. Cost: ${formatNumber(data.cost?.gold)} gold, ${formatNumber(data.cost?.production_points)} IP`);
       refresh();
     } catch (err) {
       setError(err.response?.data?.error || 'Build failed');

@@ -9,7 +9,7 @@ function calcUpgradeCost(currentLevel, race) {
   const timeSeconds = Math.round(20 * Math.pow(3, targetLevel - 1));
   return {
     gold: Math.ceil(500 * exp * mult),
-    pp: Math.ceil(200 * exp * mult),
+    pp: Math.ceil(50 * exp * mult),
     time_hours: timeSeconds / 3600,
   };
 }
@@ -40,7 +40,7 @@ const BUILDING_EFFECTS = {
   watchtower: '+10% spy detect, +5% all defense per level',
   walls: '+15% defense bonus per level',
   library: '+10% research speed per level',
-  mine_quarry: '+8% production points per level',
+  mine_quarry: '+8% industry points per level',
   temple_altar: '+10% mana regen, +5% morale recovery per level',
   war_hall: '+5% troop attack; unlocks T4@L3, T5@L5',
   royal_bank: '+15% gold income per level',
@@ -90,7 +90,7 @@ export default function BuildingCard({ building, onBuild, gold, production_point
             <span>
               <span className={gold >= nextCost.gold ? 'text-yellow-400' : 'text-red-400'}>{formatNumber(nextCost.gold)}g</span>
               {' + '}
-              <span className={production_points >= nextCost.pp ? 'text-gray-300' : 'text-red-400'}>{formatNumber(nextCost.pp)}pp</span>
+              <span className={production_points >= nextCost.pp ? 'text-gray-300' : 'text-red-400'}>{formatNumber(nextCost.pp)}ip</span>
             </span>
           </div>
           <div className="flex justify-between text-realm-text-dim">
