@@ -22,8 +22,20 @@ export default function Login({ onLogin }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{
+        backgroundImage: 'url(/MAIN PAGE BACKGROUND.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
+      <div
+        className="absolute inset-0"
+        style={{ background: 'linear-gradient(to bottom, rgba(6,14,28,0.55) 0%, rgba(6,14,28,0.85) 100%)' }}
+      />
+      <div className="w-full max-w-sm relative z-10">
         <div className="text-center mb-8">
           <h1 className="text-4xl text-realm-gold font-display">⚔️ Realm of Dominion</h1>
           <p className="text-realm-text-muted mt-2 text-sm">Enter your kingdom</p>
