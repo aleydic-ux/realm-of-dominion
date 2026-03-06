@@ -29,34 +29,30 @@ export default function Dashboard({ province, loading, refresh }) {
 
       {/* Castle Banner */}
       <div style={{
-        height: '160px',
-        background: 'linear-gradient(to bottom, #060e1c 0%, #0a1428 40%, #162038 70%, #1e3050 100%)',
+        position: 'relative',
         border: '1px solid #243650',
         borderTop: '2px solid #c8a048',
-        display: 'flex',
-        alignItems: 'flex-end',
-        justifyContent: 'space-between',
-        padding: '12px 20px',
-        position: 'relative',
         overflow: 'hidden',
       }}>
-        {/* Castle silhouette (CSS art) */}
-        <div style={{position:'absolute', bottom:0, left:0, right:0, display:'flex', alignItems:'flex-end', justifyContent:'center', opacity:0.35}}>
-          {[40,65,55,80,55,65,40].map((h,i) => (
-            <div key={i} style={{width: i===3?'28px':'18px', height:`${h}px`, background:'#06101e', margin:'0 2px', flexShrink:0}} />
-          ))}
-        </div>
-        <div style={{position:'relative', zIndex:1}}>
-          <div style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8960c', fontSize:'1.6rem', fontWeight:'700', textShadow:'2px 2px 4px #000, 0 0 12px rgba(200,150,12,0.5)', letterSpacing:'0.1em'}}>
-            {province.name}
+        <img
+          src="/castle-banner.png"
+          alt="Castle Banner"
+          style={{width:'100%', display:'block', maxHeight:'220px', objectFit:'cover', objectPosition:'center'}}
+        />
+        {/* Overlay text */}
+        <div style={{position:'absolute', inset:0, background:'linear-gradient(to right, rgba(6,14,28,0.75) 0%, rgba(6,14,28,0.1) 50%, rgba(6,14,28,0.6) 100%)', display:'flex', alignItems:'flex-end', justifyContent:'space-between', padding:'12px 20px'}}>
+          <div>
+            <div style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8a048', fontSize:'1.6rem', fontWeight:'700', textShadow:'2px 2px 4px #000, 0 0 12px rgba(200,160,72,0.5)', letterSpacing:'0.1em'}}>
+              {province.name}
+            </div>
+            <div className={`race-${province.race}`} style={{fontFamily:'Cinzel, Georgia, serif', fontSize:'0.8rem', letterSpacing:'0.12em', textShadow:'1px 1px 2px #000'}}>
+              {RACE_ICONS[province.race]} {province.race.toUpperCase()} PROVINCE
+            </div>
           </div>
-          <div className={`race-${province.race}`} style={{fontFamily:'Cinzel, Georgia, serif', fontSize:'0.8rem', letterSpacing:'0.12em', textShadow:'1px 1px 2px #000'}}>
-            {RACE_ICONS[province.race]} {province.race.toUpperCase()} PROVINCE
+          <div style={{textAlign:'right'}}>
+            <div style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8a048', fontSize:'0.7rem', letterSpacing:'0.08em'}}>NETWORTH</div>
+            <div style={{fontFamily:'Cinzel, Georgia, serif', color:'#fdf8ef', fontSize:'1.2rem', fontWeight:'700', textShadow:'1px 1px 2px #000'}}>{formatNumber(province.networth)}</div>
           </div>
-        </div>
-        <div style={{position:'relative', zIndex:1, textAlign:'right'}}>
-          <div style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8960c', fontSize:'0.7rem', letterSpacing:'0.08em'}}>NETWORTH</div>
-          <div style={{fontFamily:'Cinzel, Georgia, serif', color:'#fdf8ef', fontSize:'1.2rem', fontWeight:'700', textShadow:'1px 1px 2px #000'}}>{formatNumber(province.networth)}</div>
         </div>
       </div>
 
