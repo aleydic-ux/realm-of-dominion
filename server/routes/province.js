@@ -473,7 +473,7 @@ router.post('/research', async (req, res) => {
   res.json({
     message: `Researching ${tech.name}`,
     completes_at: completesAt,
-    cost: { gold: goldCost, mana: manaCost },
+    cost: { gold: goldCost },
   });
 });
 
