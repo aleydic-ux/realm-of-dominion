@@ -5,8 +5,8 @@
 @layer base {
   html, body {
     @apply bg-realm-bg text-realm-text;
-    font-family: 'Crimson Text', Georgia, serif;
-    font-size: 15px;
+    font-family: 'Trebuchet MS', 'Verdana', Arial, sans-serif;
+    font-size: 14px;
     min-height: 100vh;
     background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' viewBox='0 0 4 4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0' y='0' width='1' height='1' fill='rgba(0,0,0,0.04)'/%3E%3C/svg%3E");
   }
@@ -61,7 +61,7 @@
   .realm-input {
     @apply bg-realm-panel border-2 border-realm-border text-realm-text px-3 py-2 w-full text-sm
            focus:outline-none focus:border-realm-gold placeholder:text-realm-text-dim;
-    font-family: 'Crimson Text', Georgia, serif;
+    font-family: 'Trebuchet MS', 'Verdana', Arial, sans-serif;
   }
 
   .realm-table {

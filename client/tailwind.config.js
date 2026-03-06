@@ -27,7 +27,7 @@ export default {
         },
       },
       fontFamily: {
-        mono: ['Georgia', 'Times New Roman', 'serif'],
+        mono: ['Trebuchet MS', 'Verdana', 'Arial', 'sans-serif'],
         display: ['Cinzel', 'Georgia', 'serif'],
       },
     },
