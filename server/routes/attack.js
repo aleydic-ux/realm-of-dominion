@@ -276,6 +276,23 @@ router.post('/', async (req, res) => {
 
     await client.query('COMMIT');
 
+    // Post world feed event
+    try {
+      let eventMsg;
+      if (result.outcome === 'win') {
+        const details = [];
+        if (result.landGained > 0) details.push(`${result.landGained} acres seized`);
+        if (result.resourcesStolen.gold > 0) details.push(`${result.resourcesStolen.gold} gold stolen`);
+        eventMsg = `[WAR] ${attacker.name} launched a ${attack_type} on ${defender.name} and was VICTORIOUS! ${details.length ? '(' + details.join(', ') + ')' : ''}`;
+      } else {
+        eventMsg = `[WAR] ${attacker.name} attacked ${defender.name} but was REPELLED by the defenders!`;
+      }
+      await pool.query(
+        `INSERT INTO world_feed (type, author_name, province_id, message) VALUES ('event', 'World News', NULL, $1)`,
+        [eventMsg]
+      );
+    } catch (e) { /* non-critical */ }
+
     // Recalculate networth for both
     await calculateAndStoreNetworth(attacker.id);
     await calculateAndStoreNetworth(parseInt(target_id));

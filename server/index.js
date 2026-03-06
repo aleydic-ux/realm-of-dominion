@@ -14,6 +14,7 @@ const allianceRoutes = require('./routes/alliance');
 const diplomacyRoutes = require('./routes/diplomacy');
 const leaderboardRoutes = require('./routes/leaderboard');
 const techTreeRoutes = require('./routes/techTree');
+const feedRoutes = require('./routes/feed');
 const initSocket = require('./socket/chat');
 
 const app = express();
@@ -63,6 +64,7 @@ app.use('/api/alliances', allianceRoutes);
 app.use('/api/diplomacy', diplomacyRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/tech-tree', techTreeRoutes);
+app.use('/api/feed', feedRoutes);
 
 // Serve React frontend
 const clientDist = path.join(__dirname, '..', 'client', 'dist');

@@ -16,6 +16,7 @@ import Marketplace from './pages/Marketplace';
 import Alliance from './pages/Alliance';
 import Reports from './pages/Reports';
 import Leaderboard from './pages/Leaderboard';
+import WorldFeed from './pages/WorldFeed';
 
 function ProtectedLayout({ onLogout }) {
   const { province, buildings, troops, research, alliance, loading, refresh } = useProvince();
@@ -36,6 +37,7 @@ function ProtectedLayout({ onLogout }) {
           <Route path="/alliance" element={<Alliance province={province} alliance={alliance} />} />
           <Route path="/reports" element={<Reports province={province} />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/world" element={<WorldFeed province={province} />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>

@@ -11,6 +11,7 @@ const navLinks = [
   { path: '/alliance', label: 'Alliance' },
   { path: '/reports', label: 'Reports' },
   { path: '/leaderboard', label: 'Ranks' },
+  { path: '/world', label: 'World' },
 ];
 
 export default function NavBar({ onLogout }) {
