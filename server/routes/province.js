@@ -282,7 +282,6 @@ router.post('/train', async (req, res) => {
   if (!troop_type_id || !quantity || quantity <= 0) {
     return res.status(400).json({ error: 'troop_type_id and quantity (>0) required' });
   }
-  if (province.action_points < 1) return res.status(400).json({ error: 'Not enough AP (need 1)' });
 
   // Verify troop type belongs to this province's race
   const { rows: [troopType] } = await pool.query(
@@ -340,13 +339,13 @@ router.post('/train', async (req, res) => {
   const cfg = raceConfig[province.race];
   const speedMultiplier = cfg.trainingSpeedMultiplier;
   const barracksSpeedBonus = 1 + (barracksLevel * 0.10);
-  // 1 second per troop, scaled by quantity and speed bonuses
-  const trainingHours = (quantity / 3600) / (barracksSpeedBonus * speedMultiplier);
+  // Seconds per troop scales by tier: T1=1s, T2=3s, T3=9s, T4=27s, T5=81s
+  const secsPerTroop = Math.pow(3, (troopType.tier || 1) - 1);
+  const trainingHours = (quantity * secsPerTroop / 3600) / (barracksSpeedBonus * speedMultiplier);
   const completesAt = new Date(Date.now() + trainingHours * 3600000);
 
   await pool.query(
-    `UPDATE provinces SET action_points = action_points - 1, gold = gold - $1, updated_at = NOW()
-     WHERE id = $2`,
+    `UPDATE provinces SET gold = gold - $1, updated_at = NOW() WHERE id = $2`,
     [totalCost, province.id]
   );
 

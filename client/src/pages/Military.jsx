@@ -106,8 +106,7 @@ export default function Military({ province, troops = [], refresh }) {
               />
               <div className="text-xs text-realm-text-dim mt-1">
                 Total cost: <span className="text-yellow-400">{formatNumber(trainQty * trainModal.gold_cost)} gold</span>
-                {' | '}Time: <span className="text-realm-text-muted">{formatDuration(trainQty / 3600)}</span>
-                {' | '}AP: 1
+                {' | '}Time: <span className="text-realm-text-muted">{formatDuration(trainQty * Math.pow(3, (trainModal.tier || 1) - 1) / 3600)}</span>
               </div>
             </div>
             {error && <div className="text-red-400 text-sm">{error}</div>}
