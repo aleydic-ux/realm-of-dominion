@@ -37,7 +37,7 @@ export default function Login({ onLogin }) {
       />
       <div className="w-full max-w-sm relative z-10">
         <div className="text-center mb-8">
-          <h1 className="text-4xl text-realm-gold font-display">⚔️ Realm of Dominion</h1>
+          <h1 className="text-5xl text-realm-gold font-display whitespace-nowrap">Realm of Dominion</h1>
           <p className="text-realm-text-muted mt-2 text-sm">Enter your kingdom</p>
         </div>
 
