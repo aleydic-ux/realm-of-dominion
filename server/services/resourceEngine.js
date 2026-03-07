@@ -156,14 +156,33 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
   }
 }
 
+// Per-building base costs — differentiates building types meaningfully
+const BUILDING_BASE_COSTS = {
+  farm:              { gold: 300,  production_points: 30 },
+  barracks:          { gold: 600,  production_points: 60 },
+  treasury:          { gold: 400,  production_points: 40 },
+  marketplace_stall: { gold: 350,  production_points: 35 },
+  watchtower:        { gold: 450,  production_points: 45 },
+  walls:             { gold: 700,  production_points: 70 },
+  library:           { gold: 500,  production_points: 50 },
+  mine_quarry:       { gold: 400,  production_points: 40 },
+  temple_altar:      { gold: 450,  production_points: 45 },
+  war_hall:          { gold: 800,  production_points: 80 },
+  royal_bank:        { gold: 600,  production_points: 60 },
+  warchief_pit:      { gold: 700,  production_points: 70 },
+  crypt:             { gold: 550,  production_points: 55 },
+  ancient_grove:     { gold: 550,  production_points: 55 },
+  runic_forge:       { gold: 650,  production_points: 65 },
+};
+
 /**
  * Calculate building cost for a given level.
- * base_cost = { gold: 500, production_points: 50 }
+ * base_cost is per-building-type; falls back to { gold: 500, production_points: 50 }
  * level_cost = base_cost * (1.8 ^ (target_level - 1))
  */
-function calculateBuildingCost(targetLevel, race) {
+function calculateBuildingCost(targetLevel, race, buildingType) {
   const cfg = raceConfig[race];
-  const base = { gold: 500, production_points: 50 };
+  const base = BUILDING_BASE_COSTS[buildingType] || { gold: 500, production_points: 50 };
   const multiplier = Math.pow(1.8, targetLevel - 1);
   // L1=20s, L2=60s, L3=3min, L4=9min, L5=27min (×3 per level)
   const timeSeconds = Math.round(20 * Math.pow(3, targetLevel - 1));

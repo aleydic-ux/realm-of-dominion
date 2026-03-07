@@ -24,8 +24,8 @@ router.post('/', async (req, res) => {
   if (!['raid','conquest','raze','massacre'].includes(attack_type)) {
     return res.status(400).json({ error: 'Invalid attack type' });
   }
-  if (attacker.action_points < 5) {
-    return res.status(400).json({ error: 'Not enough AP (need 5)' });
+  if (attacker.action_points < 3) {
+    return res.status(400).json({ error: 'Not enough AP (need 3)' });
   }
   if (attacker.id === parseInt(target_id)) {
     return res.status(400).json({ error: 'Cannot attack yourself' });
@@ -48,6 +48,16 @@ router.post('/', async (req, res) => {
     if (defender.protection_ends_at && new Date(defender.protection_ends_at) > new Date()) {
       await client.query('ROLLBACK');
       return res.status(403).json({ error: 'This province is under a new player shield', protection_ends_at: defender.protection_ends_at });
+    }
+
+    // Attack ratio check — defender must be within 50%–200% of attacker's land
+    const minLand = Math.floor(attacker.land * 0.5);
+    const maxLand = Math.floor(attacker.land * 2.0);
+    if (defender.land < minLand || defender.land > maxLand) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({
+        error: `Target is out of your attack range. You can only attack provinces with ${minLand}–${maxLand} acres (50%–200% of your ${attacker.land} acres).`,
+      });
     }
 
     // Ally check - cannot attack allies
@@ -256,7 +266,7 @@ router.post('/', async (req, res) => {
 
     // AP deduction and attack record
     await client.query(
-      `UPDATE provinces SET action_points = action_points - 5, updated_at = NOW() WHERE id = $1`,
+      `UPDATE provinces SET action_points = action_points - 3, updated_at = NOW() WHERE id = $1`,
       [attacker.id]
     );
 

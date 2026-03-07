@@ -64,8 +64,8 @@ router.post('/register', async (req, res) => {
       [username, email, hash]
     );
 
-    // Create province with 12-hour newbie shield
-    const protectionEndsAt = new Date(Date.now() + parseInt(process.env.NEWBIE_PROTECTION_HOURS || 12) * 3600000);
+    // Create province with 72-hour newbie shield
+    const protectionEndsAt = new Date(Date.now() + parseInt(process.env.NEWBIE_PROTECTION_HOURS || 72) * 3600000);
     const { rows: [province] } = await client.query(
       `INSERT INTO provinces (user_id, age_id, name, race, protection_ends_at)
        VALUES ($1, $2, $3, $4, $5) RETURNING id`,

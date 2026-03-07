@@ -221,7 +221,7 @@ router.post('/build', async (req, res) => {
   }
 
   const targetLevel = building.level + 1;
-  const cost = calculateBuildingCost(targetLevel, province.race);
+  const cost = calculateBuildingCost(targetLevel, province.race, building_type);
 
   // Apply Steam Engine tech: -30% cost
   const techEffects = await getProvinceTechEffects(province.id);

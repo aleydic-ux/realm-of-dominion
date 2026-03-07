@@ -185,7 +185,7 @@ const techs = [
     desc: 'Forest Scout reveals enemy tech level'
   },
   {
-    race: 'elf', tier: 2, name: 'Timeless Wisdom', gold: 2000, mana: 200, hours: 12, lib: 2, prereq: null,
+    race: 'elf', tier: 2, name: 'Timeless Wisdom', gold: 3500, mana: 200, hours: 12, lib: 2, prereq: 'Arcane Mastery I',
     effect: { modifier_type: 'multiplier', target: 'research_cost', value: -0.30, scope: 'all' },
     desc: 'All research costs -30%'
   },

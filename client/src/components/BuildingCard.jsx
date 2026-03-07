@@ -2,14 +2,33 @@ import { formatTime, formatNumber, formatDuration } from '../utils/formatters';
 
 const RACE_BUILD_MULTIPLIER = { human: 0.90, dwarf: 0.75, orc: 1.0, undead: 1.0, elf: 1.0 };
 
-function calcUpgradeCost(currentLevel, race) {
+const BUILDING_BASE_COSTS = {
+  farm:              { gold: 300,  pp: 30 },
+  barracks:          { gold: 600,  pp: 60 },
+  treasury:          { gold: 400,  pp: 40 },
+  marketplace_stall: { gold: 350,  pp: 35 },
+  watchtower:        { gold: 450,  pp: 45 },
+  walls:             { gold: 700,  pp: 70 },
+  library:           { gold: 500,  pp: 50 },
+  mine_quarry:       { gold: 400,  pp: 40 },
+  temple_altar:      { gold: 450,  pp: 45 },
+  war_hall:          { gold: 800,  pp: 80 },
+  royal_bank:        { gold: 600,  pp: 60 },
+  warchief_pit:      { gold: 700,  pp: 70 },
+  crypt:             { gold: 550,  pp: 55 },
+  ancient_grove:     { gold: 550,  pp: 55 },
+  runic_forge:       { gold: 650,  pp: 65 },
+};
+
+function calcUpgradeCost(currentLevel, race, buildingType) {
   const targetLevel = currentLevel + 1;
   const mult = RACE_BUILD_MULTIPLIER[race] || 1.0;
+  const base = BUILDING_BASE_COSTS[buildingType] || { gold: 500, pp: 50 };
   const exp = Math.pow(1.8, targetLevel - 1);
   const timeSeconds = Math.round(20 * Math.pow(3, targetLevel - 1));
   return {
-    gold: Math.ceil(500 * exp * mult),
-    pp: Math.ceil(50 * exp * mult),
+    gold: Math.ceil(base.gold * exp * mult),
+    pp: Math.ceil(base.pp * exp * mult),
     time_hours: timeSeconds / 3600,
   };
 }
@@ -55,7 +74,7 @@ export default function BuildingCard({ building, onBuild, gold, production_point
   const isUpgrading = building.is_upgrading;
   const label = BUILDING_LABELS[building.building_type] || building.building_type;
   const effect = BUILDING_EFFECTS[building.building_type] || '';
-  const nextCost = !isMax && !isUpgrading ? calcUpgradeCost(building.level, race) : null;
+  const nextCost = !isMax && !isUpgrading ? calcUpgradeCost(building.level, race, building.building_type) : null;
 
   return (
     <div className="realm-panel flex flex-col gap-2">
