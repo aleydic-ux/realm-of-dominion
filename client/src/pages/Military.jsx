@@ -68,6 +68,7 @@ export default function Military({ province, troops = [], refresh }) {
         <TroopTable
           troops={troops}
           showDeploy={true}
+          gold={province.gold}
           onDeploy={(t, qty) => { setTrainModal(t); setTrainQty(qty || 1); setError(''); }}
         />
 

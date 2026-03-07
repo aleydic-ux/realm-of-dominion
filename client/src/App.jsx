@@ -23,9 +23,15 @@ function ProtectedLayout({ onLogout }) {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2 focus:bg-realm-gold focus:text-black focus:rounded font-bold"
+      >
+        Skip to main content
+      </a>
       <NavBar onLogout={onLogout} />
       <ResourceBar province={province} />
-      <main className="flex-1 p-4 max-w-7xl mx-auto w-full">
+      <main id="main-content" className="flex-1 p-4 max-w-7xl mx-auto w-full">
         <Suspense fallback={<div className="text-realm-text-muted">Loading...</div>}>
           <Routes>
             <Route path="/dashboard" element={<Dashboard province={province} loading={loading} refresh={refresh} />} />

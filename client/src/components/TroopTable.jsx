@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { formatNumber, formatDuration } from '../utils/formatters';
 
-export default function TroopTable({ troops, showDeploy = false, onDeploy }) {
+export default function TroopTable({ troops, showDeploy = false, onDeploy, gold }) {
   const [qtys, setQtys] = useState({});
 
   if (!troops || !troops.length) {
@@ -19,19 +19,19 @@ export default function TroopTable({ troops, showDeploy = false, onDeploy }) {
     <table className="realm-table">
       <thead>
         <tr>
-          <th>Tier</th>
-          <th>Name</th>
-          <th>ATK</th>
-          <th>DEF</th>
-          <th>Cost</th>
-          <th>Train Time</th>
-          <th>Home</th>
-          {showDeploy && <th>Training</th>}
-          {showDeploy && <th>Deployed</th>}
-          <th>Food/hr</th>
-          <th>Ability</th>
-          {showDeploy && <th>Qty</th>}
-          {showDeploy && <th></th>}
+          <th scope="col">Tier</th>
+          <th scope="col">Name</th>
+          <th scope="col">ATK</th>
+          <th scope="col">DEF</th>
+          <th scope="col">Cost</th>
+          <th scope="col">Train Time</th>
+          <th scope="col">Home</th>
+          {showDeploy && <th scope="col">Training</th>}
+          {showDeploy && <th scope="col">Deployed</th>}
+          <th scope="col">Food/hr</th>
+          <th scope="col">Ability</th>
+          {showDeploy && <th scope="col">Qty</th>}
+          {showDeploy && <th scope="col"><span className="sr-only">Actions</span></th>}
         </tr>
       </thead>
       <tbody>
@@ -59,6 +59,7 @@ export default function TroopTable({ troops, showDeploy = false, onDeploy }) {
                 <input
                   type="number"
                   min="1"
+                  max={gold != null ? Math.floor(gold / t.gold_cost) : undefined}
                   placeholder="1"
                   className="realm-input text-xs w-16 py-0.5"
                   value={qtys[t.troop_type_id] || ''}
@@ -71,6 +72,7 @@ export default function TroopTable({ troops, showDeploy = false, onDeploy }) {
                 <button
                   onClick={() => onDeploy(t, parseInt(qtys[t.troop_type_id]) || 1)}
                   className="realm-btn-outline text-xs py-1 px-2"
+                  aria-label={`Train ${t.name}`}
                 >
                   Train
                 </button>

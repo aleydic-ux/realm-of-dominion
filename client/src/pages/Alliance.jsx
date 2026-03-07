@@ -102,6 +102,19 @@ export default function Alliance({ province }) {
             <button type="submit" className="realm-btn-gold whitespace-nowrap">Create</button>
           </form>
           <p className="text-realm-text-dim text-xs mt-2">Or ask an existing leader to invite you by Province ID.</p>
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-realm-text-muted">Your Province ID:</span>
+            <code className="bg-gray-900 border border-realm-border text-realm-gold px-2 py-0.5 rounded text-sm font-mono select-all">
+              {province?.id}
+            </code>
+            <button
+              onClick={() => navigator.clipboard.writeText(String(province?.id))}
+              className="text-xs text-realm-text-dim hover:text-realm-gold transition-colors"
+              aria-label="Copy Province ID"
+            >
+              Copy
+            </button>
+          </div>
         </div>
 
         {alliances.length > 0 && (

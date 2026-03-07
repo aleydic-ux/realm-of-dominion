@@ -59,3 +59,15 @@ export const RACE_LABELS = {
   elf: 'Elf',
   dwarf: 'Dwarf',
 };
+
+export function formatRelativeDate(isoString) {
+  if (!isoString) return '—';
+  const diff = new Date(isoString) - Date.now();
+  if (diff <= 0) return 'ended';
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  if (days > 0) return `in ${days}d ${hours}h`;
+  const mins = Math.floor((diff % 3600000) / 60000);
+  if (hours > 0) return `in ${hours}h ${mins}m`;
+  return `in ${mins}m`;
+}

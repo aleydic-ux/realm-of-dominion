@@ -1,11 +1,32 @@
-import { formatNumber, formatTime, formatDateTime, RACE_ICONS } from '../utils/formatters';
+import { formatNumber, formatTime, formatDateTime, formatRelativeDate, RACE_ICONS } from '../utils/formatters';
 import ProtectionBadge from '../components/ProtectionBadge';
 import api from '../utils/api';
 import { useState, useEffect } from 'react';
 
+const AP_REGEN_MS = 30 * 60 * 1000; // 30 minutes per AP
+
+function useAPCountdown(apLastRegen, actionPoints) {
+  const [countdown, setCountdown] = useState('');
+  useEffect(() => {
+    if (actionPoints >= 20 || !apLastRegen) { setCountdown(''); return; }
+    const tick = () => {
+      const elapsed = Date.now() - new Date(apLastRegen).getTime();
+      const remaining = AP_REGEN_MS - (elapsed % AP_REGEN_MS);
+      const mins = Math.floor(remaining / 60000);
+      const secs = Math.floor((remaining % 60000) / 1000);
+      setCountdown(`${mins}:${secs.toString().padStart(2, '0')}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [apLastRegen, actionPoints]);
+  return countdown;
+}
+
 export default function Dashboard({ province, loading, refresh }) {
   const [exploreLoading, setExploreLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const apCountdown = useAPCountdown(province?.ap_last_regen, province?.action_points);
 
   useEffect(() => { document.title = 'Province — Realm of Dominion'; }, []);
 
@@ -58,6 +79,20 @@ export default function Dashboard({ province, loading, refresh }) {
         </div>
       </div>
 
+      {/* Age banner */}
+      {province.age_name && (
+        <div className="flex items-center justify-between gap-4 px-1 py-1 text-xs border-b border-realm-border">
+          <span className="text-realm-text-dim">
+            ⏳ <span className="text-realm-text-muted font-medium">{province.age_name}</span>
+          </span>
+          {province.age_ends_at && (
+            <span className="text-realm-gold" title={formatDateTime(province.age_ends_at)}>
+              Ends {formatRelativeDate(province.age_ends_at)}
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-display text-realm-gold">
           Province Overview
@@ -104,7 +139,14 @@ export default function Dashboard({ province, loading, refresh }) {
           <h2 className="text-realm-gold font-display">Action Points</h2>
           <span className="text-realm-gold font-bold">{province.action_points} / 20</span>
         </div>
-        <div className="w-full h-4 bg-realm-surface rounded-full border border-realm-border overflow-hidden">
+        <div
+          role="progressbar"
+          aria-label="Action Points"
+          aria-valuenow={province.action_points}
+          aria-valuemin={0}
+          aria-valuemax={20}
+          className="w-full h-4 bg-realm-surface rounded-full border border-realm-border overflow-hidden"
+        >
           <div
             className="h-full rounded-full transition-all"
             style={{
@@ -113,7 +155,10 @@ export default function Dashboard({ province, loading, refresh }) {
             }}
           />
         </div>
-        <p className="text-realm-text-dim text-xs mt-1">Regenerates 1 AP every 30 minutes (max 20)</p>
+        <p className="text-realm-text-dim text-xs mt-1">
+          Regenerates 1 AP every 30 minutes (max 20)
+          {apCountdown && <span className="ml-2 text-realm-gold">· Next in ~{apCountdown}</span>}
+        </p>
       </div>
 
       {/* Explore */}
@@ -131,21 +176,6 @@ export default function Dashboard({ province, loading, refresh }) {
         </button>
       </div>
 
-      {/* Age Info */}
-      {province.age_name && (
-        <div className="realm-panel flex items-center gap-4 text-sm">
-          <div>
-            <span className="text-realm-text-dim">Age: </span>
-            <span className="text-realm-gold">{province.age_name}</span>
-          </div>
-          {province.age_ends_at && (
-            <div>
-              <span className="text-realm-text-dim">Ends: </span>
-              <span className="text-realm-text-muted">{formatDateTime(province.age_ends_at)}</span>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

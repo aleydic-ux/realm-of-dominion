@@ -30,17 +30,24 @@ export default function ResourceBar({ province }) {
 
       {/* Stats row */}
       <div style={{display:'flex', flexWrap:'wrap', alignItems:'stretch'}}>
-        <span style={cell}><span style={lbl}>Gold</span><span style={{...val, color:'#c8a048'}}>{formatNumber(province.gold)}</span></span>
-        <span style={cell}><span style={lbl}>Food</span><span style={{...val, color: province.food < 0 ? '#cc2828' : '#2a8a48'}}>{formatNumber(province.food)}</span></span>
-        <span style={cell}><span style={lbl}>Mana</span><span style={{...val, color:'#8830cc'}}>{formatNumber(province.mana)}</span></span>
-        <span style={cell}><span style={lbl}>Industry</span><span style={val}>{formatNumber(province.production_points)}</span></span>
-        <span style={{...cell, borderRight:'none'}}><span style={lbl}>Land</span><span style={val}>{formatNumber(province.land)} ac</span></span>
+        <span style={cell} title={Math.floor(province.gold).toLocaleString() + ' gold'}><span style={lbl}>Gold</span><span style={{...val, color:'#c8a048'}}>{formatNumber(province.gold)}</span></span>
+        <span style={cell} title={Math.floor(province.food).toLocaleString() + ' food'}><span style={lbl}>Food</span><span style={{...val, color: province.food < 0 ? '#cc2828' : '#2a8a48'}}>{formatNumber(province.food)}</span></span>
+        <span style={cell} title={Math.floor(province.mana).toLocaleString() + ' mana'}><span style={lbl}>Mana</span><span style={{...val, color:'#8830cc'}}>{formatNumber(province.mana)}</span></span>
+        <span style={cell} title={Math.floor(province.production_points).toLocaleString() + ' industry'}><span style={lbl}>Industry</span><span style={val}>{formatNumber(province.production_points)}</span></span>
+        <span style={{...cell, borderRight:'none'}} title={Math.floor(province.land).toLocaleString() + ' acres'}><span style={lbl}>Land</span><span style={val}>{formatNumber(province.land)} ac</span></span>
 
         {/* AP */}
         <span style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:'6px', padding:'4px 14px'}}>
           <span style={lbl}>AP</span>
           <span style={{...val, color: apColor}}>{province.action_points}/{maxAp}</span>
-          <div style={{width:'70px', height:'6px', border:'1px solid #243650', background:'#0a1020', overflow:'hidden'}}>
+          <div
+            role="progressbar"
+            aria-label="Action Points"
+            aria-valuenow={province.action_points}
+            aria-valuemin={0}
+            aria-valuemax={maxAp}
+            style={{width:'70px', height:'6px', border:'1px solid #243650', background:'#0a1020', overflow:'hidden'}}
+          >
             <div style={{width:`${apPct}%`, height:'100%', background: apColor, transition:'width 0.3s'}} />
           </div>
         </span>

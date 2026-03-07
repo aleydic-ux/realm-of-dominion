@@ -1,4 +1,5 @@
-import { Link, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink } from 'react-router-dom';
 
 const navLinks = [
   { path: '/dashboard', label: 'Province' },
@@ -15,7 +16,7 @@ const navLinks = [
 ];
 
 export default function NavBar({ onLogout }) {
-  const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <div>
@@ -24,45 +25,95 @@ export default function NavBar({ onLogout }) {
         <span style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8a048', fontSize:'1.25rem', letterSpacing:'0.12em', textShadow:'0 0 12px rgba(200,160,72,0.4), 1px 1px 2px #000'}}>
           ⚔ Realm of Dominion ⚔
         </span>
-        <button
-          onClick={onLogout}
-          style={{fontFamily:'Verdana, Arial, sans-serif', color:'#8090a8', fontSize:'0.68rem', border:'1px solid #243650', padding:'2px 10px', background:'transparent', cursor:'pointer'}}
-          onMouseOver={e => e.target.style.color='#c8d8e8'}
-          onMouseOut={e => e.target.style.color='#8090a8'}
-        >
-          Logout
-        </button>
+        <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+          {/* Hamburger — visible only on small screens */}
+          <button
+            onClick={() => setMobileOpen(o => !o)}
+            aria-label="Toggle navigation"
+            aria-expanded={mobileOpen}
+            style={{display:'none', fontFamily:'Verdana, Arial, sans-serif', color:'#8090a8', fontSize:'1rem', border:'1px solid #243650', padding:'2px 8px', background:'transparent', cursor:'pointer'}}
+            className="sm-hamburger"
+          >
+            {mobileOpen ? '✕' : '☰'}
+          </button>
+          <button
+            onClick={onLogout}
+            style={{fontFamily:'Verdana, Arial, sans-serif', color:'#8090a8', fontSize:'0.68rem', border:'1px solid #243650', padding:'2px 10px', background:'transparent', cursor:'pointer'}}
+            onMouseOver={e => e.target.style.color='#c8d8e8'}
+            onMouseOut={e => e.target.style.color='#8090a8'}
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
-      {/* Nav tabs */}
-      <nav style={{background:'linear-gradient(to bottom, #162038, #0e1828)', borderBottom:'2px solid #c8a048', display:'flex', overflowX:'auto'}}>
-        {navLinks.map(({ path, label }) => {
-          const active = location.pathname === path;
-          return (
-            <Link
+      {/* Nav tabs — horizontal on desktop, vertical dropdown on mobile */}
+      <nav
+        aria-label="Main navigation"
+        style={{background:'linear-gradient(to bottom, #162038, #0e1828)', borderBottom:'2px solid #c8a048'}}
+      >
+        {/* Desktop: flex row */}
+        <div className="nav-desktop" style={{display:'flex', overflowX:'auto'}}>
+          {navLinks.map(({ path, label }) => (
+            <NavLink
               key={path}
               to={path}
-              style={{
+              style={({ isActive }) => ({
                 fontFamily: 'Verdana, Arial, sans-serif',
                 fontSize: '0.68rem',
-                fontWeight: active ? 'bold' : 'normal',
+                fontWeight: isActive ? 'bold' : 'normal',
                 padding: '6px 14px',
                 whiteSpace: 'nowrap',
                 borderRight: '1px solid #1e3050',
-                color: active ? '#c8a048' : '#8090a8',
-                background: active ? 'linear-gradient(to bottom, #1e3050, #162040)' : 'transparent',
-                borderBottom: active ? '2px solid #c8a048' : '2px solid transparent',
+                color: isActive ? '#c8a048' : '#8090a8',
+                background: isActive ? 'linear-gradient(to bottom, #1e3050, #162040)' : 'transparent',
+                borderBottom: isActive ? '2px solid #c8a048' : '2px solid transparent',
                 textDecoration: 'none',
                 display: 'inline-block',
                 transition: 'all 0.1s',
                 marginBottom: '-2px',
-              }}
+              })}
             >
               {label}
-            </Link>
-          );
-        })}
+            </NavLink>
+          ))}
+        </div>
+
+        {/* Mobile: collapsible vertical menu */}
+        {mobileOpen && (
+          <div className="nav-mobile" style={{display:'flex', flexDirection:'column', borderTop:'1px solid #1e3050'}}>
+            {navLinks.map(({ path, label }) => (
+              <NavLink
+                key={path}
+                to={path}
+                onClick={() => setMobileOpen(false)}
+                style={({ isActive }) => ({
+                  fontFamily: 'Verdana, Arial, sans-serif',
+                  fontSize: '0.8rem',
+                  fontWeight: isActive ? 'bold' : 'normal',
+                  padding: '10px 16px',
+                  borderBottom: '1px solid #1e3050',
+                  color: isActive ? '#c8a048' : '#8090a8',
+                  background: isActive ? 'rgba(30,48,80,0.6)' : 'transparent',
+                  textDecoration: 'none',
+                })}
+              >
+                {label}
+              </NavLink>
+            ))}
+          </div>
+        )}
       </nav>
+
+      <style>{`
+        @media (max-width: 639px) {
+          .sm-hamburger { display: block !important; }
+          .nav-desktop { display: none !important; }
+        }
+        @media (min-width: 640px) {
+          .nav-mobile { display: none !important; }
+        }
+      `}</style>
     </div>
   );
 }
