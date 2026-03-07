@@ -28,6 +28,8 @@ function initSocket(io) {
 
   io.on('connection', (socket) => {
     console.log(`Socket connected: province ${socket.provinceId}`);
+    // Auto-join personal province room for timer push notifications
+    socket.join(`province_${socket.provinceId}`);
 
     // Join alliance room
     socket.on('join_alliance', async (allianceId) => {

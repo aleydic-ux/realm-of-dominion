@@ -155,16 +155,20 @@ router.post('/logout', authenticate, (req, res) => {
 // GET /api/auth/me
 router.get('/me', authenticate, async (req, res) => {
   try {
-    const { rows: [province] } = await pool.query(
-      `SELECT p.id, p.name, p.race, p.land, p.gold, p.food, p.mana, p.production_points,
-              p.population, p.morale, p.action_points, p.networth, p.protection_ends_at,
-              a.name as age_name
-       FROM provinces p
-       JOIN ages a ON a.id = p.age_id
-       WHERE p.user_id = $1 AND a.is_active = true`,
-      [req.user.id]
-    );
-    res.json({ user: req.user, province: province || null });
+    const [userResult, provinceResult] = await Promise.all([
+      pool.query('SELECT id, username, email FROM users WHERE id = $1', [req.user.id]),
+      pool.query(
+        `SELECT p.id, p.name, p.race, p.land, p.gold, p.food, p.mana, p.production_points,
+                p.population, p.morale, p.action_points, p.networth, p.protection_ends_at,
+                a.name as age_name
+         FROM provinces p
+         JOIN ages a ON a.id = p.age_id
+         WHERE p.user_id = $1 AND a.is_active = true`,
+        [req.user.id]
+      ),
+    ]);
+    if (!userResult.rows.length) return res.status(401).json({ error: 'User not found' });
+    res.json({ user: userResult.rows[0], province: provinceResult.rows[0] || null });
   } catch (err) {
     console.error('Me error:', err);
     res.status(500).json({ error: 'Failed to load user data' });

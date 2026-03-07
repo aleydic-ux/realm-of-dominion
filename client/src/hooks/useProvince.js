@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { io } from 'socket.io-client';
 import api from '../utils/api';
 
 export function useProvince() {
@@ -9,7 +10,6 @@ export function useProvince() {
   const [alliance, setAlliance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const troopsRef = useRef([]);
   const initialLoadDone = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -19,7 +19,6 @@ export function useProvince() {
       setProvince(data.province);
       setBuildings(data.buildings || []);
       setTroops(data.troops || []);
-      troopsRef.current = data.troops || [];
       setResearch(data.research || []);
       setAlliance(data.alliance || null);
       setError(null);
@@ -34,21 +33,20 @@ export function useProvince() {
   useEffect(() => {
     refresh();
 
-    // Poll every 5s when training/building is active, otherwise every 60s
-    const interval = setInterval(() => {
-      const hasActiveTimers =
-        troopsRef.current.some(t => t.count_training > 0);
-      if (hasActiveTimers) {
-        refresh();
-      }
-    }, 5000);
-
-    // Always poll every 60s for resources
+    // Poll every 60s for resource updates
     const slowInterval = setInterval(refresh, 60000);
 
+    // Listen for server-pushed timer completion events via Socket.io
+    const token = localStorage.getItem('token');
+    let socket = null;
+    if (token) {
+      socket = io('/', { auth: { token }, transports: ['websocket', 'polling'] });
+      socket.on('province_update', () => refresh());
+    }
+
     return () => {
-      clearInterval(interval);
       clearInterval(slowInterval);
+      socket?.disconnect();
     };
   }, [refresh]);
 

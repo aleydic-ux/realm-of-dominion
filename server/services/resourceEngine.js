@@ -26,7 +26,48 @@ async function getBuildingLevels(provinceId) {
  * Lazily updates resources based on time elapsed since last_resource_update.
  * Also handles lazy troop training completion, building completion, research completion.
  */
-async function lazyResourceUpdate(provinceId, techEffects = []) {
+async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
+  const nowTs = new Date();
+
+  // Complete finished timers in parallel (independent updates, no transaction needed)
+  const [trainingRes, buildingRes, researchRes] = await Promise.all([
+    pool.query(
+      `UPDATE province_troops
+       SET count_home = count_home + count_training,
+           count_training = 0,
+           training_completes_at = NULL,
+           updated_at = NOW()
+       WHERE province_id = $1
+         AND count_training > 0
+         AND (training_completes_at IS NULL OR training_completes_at <= $2)`,
+      [provinceId, nowTs]
+    ),
+    pool.query(
+      `UPDATE province_buildings
+       SET is_upgrading = false,
+           upgrade_completes_at = NULL,
+           updated_at = NOW()
+       WHERE province_id = $1
+         AND is_upgrading = true
+         AND (upgrade_completes_at IS NULL OR upgrade_completes_at <= $2)`,
+      [provinceId, nowTs]
+    ),
+    pool.query(
+      `UPDATE province_research
+       SET status = 'complete',
+           updated_at = NOW()
+       WHERE province_id = $1
+         AND status = 'in_progress'
+         AND (completes_at IS NULL OR completes_at <= $2)`,
+      [provinceId, nowTs]
+    ),
+  ]);
+
+  // Notify the province's socket room if any timer just completed
+  if (io && (trainingRes.rowCount > 0 || buildingRes.rowCount > 0 || researchRes.rowCount > 0)) {
+    io.to(`province_${provinceId}`).emit('province_update', { type: 'timer_complete' });
+  }
+
   const client = await pool.connect();
   try {
     const { rows: [province] } = await client.query(
@@ -37,39 +78,6 @@ async function lazyResourceUpdate(provinceId, techEffects = []) {
     const now = Date.now();
     const lastUpdate = new Date(province.last_resource_update).getTime();
     const hoursElapsed = (now - lastUpdate) / 3600000;
-
-    // Always complete finished timers regardless of resource update throttle
-    const nowTs = new Date();
-    await client.query(
-      `UPDATE province_troops
-       SET count_home = count_home + count_training,
-           count_training = 0,
-           training_completes_at = NULL,
-           updated_at = NOW()
-       WHERE province_id = $1
-         AND count_training > 0
-         AND (training_completes_at IS NULL OR training_completes_at <= $2)`,
-      [provinceId, nowTs]
-    );
-    await client.query(
-      `UPDATE province_buildings
-       SET is_upgrading = false,
-           upgrade_completes_at = NULL,
-           updated_at = NOW()
-       WHERE province_id = $1
-         AND is_upgrading = true
-         AND (upgrade_completes_at IS NULL OR upgrade_completes_at <= $2)`,
-      [provinceId, nowTs]
-    );
-    await client.query(
-      `UPDATE province_research
-       SET status = 'complete',
-           updated_at = NOW()
-       WHERE province_id = $1
-         AND status = 'in_progress'
-         AND (completes_at IS NULL OR completes_at <= $2)`,
-      [provinceId, nowTs]
-    );
 
     if (hoursElapsed <= 0) return;
 

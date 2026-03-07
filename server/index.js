@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 const http = require('http');
 const { Server } = require('socket.io');
 const rateLimit = require('express-rate-limit');
@@ -33,6 +34,7 @@ app.set('io', io);
 initSocket(io);
 
 // Middleware
+app.use(compression());
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:3000',
   credentials: true,
@@ -95,11 +97,13 @@ async function clearStuckTimers() {
 
 // Resource production cron tick — runs every 10 minutes
 const { lazyResourceUpdate } = require('./services/resourceEngine');
+const CRON_BATCH_SIZE = 20;
 cron.schedule('*/10 * * * *', async () => {
   try {
     const { rows } = await pool.query('SELECT id FROM provinces');
-    for (const { id } of rows) {
-      await lazyResourceUpdate(id).catch(() => {});
+    for (let i = 0; i < rows.length; i += CRON_BATCH_SIZE) {
+      const batch = rows.slice(i, i + CRON_BATCH_SIZE);
+      await Promise.all(batch.map(({ id }) => lazyResourceUpdate(id).catch(() => {})));
     }
     console.log(`[cron] Resource tick complete for ${rows.length} provinces`);
   } catch (err) {

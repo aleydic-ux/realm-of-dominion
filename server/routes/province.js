@@ -18,56 +18,60 @@ router.use(authenticate, apRegen);
 router.get('/me', async (req, res) => {
   if (!req.province) return res.status(404).json({ error: 'No province found for active age' });
   const provinceId = req.province.id;
+  const io = req.app.get('io');
 
   try {
-    // Lazily check if age has ended
-    await checkEndOfAge();
+    // Step 1: age check + tech effects in parallel (both independent)
+    const [, techEffects] = await Promise.all([
+      checkEndOfAge(),
+      getProvinceTechEffects(provinceId),
+    ]);
 
-    const techEffects = await getProvinceTechEffects(provinceId);
-    await lazyResourceUpdate(provinceId, techEffects);
-    await checkAndReturnTroops(provinceId);
+    // Step 2: resource update + troop returns in parallel (both need techEffects/provinceId only)
+    await Promise.all([
+      lazyResourceUpdate(provinceId, techEffects, io),
+      checkAndReturnTroops(provinceId),
+    ]);
 
-    const { rows: [province] } = await pool.query(
-      `SELECT p.*, u.username, a.name as age_name, a.ends_at as age_ends_at
-       FROM provinces p
-       JOIN users u ON u.id = p.user_id
-       JOIN ages a ON a.id = p.age_id
-       WHERE p.id = $1`, [provinceId]
-    );
-
-    const { rows: buildings } = await pool.query(
-      'SELECT building_type, level, is_upgrading, upgrade_completes_at FROM province_buildings WHERE province_id = $1',
-      [provinceId]
-    );
-
-    const { rows: troops } = await pool.query(
-      `SELECT pt.*, tt.name, tt.tier, tt.offense_power, tt.defense_power, tt.gold_cost, tt.food_upkeep, tt.training_time_hours, tt.special_ability
-       FROM province_troops pt
-       JOIN troop_types tt ON tt.id = pt.troop_type_id
-       WHERE pt.province_id = $1 ORDER BY tt.tier`, [provinceId]
-    );
-
-    const { rows: research } = await pool.query(
-      `SELECT pr.*, tt.name, tt.description, tt.effect_json
-       FROM province_research pr
-       JOIN tech_tree tt ON tt.id = pr.tech_id
-       WHERE pr.province_id = $1`, [provinceId]
-    );
-
-    // Alliance info
-    const { rows: allianceRows } = await pool.query(
-      `SELECT a.id, a.name, am.rank
-       FROM alliance_members am
-       JOIN alliances a ON a.id = am.alliance_id
-       WHERE am.province_id = $1`, [provinceId]
-    );
+    // Step 3: fetch all display data in parallel
+    const [provinceRes, buildingsRes, troopsRes, researchRes, allianceRes] = await Promise.all([
+      pool.query(
+        `SELECT p.*, u.username, a.name as age_name, a.ends_at as age_ends_at
+         FROM provinces p
+         JOIN users u ON u.id = p.user_id
+         JOIN ages a ON a.id = p.age_id
+         WHERE p.id = $1`, [provinceId]
+      ),
+      pool.query(
+        'SELECT building_type, level, is_upgrading, upgrade_completes_at FROM province_buildings WHERE province_id = $1',
+        [provinceId]
+      ),
+      pool.query(
+        `SELECT pt.*, tt.name, tt.tier, tt.offense_power, tt.defense_power, tt.gold_cost, tt.food_upkeep, tt.training_time_hours, tt.special_ability
+         FROM province_troops pt
+         JOIN troop_types tt ON tt.id = pt.troop_type_id
+         WHERE pt.province_id = $1 ORDER BY tt.tier`, [provinceId]
+      ),
+      pool.query(
+        `SELECT pr.*, tt.name, tt.description, tt.effect_json
+         FROM province_research pr
+         JOIN tech_tree tt ON tt.id = pr.tech_id
+         WHERE pr.province_id = $1`, [provinceId]
+      ),
+      pool.query(
+        `SELECT a.id, a.name, am.rank
+         FROM alliance_members am
+         JOIN alliances a ON a.id = am.alliance_id
+         WHERE am.province_id = $1`, [provinceId]
+      ),
+    ]);
 
     res.json({
-      province,
-      buildings,
-      troops,
-      research,
-      alliance: allianceRows[0] || null,
+      province: provinceRes.rows[0],
+      buildings: buildingsRes.rows,
+      troops: troopsRes.rows,
+      research: researchRes.rows,
+      alliance: allianceRes.rows[0] || null,
     });
   } catch (err) {
     console.error('Dashboard error:', err);
