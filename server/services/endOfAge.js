@@ -40,8 +40,17 @@ async function checkEndOfAge() {
     // Deactivate age
     await client.query('UPDATE ages SET is_active = false WHERE id = $1', [age.id]);
 
+    // Create next age automatically so the game continues
+    const ageLengthDays = parseInt(process.env.AGE_LENGTH_DAYS || '90');
+    const nextAgeNum = age.id + 1;
+    await client.query(
+      `INSERT INTO ages (name, starts_at, ends_at, is_active)
+       VALUES ($1, NOW(), NOW() + INTERVAL '${ageLengthDays} days', true)`,
+      [`Age ${nextAgeNum}`]
+    );
+
     await client.query('COMMIT');
-    console.log('Hall of fame recorded. Age ended.');
+    console.log(`Hall of fame recorded. Age ended. New age started (${ageLengthDays} days).`);
     return true;
   } catch (err) {
     await client.query('ROLLBACK');
