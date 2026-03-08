@@ -20,6 +20,7 @@ const feedRoutes = require('./routes/feed');
 const spellRoutes = require('./routes/spells');
 const craftingRoutes = require('./routes/crafting');
 const { collectCompletedCrafts } = require('./routes/crafting');
+const botAdminRoutes = require('./routes/bots');
 const initSocket = require('./socket/chat');
 
 const app = express();
@@ -73,6 +74,7 @@ app.use('/api/tech-tree', techTreeRoutes);
 app.use('/api/feed', feedRoutes);
 app.use('/api/spells', spellRoutes);
 app.use('/api/crafting', craftingRoutes);
+app.use('/api/bots', botAdminRoutes);
 
 // Serve React frontend
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
