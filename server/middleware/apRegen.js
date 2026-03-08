@@ -56,6 +56,27 @@ async function apRegen(req, res, next) {
 
       // Re-query for province after recovery
       ({ rows } = await pool.query(PROVINCE_QUERY, [req.user.id]));
+
+      // Still no province in active age — reassign orphaned province
+      if (!rows.length) {
+        const { rows: [activeAge] } = await pool.query(
+          'SELECT id FROM ages WHERE is_active = true LIMIT 1'
+        );
+        if (activeAge) {
+          // Find user's most recent province in any age
+          const { rows: [orphan] } = await pool.query(
+            'SELECT id FROM provinces WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+            [req.user.id]
+          );
+          if (orphan) {
+            await pool.query(
+              'UPDATE provinces SET age_id = $1, updated_at = NOW() WHERE id = $2',
+              [activeAge.id, orphan.id]
+            );
+            ({ rows } = await pool.query(PROVINCE_QUERY, [req.user.id]));
+          }
+        }
+      }
     }
 
     if (!rows.length) {
