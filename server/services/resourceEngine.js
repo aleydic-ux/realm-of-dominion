@@ -134,18 +134,20 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
     productionRate = applyTechModifiers(productionRate, 'production_points', techEffects);
 
     // --- Active spell effects (buffs/debuffs affecting this province's resources) ---
-    const { rows: spellRows } = await client.query(
-      `SELECT effect_json FROM spell_effects
-       WHERE target_province_id = $1 AND expires_at > NOW()
-         AND effect_json->>'modifier_type' IS NOT NULL`,
-      [provinceId]
-    );
-    const spellModifiers = spellRows.map(r => r.effect_json).filter(Boolean);
-    if (spellModifiers.length > 0) {
-      manaRate = applyTechModifiers(manaRate, 'mana_regen', spellModifiers);
-      foodRate = applyTechModifiers(foodRate, 'food_production', spellModifiers);
-      goldRate = applyTechModifiers(goldRate, 'gold_income', spellModifiers);
-    }
+    try {
+      const { rows: spellRows } = await client.query(
+        `SELECT effect_json FROM spell_effects
+         WHERE target_province_id = $1 AND expires_at > NOW()
+           AND effect_json->>'modifier_type' IS NOT NULL`,
+        [provinceId]
+      );
+      const spellModifiers = spellRows.map(r => r.effect_json).filter(Boolean);
+      if (spellModifiers.length > 0) {
+        manaRate = applyTechModifiers(manaRate, 'mana_regen', spellModifiers);
+        foodRate = applyTechModifiers(foodRate, 'food_production', spellModifiers);
+        goldRate = applyTechModifiers(goldRate, 'gold_income', spellModifiers);
+      }
+    } catch (_) { /* spell_effects table may not exist yet during migration */ }
 
     // Calculate totals
     const goldGained = Math.floor(goldRate * hoursElapsed);
