@@ -92,6 +92,7 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
     const templeLevel = buildings['temple_altar'] || 0;
     const ancientGroveLevel = buildings['ancient_grove'] || 0; // Elf only
     const royalBankLevel = buildings['royal_bank'] || 0; // Human only
+    const arcaneSanctumLevel = buildings['arcane_sanctum'] || 0;
 
     // --- Gold ---
     let goldRate = province.land * BASE_GOLD_PER_LAND;
@@ -123,6 +124,7 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
     let manaRate = BASE_MANA_PER_HOUR;
     manaRate *= 1 + (templeLevel * 0.10); // +10% per temple level
     if (ancientGroveLevel > 0) manaRate *= 1 + (ancientGroveLevel * 0.15); // Elf grove
+    if (arcaneSanctumLevel > 0) manaRate *= 1 + (arcaneSanctumLevel * 0.05); // +5% per sanctum level
     manaRate *= cfg.manaRegenMultiplier;
     manaRate = applyTechModifiers(manaRate, 'mana_regen', techEffects);
 
@@ -130,6 +132,20 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
     let productionRate = province.land * BASE_PRODUCTION_PER_LAND;
     productionRate *= 1 + (mineLevel * 0.08); // +8% per mine level
     productionRate = applyTechModifiers(productionRate, 'production_points', techEffects);
+
+    // --- Active spell effects (buffs/debuffs affecting this province's resources) ---
+    const { rows: spellRows } = await client.query(
+      `SELECT effect_json FROM spell_effects
+       WHERE target_province_id = $1 AND expires_at > NOW()
+         AND effect_json->>'modifier_type' IS NOT NULL`,
+      [provinceId]
+    );
+    const spellModifiers = spellRows.map(r => r.effect_json).filter(Boolean);
+    if (spellModifiers.length > 0) {
+      manaRate = applyTechModifiers(manaRate, 'mana_regen', spellModifiers);
+      foodRate = applyTechModifiers(foodRate, 'food_production', spellModifiers);
+      goldRate = applyTechModifiers(goldRate, 'gold_income', spellModifiers);
+    }
 
     // Calculate totals
     const goldGained = Math.floor(goldRate * hoursElapsed);
@@ -173,6 +189,7 @@ const BUILDING_BASE_COSTS = {
   crypt:             { gold: 550,  production_points: 55 },
   ancient_grove:     { gold: 550,  production_points: 55 },
   runic_forge:       { gold: 650,  production_points: 65 },
+  arcane_sanctum:    { gold: 900,  production_points: 90 },
 };
 
 /**

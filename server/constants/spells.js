@@ -1,0 +1,143 @@
+// Spell definitions for the Arcane Sanctum system
+// Tier 1 spells require Arcane Sanctum L1
+// Tier 2 spells require Arcane Sanctum L3
+// Tier 3 spells require Arcane Sanctum L5
+
+const SPELLS = [
+  // ─── SCOUTING ─────────────────────────────────────────────────────────────
+  {
+    key: 'clairvoyance',
+    name: 'Clairvoyance',
+    category: 'scout',
+    tier: 1,
+    mana_cost: 40,
+    ap_cost: 0,
+    cooldown_hours: 2,
+    duration_hours: 0, // instant result, no lasting effect
+    requires_arcane_sanctum: 1,
+    targeted: true,
+    description: "Peer through the veil to reveal a province's land, race, networth, and alliance.",
+    effect: { type: 'reveal_basic' },
+  },
+  {
+    key: 'spy_network',
+    name: 'Spy Network',
+    category: 'scout',
+    tier: 2,
+    mana_cost: 100,
+    ap_cost: 1,
+    cooldown_hours: 4,
+    duration_hours: 1,
+    requires_arcane_sanctum: 3,
+    targeted: true,
+    description: "Conjure arcane familiars to reveal a province's troop counts, morale, and resources.",
+    effect: { type: 'reveal_military' },
+  },
+  {
+    key: 'true_sight',
+    name: 'True Sight',
+    category: 'scout',
+    tier: 3,
+    mana_cost: 200,
+    ap_cost: 1,
+    cooldown_hours: 8,
+    duration_hours: 1,
+    requires_arcane_sanctum: 5,
+    targeted: true,
+    description: 'The all-seeing eye. Reveals everything: buildings, research, all troops, and full resources.',
+    effect: { type: 'reveal_full' },
+  },
+
+  // ─── BUFF SPELLS ───────────────────────────────────────────────────────────
+  {
+    key: 'mana_shield',
+    name: 'Mana Shield',
+    category: 'buff',
+    tier: 1,
+    mana_cost: 60,
+    ap_cost: 1,
+    cooldown_hours: 6,
+    duration_hours: 4,
+    requires_arcane_sanctum: 1,
+    targeted: false,
+    description: 'Encase your walls in arcane energy. +15% defense power for 4 hours.',
+    effect: { modifier_type: 'multiplier', target: 'troop_defense', value: 0.15 },
+  },
+  {
+    key: 'ley_lines',
+    name: 'Ley Lines',
+    category: 'buff',
+    tier: 2,
+    mana_cost: 80,
+    ap_cost: 1,
+    cooldown_hours: 8,
+    duration_hours: 6,
+    requires_arcane_sanctum: 3,
+    targeted: false,
+    description: 'Tap into the ley lines beneath your land. +30% mana regeneration for 6 hours.',
+    effect: { modifier_type: 'multiplier', target: 'mana_regen', value: 0.30 },
+  },
+  {
+    key: 'war_cry',
+    name: 'War Cry',
+    category: 'buff',
+    tier: 3,
+    mana_cost: 150,
+    ap_cost: 2,
+    cooldown_hours: 12,
+    duration_hours: 4,
+    requires_arcane_sanctum: 5,
+    targeted: false,
+    description: 'Embolden your armies with arcane fury. +25% attack power for 4 hours.',
+    effect: { modifier_type: 'multiplier', target: 'troop_attack', value: 0.25 },
+  },
+
+  // ─── ATTACK SPELLS ─────────────────────────────────────────────────────────
+  {
+    key: 'arcane_bolt',
+    name: 'Arcane Bolt',
+    category: 'attack',
+    tier: 1,
+    mana_cost: 70,
+    ap_cost: 1,
+    cooldown_hours: 4,
+    duration_hours: 0,
+    requires_arcane_sanctum: 1,
+    targeted: true,
+    description: "Siphon 15% of a province's mana reserves into your own.",
+    effect: { type: 'drain_mana', value: 0.15 },
+  },
+  {
+    key: 'famine_curse',
+    name: 'Famine Curse',
+    category: 'attack',
+    tier: 2,
+    mana_cost: 150,
+    ap_cost: 2,
+    cooldown_hours: 8,
+    duration_hours: 4,
+    requires_arcane_sanctum: 3,
+    targeted: true,
+    description: "Wither the target's crops. -25% food production for 4 hours.",
+    effect: { modifier_type: 'multiplier', target: 'food_production', value: -0.25 },
+  },
+  {
+    key: 'arcane_storm',
+    name: 'Arcane Storm',
+    category: 'attack',
+    tier: 3,
+    mana_cost: 300,
+    ap_cost: 3,
+    cooldown_hours: 24,
+    duration_hours: 0,
+    requires_arcane_sanctum: 5,
+    targeted: true,
+    description: 'Unleash a devastating magical storm. Destroys 5–10% of enemy troops and steals 5% of their gold.',
+    effect: { type: 'storm_damage', troop_loss_pct_min: 0.05, troop_loss_pct_max: 0.10, gold_steal_pct: 0.05 },
+  },
+];
+
+const SPELL_MAP = {};
+for (const s of SPELLS) SPELL_MAP[s.key] = s;
+
+module.exports = { SPELLS, SPELL_MAP };

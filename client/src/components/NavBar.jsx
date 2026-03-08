@@ -11,6 +11,7 @@ const navLinks = [
   { path: '/marketplace', label: 'Market' },
   { path: '/alliance', label: 'Alliance' },
   { path: '/reports', label: 'Reports' },
+  { path: '/spells', label: 'Spells' },
   { path: '/leaderboard', label: 'Ranks' },
   { path: '/world', label: 'World' },
 ];

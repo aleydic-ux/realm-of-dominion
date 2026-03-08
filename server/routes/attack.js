@@ -118,6 +118,26 @@ router.post('/', async (req, res) => {
     const attackerTechs = await getProvinceTechEffects(attacker.id);
     const defenderTechs = await getProvinceTechEffects(parseInt(target_id));
 
+    // Load active spell buffs for combat
+    const [attackerSpellRes, defenderSpellRes] = await Promise.all([
+      pool.query(
+        `SELECT effect_json FROM spell_effects
+         WHERE caster_province_id = $1 AND target_province_id = $1
+           AND category = 'buff' AND expires_at > NOW()
+           AND effect_json->>'modifier_type' IS NOT NULL`,
+        [attacker.id]
+      ),
+      pool.query(
+        `SELECT effect_json FROM spell_effects
+         WHERE caster_province_id = $1 AND target_province_id = $1
+           AND category = 'buff' AND expires_at > NOW()
+           AND effect_json->>'modifier_type' IS NOT NULL`,
+        [parseInt(target_id)]
+      ),
+    ]);
+    const attackerSpellEffects = attackerSpellRes.rows.map(r => r.effect_json).filter(Boolean);
+    const defenderSpellEffects = defenderSpellRes.rows.map(r => r.effect_json).filter(Boolean);
+
     // Check enemy morale bonus
     const isEnemy = relation.length && relation[0].status === 'enemy';
     const attackerMoraleBonus = isEnemy ? 10 : 0;
@@ -135,6 +155,8 @@ router.post('/', async (req, res) => {
       buildings: defenderBuildings,
       attackerTechs,
       defenderTechs,
+      attackerSpellEffects,
+      defenderSpellEffects,
     });
 
     // Apply attacker losses (remove from home, add to deployed - losses)

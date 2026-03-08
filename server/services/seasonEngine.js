@@ -10,7 +10,7 @@ const SEASON_NAMES = [
 
 const UNIVERSAL_BUILDINGS = [
   'farm', 'barracks', 'treasury', 'marketplace_stall', 'watchtower',
-  'walls', 'library', 'mine_quarry', 'temple_altar', 'war_hall',
+  'walls', 'library', 'mine_quarry', 'temple_altar', 'war_hall', 'arcane_sanctum',
 ];
 const RACE_BUILDINGS = {
   human: 'royal_bank',

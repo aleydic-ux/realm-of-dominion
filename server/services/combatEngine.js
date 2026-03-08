@@ -12,7 +12,7 @@ const BASE_RETURN_HOURS = 8;
  * @param {Array} attackerTechs - attacker's tech effects
  * @param {Array} defenderTechs - defender's tech effects
  */
-function resolveAttack({ attacker, defender, attackType, troopsDeployed, attackerTroopTypes, defenderTroops, defenderTroopTypes, buildings, attackerTechs, defenderTechs }) {
+function resolveAttack({ attacker, defender, attackType, troopsDeployed, attackerTroopTypes, defenderTroops, defenderTroopTypes, buildings, attackerTechs, defenderTechs, attackerSpellEffects = [], defenderSpellEffects = [] }) {
   const attackerCfg = raceConfig[attacker.race];
   const defenderCfg = raceConfig[defender.race];
 
@@ -48,6 +48,8 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
 
   // Apply tech modifiers
   attackerPower = applyTechModifiers(attackerPower, 'troop_attack', attackerTechs);
+  // Apply active spell buffs (e.g. War Cry)
+  attackerPower = applyTechModifiers(attackerPower, 'troop_attack', attackerSpellEffects);
 
   // Check enemy status (morale +10 when attacking enemy)
   // (handled in route before calling this)
@@ -97,6 +99,8 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
 
   // Apply tech modifiers
   defenderPower = applyTechModifiers(defenderPower, 'troop_defense', defenderTechs);
+  // Apply active spell buffs (e.g. Mana Shield)
+  defenderPower = applyTechModifiers(defenderPower, 'troop_defense', defenderSpellEffects);
   attackerPower = applyTechModifiers(attackerPower, 'wall_effectiveness', defenderTechs); // inverse
 
   // 3. Determine outcome

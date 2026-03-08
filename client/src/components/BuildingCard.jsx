@@ -18,6 +18,7 @@ const BUILDING_BASE_COSTS = {
   crypt:             { gold: 550,  pp: 55 },
   ancient_grove:     { gold: 550,  pp: 55 },
   runic_forge:       { gold: 650,  pp: 65 },
+  arcane_sanctum:    { gold: 900,  pp: 90 },
 };
 
 function calcUpgradeCost(currentLevel, race, buildingType) {
@@ -49,6 +50,7 @@ const BUILDING_LABELS = {
   crypt: 'Crypt',
   ancient_grove: 'Ancient Grove',
   runic_forge: 'Runic Forge',
+  arcane_sanctum: 'Arcane Sanctum',
 };
 
 const BUILDING_EFFECTS = {
@@ -67,6 +69,7 @@ const BUILDING_EFFECTS = {
   crypt: '+7% skeleton raise chance per level',
   ancient_grove: '+15% mana regen, +10% land yield per level',
   runic_forge: '+3 ATK/DEF to Runic Warriors per level',
+  arcane_sanctum: '+5% mana regen per level; unlocks spells at L1/L3/L5',
 };
 
 export default function BuildingCard({ building, onBuild, gold, production_points, race }) {
