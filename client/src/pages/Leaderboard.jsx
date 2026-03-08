@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
-import { formatNumber, RACE_ICONS } from '../utils/formatters';
+import { formatNumber } from '../utils/formatters';
 
 export default function Leaderboard({ province }) {
   const [data, setData] = useState(null);
@@ -46,15 +46,13 @@ export default function Leaderboard({ province }) {
       {tab === 'overall' && (
         <div className="realm-panel overflow-x-auto">
           <table className="realm-table">
-            <thead><tr><th>#</th><th>Province</th><th>Player</th><th>Race</th><th>Land</th><th>Networth</th><th>Alliance</th></tr></thead>
+            <thead><tr><th>#</th><th>Province</th><th>Player</th><th>Networth</th><th>Alliance</th></tr></thead>
             <tbody>
               {data.overall.map((p, i) => (
                 <tr key={p.id} className={p.id === province?.id ? 'border-l-2 border-realm-gold bg-realm-gold/5' : ''}>
                   <td className="text-realm-gold font-bold">{i + 1}</td>
                   <td className="text-realm-text">{p.name}{p.id === province?.id && <span className="text-realm-text-dim text-xs ml-1">(you)</span>}</td>
-                  <td className="text-realm-text-muted">{p.username}</td>
-                  <td className={`race-${p.race}`}>{RACE_ICONS[p.race]} {p.race}</td>
-                  <td>{formatNumber(p.land)}</td>
+                  <td className="text-realm-text-muted">{p.is_bot ? <span className="text-realm-text-dim">[BOT]</span> : p.username}</td>
                   <td className="text-realm-gold font-bold">{formatNumber(p.networth)}</td>
                   <td className="text-realm-text-dim text-xs">{p.alliance_name || '—'}</td>
                 </tr>
@@ -67,14 +65,13 @@ export default function Leaderboard({ province }) {
       {tab === 'military' && (
         <div className="realm-panel overflow-x-auto">
           <table className="realm-table">
-            <thead><tr><th>#</th><th>Province</th><th>Player</th><th>Race</th><th>Attacks Won</th><th>Land Captured</th></tr></thead>
+            <thead><tr><th>#</th><th>Province</th><th>Player</th><th>Attacks Won</th><th>Land Captured</th></tr></thead>
             <tbody>
               {data.military.map((p, i) => (
                 <tr key={p.id}>
                   <td className="text-red-400 font-bold">{i + 1}</td>
                   <td className="text-realm-text">{p.name}</td>
-                  <td className="text-realm-text-muted">{p.username}</td>
-                  <td className={`race-${p.race}`}>{RACE_ICONS[p.race]} {p.race}</td>
+                  <td className="text-realm-text-muted">{p.is_bot ? <span className="text-realm-text-dim">[BOT]</span> : p.username}</td>
                   <td className="text-green-400">{p.successful_attacks || 0}</td>
                   <td className="text-amber-400">{formatNumber(p.total_land_gained || 0)} acres</td>
                 </tr>
@@ -87,14 +84,13 @@ export default function Leaderboard({ province }) {
       {tab === 'economic' && (
         <div className="realm-panel overflow-x-auto">
           <table className="realm-table">
-            <thead><tr><th>#</th><th>Province</th><th>Player</th><th>Race</th><th>Market Volume</th><th>Gold</th></tr></thead>
+            <thead><tr><th>#</th><th>Province</th><th>Player</th><th>Market Volume</th><th>Gold</th></tr></thead>
             <tbody>
               {data.economic.map((p, i) => (
                 <tr key={p.id}>
                   <td className="text-yellow-400 font-bold">{i + 1}</td>
                   <td className="text-realm-text">{p.name}</td>
-                  <td className="text-realm-text-muted">{p.username}</td>
-                  <td className={`race-${p.race}`}>{RACE_ICONS[p.race]} {p.race}</td>
+                  <td className="text-realm-text-muted">{p.is_bot ? <span className="text-realm-text-dim">[BOT]</span> : p.username}</td>
                   <td className="text-realm-gold">{formatNumber(p.marketplace_volume)}g</td>
                   <td className="text-yellow-400">{formatNumber(p.gold)}g</td>
                 </tr>
@@ -142,15 +138,13 @@ export default function Leaderboard({ province }) {
                     <>
                       <h3 className="text-realm-text-dim text-xs uppercase tracking-widest">Overall — Top Provinces</h3>
                       <table className="realm-table">
-                        <thead><tr><th>#</th><th>Province</th><th>Player</th><th>Race</th><th>Land</th><th>Networth</th></tr></thead>
+                        <thead><tr><th>#</th><th>Province</th><th>Player</th><th>Networth</th></tr></thead>
                         <tbody>
                           {age.overall.map(r => (
                             <tr key={r.id}>
                               <td className="text-realm-gold font-bold">{r.rank}</td>
                               <td className="text-realm-text">{r.province_name}</td>
                               <td className="text-realm-text-muted">{r.username}</td>
-                              <td className={`race-${r.race}`}>{RACE_ICONS[r.race]} {r.race}</td>
-                              <td>{formatNumber(r.final_land)}</td>
                               <td className="text-realm-gold font-bold">{formatNumber(r.final_networth)}</td>
                             </tr>
                           ))}
@@ -162,14 +156,13 @@ export default function Leaderboard({ province }) {
                     <>
                       <h3 className="text-realm-text-dim text-xs uppercase tracking-widest mt-2">Military — Top Conquerors</h3>
                       <table className="realm-table">
-                        <thead><tr><th>#</th><th>Province</th><th>Player</th><th>Race</th><th>Attacks Won</th></tr></thead>
+                        <thead><tr><th>#</th><th>Province</th><th>Player</th><th>Attacks Won</th></tr></thead>
                         <tbody>
                           {age.military.map(r => (
                             <tr key={r.id}>
                               <td className="text-red-400 font-bold">{r.rank}</td>
                               <td className="text-realm-text">{r.province_name}</td>
                               <td className="text-realm-text-muted">{r.username}</td>
-                              <td className={`race-${r.race}`}>{RACE_ICONS[r.race]} {r.race}</td>
                               <td className="text-green-400">{r.successful_attacks}</td>
                             </tr>
                           ))}

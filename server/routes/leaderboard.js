@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
   try {
     // Overall networth — LEFT JOIN so bots (null user_id) are included
     const { rows: overall } = await pool.query(
-      `SELECT p.id, p.name, p.race, p.land, p.networth, p.morale,
+      `SELECT p.id, p.name, p.networth, p.morale,
               p.is_bot, COALESCE(u.username, '[BOT]') as username,
               a.name as alliance_name
        FROM provinces p
@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
 
     // Military score: successful attacks — LEFT JOIN for bots
     const { rows: military } = await pool.query(
-      `SELECT p.id, p.name, p.race, p.is_bot,
+      `SELECT p.id, p.name, p.is_bot,
               COALESCE(u.username, '[BOT]') as username,
               COUNT(a.id) as successful_attacks,
               SUM(a.land_gained) as total_land_gained
@@ -30,14 +30,14 @@ router.get('/', async (req, res) => {
        LEFT JOIN users u ON u.id = p.user_id
        JOIN ages ag ON ag.id = p.age_id AND ag.is_active = true
        LEFT JOIN attacks a ON a.attacker_province_id = p.id AND a.outcome = 'win'
-       GROUP BY p.id, p.name, p.race, p.is_bot, u.username
+       GROUP BY p.id, p.name, p.is_bot, u.username
        ORDER BY successful_attacks DESC NULLS LAST
        LIMIT 50`
     );
 
     // Economic score: marketplace volume — LEFT JOIN for bots
     const { rows: economic } = await pool.query(
-      `SELECT p.id, p.name, p.race, p.is_bot,
+      `SELECT p.id, p.name, p.is_bot,
               COALESCE(u.username, '[BOT]') as username,
               COALESCE(SUM(ml.quantity * ml.price_per_unit), 0) as marketplace_volume,
               p.gold
@@ -45,7 +45,7 @@ router.get('/', async (req, res) => {
        LEFT JOIN users u ON u.id = p.user_id
        JOIN ages ag ON ag.id = p.age_id AND ag.is_active = true
        LEFT JOIN marketplace_listings ml ON ml.seller_province_id = p.id AND ml.is_sold = true
-       GROUP BY p.id, p.name, p.race, p.is_bot, u.username, p.gold
+       GROUP BY p.id, p.name, p.is_bot, u.username, p.gold
        ORDER BY marketplace_volume DESC NULLS LAST
        LIMIT 50`
     );
