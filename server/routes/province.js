@@ -6,7 +6,6 @@ const { lazyResourceUpdate, calculateBuildingCost } = require('../services/resou
 const { getProvinceTechEffects } = require('../services/techEngine');
 const { calculateAndStoreNetworth } = require('../services/networthCalc');
 const { checkAndReturnTroops } = require('../services/troopReturn');
-const { checkAndEndSeason } = require('../services/seasonEngine');
 const raceConfig = require('../config/raceConfig');
 
 const router = express.Router();
@@ -21,11 +20,8 @@ router.get('/me', async (req, res) => {
   const io = req.app.get('io');
 
   try {
-    // Step 1: age check + tech effects in parallel (both independent)
-    const [, techEffects] = await Promise.all([
-      checkAndEndSeason(io),
-      getProvinceTechEffects(provinceId),
-    ]);
+    // Step 1: tech effects (season check is handled by apRegen middleware)
+    const techEffects = await getProvinceTechEffects(provinceId);
 
     // Step 2: resource update + troop returns in parallel (both need techEffects/provinceId only)
     await Promise.all([
