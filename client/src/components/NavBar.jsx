@@ -12,6 +12,7 @@ const navLinks = [
   { path: '/alliance', label: 'Alliance' },
   { path: '/reports', label: 'Reports' },
   { path: '/spells', label: 'Spells' },
+  { path: '/crafting', label: 'Alchemy' },
   { path: '/leaderboard', label: 'Ranks' },
   { path: '/world', label: 'World' },
 ];
