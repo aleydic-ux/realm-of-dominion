@@ -98,6 +98,15 @@ router.post('/cast', async (req, res) => {
         await client.query('ROLLBACK');
         return res.status(400).json({ error: 'Cannot target yourself' });
       }
+      // New player shield — blocks hostile spells (attack/debuff) during protection window
+      if ((spell.category === 'attack' || spell.category === 'debuff') &&
+          tgt.protection_ends_at && new Date(tgt.protection_ends_at) > new Date()) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({
+          error: 'This province is protected by a new player shield',
+          protection_ends_at: tgt.protection_ends_at,
+        });
+      }
       target = tgt;
     }
 

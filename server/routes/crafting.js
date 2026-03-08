@@ -451,18 +451,20 @@ router.post('/items/send', async (req, res) => {
 
     // Load target
     const { rows: [target] } = await client.query(
-      `SELECT id, name, is_bot, created_at FROM provinces WHERE id = $1`, [target_id]
+      `SELECT id, name, is_bot, created_at, protection_ends_at FROM provinces WHERE id = $1`, [target_id]
     );
     if (!target) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Target province not found' });
     }
 
-    // No debuffs on provinces under 48 hours old
-    const ageHours = (Date.now() - new Date(target.created_at).getTime()) / 3600000;
-    if (ageHours < 48) {
+    // New player shield blocks debuff items
+    if (target.protection_ends_at && new Date(target.protection_ends_at) > new Date()) {
       await client.query('ROLLBACK');
-      return res.status(403).json({ error: 'Cannot debuff provinces under 48 hours old' });
+      return res.status(403).json({
+        error: 'This province is protected by a new player shield',
+        protection_ends_at: target.protection_ends_at,
+      });
     }
 
     // Check inventory
