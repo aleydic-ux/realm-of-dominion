@@ -169,7 +169,6 @@ router.post('/build', async (req, res) => {
   const { building_type } = req.body;
 
   if (!building_type) return res.status(400).json({ error: 'building_type required' });
-  if (province.action_points < 2) return res.status(400).json({ error: 'Not enough AP (need 2)' });
 
   let { rows: [building] } = await pool.query(
     'SELECT * FROM province_buildings WHERE province_id = $1 AND building_type = $2',
@@ -250,7 +249,6 @@ router.post('/build', async (req, res) => {
 
   await pool.query(
     `UPDATE provinces SET
-      action_points = action_points - 2,
       gold = gold - $1,
       production_points = production_points - $2,
       updated_at = NOW()

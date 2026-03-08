@@ -36,7 +36,7 @@ export default function Buildings({ province, buildings = [], refresh }) {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-display text-realm-gold">Buildings</h1>
         <div className="text-sm text-realm-text-muted">
-          AP: <span className="text-realm-gold">{province.action_points}</span> | 2 AP to build
+          AP: <span className="text-realm-gold">{province.action_points}</span>
         </div>
       </div>
 
