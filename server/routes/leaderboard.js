@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
     // Overall networth — LEFT JOIN so bots (null user_id) are included
     const { rows: overall } = await pool.query(
       `SELECT p.id, p.name, p.networth, p.morale,
-              p.is_bot, COALESCE(u.username, '[BOT]') as username,
+              p.is_bot, p.protection_ends_at, COALESCE(u.username, '[BOT]') as username,
               a.name as alliance_name
        FROM provinces p
        LEFT JOIN users u ON u.id = p.user_id
