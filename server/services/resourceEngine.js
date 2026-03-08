@@ -131,7 +131,7 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
     // --- Production Points ---
     let productionRate = province.land * BASE_PRODUCTION_PER_LAND;
     productionRate *= 1 + (mineLevel * 0.08); // +8% per mine level
-    productionRate = applyTechModifiers(productionRate, 'production_points', techEffects);
+    productionRate = applyTechModifiers(productionRate, 'industry_points', techEffects);
 
     // --- Active spell effects (buffs/debuffs affecting this province's resources) ---
     try {
@@ -178,7 +178,7 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
         gold = GREATEST(0, gold + $1),
         food = food + $2,
         mana = GREATEST(0, mana + $3),
-        production_points = GREATEST(0, production_points + $4),
+        industry_points = GREATEST(0, industry_points + $4),
         last_resource_update = NOW(),
         updated_at = NOW()
        WHERE id = $5`,
@@ -193,38 +193,38 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
 
 // Per-building base costs — differentiates building types meaningfully
 const BUILDING_BASE_COSTS = {
-  farm:              { gold: 300,  production_points: 30 },
-  barracks:          { gold: 600,  production_points: 60 },
-  treasury:          { gold: 400,  production_points: 40 },
-  marketplace_stall: { gold: 350,  production_points: 35 },
-  watchtower:        { gold: 450,  production_points: 45 },
-  walls:             { gold: 700,  production_points: 70 },
-  library:           { gold: 500,  production_points: 50 },
-  mine_quarry:       { gold: 400,  production_points: 40 },
-  temple_altar:      { gold: 450,  production_points: 45 },
-  war_hall:          { gold: 800,  production_points: 80 },
-  royal_bank:        { gold: 600,  production_points: 60 },
-  warchief_pit:      { gold: 700,  production_points: 70 },
-  crypt:             { gold: 550,  production_points: 55 },
-  ancient_grove:     { gold: 550,  production_points: 55 },
-  runic_forge:       { gold: 650,  production_points: 65 },
-  arcane_sanctum:    { gold: 900,  production_points: 90 },
+  farm:              { gold: 300,  industry_points: 30 },
+  barracks:          { gold: 600,  industry_points: 60 },
+  treasury:          { gold: 400,  industry_points: 40 },
+  marketplace_stall: { gold: 350,  industry_points: 35 },
+  watchtower:        { gold: 450,  industry_points: 45 },
+  walls:             { gold: 700,  industry_points: 70 },
+  library:           { gold: 500,  industry_points: 50 },
+  mine_quarry:       { gold: 400,  industry_points: 40 },
+  temple_altar:      { gold: 450,  industry_points: 45 },
+  war_hall:          { gold: 800,  industry_points: 80 },
+  royal_bank:        { gold: 600,  industry_points: 60 },
+  warchief_pit:      { gold: 700,  industry_points: 70 },
+  crypt:             { gold: 550,  industry_points: 55 },
+  ancient_grove:     { gold: 550,  industry_points: 55 },
+  runic_forge:       { gold: 650,  industry_points: 65 },
+  arcane_sanctum:    { gold: 900,  industry_points: 90 },
 };
 
 /**
  * Calculate building cost for a given level.
- * base_cost is per-building-type; falls back to { gold: 500, production_points: 50 }
+ * base_cost is per-building-type; falls back to { gold: 500, industry_points: 50 }
  * level_cost = base_cost * (1.8 ^ (target_level - 1))
  */
 function calculateBuildingCost(targetLevel, race, buildingType) {
   const cfg = raceConfig[race];
-  const base = BUILDING_BASE_COSTS[buildingType] || { gold: 500, production_points: 50 };
+  const base = BUILDING_BASE_COSTS[buildingType] || { gold: 500, industry_points: 50 };
   const multiplier = Math.pow(1.8, targetLevel - 1);
   // L1=20s, L2=60s, L3=3min, L4=9min, L5=27min (×3 per level)
   const timeSeconds = Math.round(20 * Math.pow(3, targetLevel - 1));
   return {
     gold: Math.ceil(base.gold * multiplier * cfg.buildingCostMultiplier),
-    production_points: Math.ceil(base.production_points * multiplier * cfg.buildingCostMultiplier),
+    industry_points: Math.ceil(base.industry_points * multiplier * cfg.buildingCostMultiplier),
     time_hours: timeSeconds / 3600,
   };
 }

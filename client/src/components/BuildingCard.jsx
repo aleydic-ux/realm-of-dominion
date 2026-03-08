@@ -72,7 +72,7 @@ const BUILDING_EFFECTS = {
   arcane_sanctum: '+5% mana regen per level; unlocks spells at L1/L3/L5',
 };
 
-export default function BuildingCard({ building, onBuild, gold, production_points, race }) {
+export default function BuildingCard({ building, onBuild, gold, industry_points, race }) {
   const isMax = building.level >= 5;
   const isUpgrading = building.is_upgrading;
   const label = BUILDING_LABELS[building.building_type] || building.building_type;
@@ -112,7 +112,7 @@ export default function BuildingCard({ building, onBuild, gold, production_point
             <span>
               <span className={gold >= nextCost.gold ? 'text-yellow-400' : 'text-red-400'}>{formatNumber(nextCost.gold)}g</span>
               {' + '}
-              <span className={production_points >= nextCost.pp ? 'text-gray-300' : 'text-red-400'}>{formatNumber(nextCost.pp)}ip</span>
+              <span className={industry_points >= nextCost.pp ? 'text-gray-300' : 'text-red-400'}>{formatNumber(nextCost.pp)}ip</span>
             </span>
           </div>
           <div className="flex justify-between text-realm-text-dim">
@@ -125,7 +125,7 @@ export default function BuildingCard({ building, onBuild, gold, production_point
       {!isMax && !isUpgrading && (
         <button
           onClick={() => onBuild(building.building_type)}
-          disabled={gold < nextCost.gold || production_points < nextCost.pp}
+          disabled={gold < nextCost.gold || industry_points < nextCost.pp}
           className="realm-btn-gold text-xs w-full"
         >
           Upgrade to L{building.level + 1}

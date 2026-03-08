@@ -120,7 +120,7 @@ router.post('/list', async (req, res) => {
   if (quantity <= 0 || price_per_unit <= 0) {
     return res.status(400).json({ error: 'quantity and price_per_unit must be positive' });
   }
-  if (isResourceListing && !['gold','food','mana','production_points'].includes(resource_type)) {
+  if (isResourceListing && !['gold','food','mana','industry_points'].includes(resource_type)) {
     return res.status(400).json({ error: 'Invalid resource_type' });
   }
   if (isItemListing && !RECIPES[item_key]) {

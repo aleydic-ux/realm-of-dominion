@@ -227,13 +227,13 @@ router.post('/build', async (req, res) => {
   const steamEngine = techEffects.find(e => e && e.target === 'building_cost');
   const costMultiplier = steamEngine ? 1 + steamEngine.value : 1; // value is -0.30
   const finalGold = Math.ceil(cost.gold * costMultiplier);
-  const finalPP = Math.ceil(cost.production_points * costMultiplier);
+  const finalPP = Math.ceil(cost.industry_points * costMultiplier);
   const finalTimeHours = cost.time_hours * costMultiplier;
 
   if (province.gold < finalGold) {
     return res.status(400).json({ error: `Not enough gold (need ${finalGold})` });
   }
-  if (province.production_points < finalPP) {
+  if (province.industry_points < finalPP) {
     return res.status(400).json({ error: `Not enough production points (need ${finalPP})` });
   }
 
@@ -250,7 +250,7 @@ router.post('/build', async (req, res) => {
   await pool.query(
     `UPDATE provinces SET
       gold = gold - $1,
-      production_points = production_points - $2,
+      industry_points = industry_points - $2,
       updated_at = NOW()
      WHERE id = $3`,
     [finalGold, finalPP, province.id]
@@ -271,7 +271,7 @@ router.post('/build', async (req, res) => {
   res.json({
     message: `${building_type} upgrading to level ${targetLevel}`,
     completes_at: completesAt,
-    cost: { gold: finalGold, production_points: finalPP },
+    cost: { gold: finalGold, industry_points: finalPP },
   });
 });
 

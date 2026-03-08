@@ -16,7 +16,7 @@ export default function Buildings({ province, buildings = [], refresh }) {
     setError('');
     try {
       const { data } = await api.post('/province/build', { building_type });
-      setMessage(data.message + `. Cost: ${formatNumber(data.cost?.gold)} gold, ${formatNumber(data.cost?.production_points)} IP`);
+      setMessage(data.message + `. Cost: ${formatNumber(data.cost?.gold)} gold, ${formatNumber(data.cost?.industry_points)} IP`);
       refresh();
     } catch (err) {
       setError(err.response?.data?.error || 'Build failed');
@@ -53,7 +53,7 @@ export default function Buildings({ province, buildings = [], refresh }) {
                 building={b}
                 onBuild={handleBuild}
                 gold={province.gold}
-                production_points={province.production_points}
+                industry_points={province.industry_points}
                 race={province.race}
               />
             ))}
@@ -69,7 +69,7 @@ export default function Buildings({ province, buildings = [], refresh }) {
             building={b}
             onBuild={handleBuild}
             gold={province.gold}
-            production_points={province.production_points}
+            industry_points={province.industry_points}
           />
         ))}
       </div>

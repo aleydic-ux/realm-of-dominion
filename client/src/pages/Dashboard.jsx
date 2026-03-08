@@ -121,7 +121,7 @@ export default function Dashboard({ province, loading, refresh }) {
           { label: 'Gold', icon: '💰', value: formatNumber(province.gold), color: 'text-yellow-400' },
           { label: 'Food', icon: '🌾', value: formatNumber(province.food), color: province.food < 0 ? 'text-red-400' : 'text-green-400' },
           { label: 'Mana', icon: '🔮', value: formatNumber(province.mana), color: 'text-blue-400' },
-          { label: 'Industry', icon: '⚙️', value: formatNumber(province.production_points), color: 'text-gray-300' },
+          { label: 'Industry', icon: '⚙️', value: formatNumber(province.industry_points), color: 'text-gray-300' },
           { label: 'Population', icon: '👥', value: formatNumber(province.population), color: 'text-pink-400' },
           { label: 'Morale', icon: '❤️', value: `${province.morale}%`, color: province.morale >= 80 ? 'text-green-400' : 'text-red-400' },
           { label: 'Networth', icon: '📈', value: formatNumber(province.networth), color: 'text-realm-gold' },

@@ -33,7 +33,7 @@ export default function ResourceBar({ province }) {
         <span style={cell} title={Math.floor(province.gold).toLocaleString() + ' gold'}><span style={lbl}>Gold</span><span style={{...val, color:'#c8a048'}}>{formatNumber(province.gold)}</span></span>
         <span style={cell} title={Math.floor(province.food).toLocaleString() + ' food'}><span style={lbl}>Food</span><span style={{...val, color: province.food < 0 ? '#cc2828' : '#2a8a48'}}>{formatNumber(province.food)}</span></span>
         <span style={cell} title={Math.floor(province.mana).toLocaleString() + ' mana'}><span style={lbl}>Mana</span><span style={{...val, color:'#8830cc'}}>{formatNumber(province.mana)}</span></span>
-        <span style={cell} title={Math.floor(province.production_points).toLocaleString() + ' industry'}><span style={lbl}>Industry</span><span style={val}>{formatNumber(province.production_points)}</span></span>
+        <span style={cell} title={Math.floor(province.industry_points).toLocaleString() + ' industry'}><span style={lbl}>Industry</span><span style={val}>{formatNumber(province.industry_points)}</span></span>
         <span style={{...cell, borderRight:'none'}} title={Math.floor(province.land).toLocaleString() + ' acres'}><span style={lbl}>Land</span><span style={val}>{formatNumber(province.land)} ac</span></span>
 
         {/* AP */}

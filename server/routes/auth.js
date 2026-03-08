@@ -158,7 +158,7 @@ router.get('/me', authenticate, async (req, res) => {
     const [userResult, provinceResult] = await Promise.all([
       pool.query('SELECT id, username, email FROM users WHERE id = $1', [req.user.id]),
       pool.query(
-        `SELECT p.id, p.name, p.race, p.land, p.gold, p.food, p.mana, p.production_points,
+        `SELECT p.id, p.name, p.race, p.land, p.gold, p.food, p.mana, p.industry_points,
                 p.population, p.morale, p.action_points, p.networth, p.protection_ends_at,
                 a.name as age_name
          FROM provinces p

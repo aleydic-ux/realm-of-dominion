@@ -49,7 +49,7 @@ export const RESOURCE_ICONS = {
   gold: '🪙',
   food: '🌾',
   mana: '💠',
-  production_points: '⚙️',
+  industry_points: '⚙️',
 };
 
 export const RACE_LABELS = {

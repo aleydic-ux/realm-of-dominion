@@ -214,7 +214,7 @@ async function applyScoutSpell(client, caster, target, spell) {
       id: target.id, name: target.name, race: target.race,
       land: target.land, networth: target.networth, morale: target.morale,
       gold: target.gold, food: target.food, mana: target.mana,
-      production_points: target.production_points, population: target.population,
+      industry_points: target.industry_points, population: target.population,
       troops: troopsRes.rows.filter(t => t.count_home > 0 || t.count_deployed > 0),
       buildings: buildingsRes.rows.filter(b => b.level > 0),
       research: researchRes.rows,

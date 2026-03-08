@@ -198,7 +198,7 @@ const techs = [
   // Dwarf Tech Tree
   {
     race: 'dwarf', tier: 1, name: 'Deep Mining', gold: 900, mana: 0, hours: 6, lib: 2, prereq: null,
-    effect: { modifier_type: 'multiplier', target: 'production_points', value: 0.25, scope: 'all' },
+    effect: { modifier_type: 'multiplier', target: 'industry_points', value: 0.25, scope: 'all' },
     desc: 'Mine +25% output, chance to find rare gems'
   },
   {

@@ -216,7 +216,7 @@ async function respawnWipedBots() {
       await pool.query(
         `UPDATE provinces SET
            land = 100, gold = 5000, food = 2000, mana = 500,
-           production_points = 1000, population = 500, morale = 100,
+           industry_points = 1000, population = 500, morale = 100,
            action_points = 20, bot_spawn_at = NOW(), bot_last_action_at = NOW(),
            updated_at = NOW()
          WHERE id = $1`,
@@ -569,16 +569,16 @@ async function botCraftingTick(bot) {
 
     if (!tower) {
       const { rows: [p] } = await pool.query(
-        `SELECT gold, production_points FROM provinces WHERE id = $1`, [bot.id]
+        `SELECT gold, industry_points FROM provinces WHERE id = $1`, [bot.id]
       );
-      if (p && p.gold >= 500 && p.production_points >= 200) {
+      if (p && p.gold >= 800 && p.industry_points >= 350) {
         await pool.query(
           `INSERT INTO alchemist_towers (province_id, tier, crafting_slots) VALUES ($1, 1, 2)
            ON CONFLICT (province_id) DO NOTHING`,
           [bot.id]
         );
         await pool.query(
-          `UPDATE provinces SET gold = gold - 500, production_points = production_points - 200, updated_at = NOW()
+          `UPDATE provinces SET gold = gold - 800, industry_points = industry_points - 350, updated_at = NOW()
            WHERE id = $1`,
           [bot.id]
         );

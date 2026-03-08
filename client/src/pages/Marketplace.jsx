@@ -95,7 +95,7 @@ export default function Marketplace({ province, refresh }) {
                 <select className="realm-input" value={form.resource_type} onChange={e => setForm({ ...form, resource_type: e.target.value })}>
                   <option value="food">Food</option>
                   <option value="mana">Mana</option>
-                  <option value="production_points">Industry</option>
+                  <option value="industry_points">Industry</option>
                   <option value="gold">Gold</option>
                 </select>
               </div>
@@ -131,7 +131,7 @@ export default function Marketplace({ province, refresh }) {
               <option value="all">All</option>
               <option value="food">Food</option>
               <option value="mana">Mana</option>
-              <option value="production_points">Production</option>
+              <option value="industry_points">Production</option>
               <option value="gold">Gold</option>
             </select>
           </div>

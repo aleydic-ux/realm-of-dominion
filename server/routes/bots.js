@@ -73,7 +73,7 @@ router.post('/reset/:id', adminOnly, async (req, res) => {
     await pool.query(
       `UPDATE provinces SET
          land = 100, gold = 5000, food = 2000, mana = 500,
-         production_points = 1000, population = 500, morale = 100,
+         industry_points = 1000, population = 500, morale = 100,
          action_points = 20, bot_spawn_at = NOW(), bot_last_action_at = NOW(),
          updated_at = NOW()
        WHERE id = $1`,

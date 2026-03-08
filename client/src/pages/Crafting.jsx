@@ -25,12 +25,12 @@ function CostBadge({ cost, province }) {
   return (
     <span className="flex gap-1.5 flex-wrap">
       {entries.map(([k, v]) => {
-        const col = k === 'industry' ? 'production_points' : k;
+        const col = k === 'industry' ? 'industry_points' : k;
         const have = province?.[col] ?? 0;
         const ok = have >= v;
         return (
           <span key={k} className={`text-xs ${ok ? 'text-realm-text-muted' : 'text-red-400'}`}>
-            {formatNumber(v)} {k === 'industry' ? 'PP' : k}
+            {formatNumber(v)} {k === 'industry' ? 'IP' : k}
           </span>
         );
       })}
@@ -139,16 +139,10 @@ export default function Crafting({ province, buildings }) {
   const usedSlots = inProgress.length;
   const totalSlots = tower?.crafting_slots ?? 0;
 
-  const TOWER_COSTS = {
-    build:   { gold: 500, PP: 200 },
-    upgrade2:{ gold: 1200, PP: 500, mana: 300 },
-    upgrade3:{ gold: 3000, PP: 1000, mana: 800 },
-  };
-
   const UPGRADE_COST_MAP = {
-    build:    { gold: 500, production_points: 200 },
-    upgrade2: { gold: 1200, production_points: 500, mana: 300 },
-    upgrade3: { gold: 3000, production_points: 1000, mana: 800 },
+    build:    { gold: 800,  industry_points: 350  },
+    upgrade2: { gold: 2000, industry_points: 800,  mana: 500  },
+    upgrade3: { gold: 5000, industry_points: 1800, mana: 1200 },
   };
 
   function canAffordRaw(costMap) {
@@ -193,7 +187,7 @@ export default function Crafting({ province, buildings }) {
             Build an Alchemist Tower to unlock potion crafting.
           </p>
           <div className="text-xs text-realm-text-muted space-y-0.5">
-            <div>Cost: <span className="text-realm-gold">500 gold</span> + <span className="text-blue-300">200 production points</span></div>
+            <div>Cost: <span className="text-realm-gold">800 gold</span> + <span className="text-blue-300">350 industry points</span></div>
             <div>Tier 1 → 2 crafting slots · Tier 2 → 3 slots · Tier 3 → 4 slots</div>
           </div>
           <button
@@ -201,7 +195,7 @@ export default function Crafting({ province, buildings }) {
             disabled={busy === 'build' || !canAffordRaw(UPGRADE_COST_MAP.build)}
             className="realm-btn-gold"
           >
-            {busy === 'build' ? 'Building...' : 'Build Tower (500g + 200 PP)'}
+            {busy === 'build' ? 'Building...' : 'Build Tower (800g + 350 IP)'}
           </button>
         </div>
       )}
@@ -221,8 +215,8 @@ export default function Crafting({ province, buildings }) {
                 </div>
                 <CostBadge
                   cost={tower.tier === 1
-                    ? { gold: 1200, industry: 500, mana: 300 }
-                    : { gold: 3000, industry: 1000, mana: 800 }}
+                    ? { gold: 2000, industry: 800, mana: 500 }
+                    : { gold: 5000, industry: 1800, mana: 1200 }}
                   province={province}
                 />
               </div>
@@ -340,7 +334,7 @@ export default function Crafting({ province, buildings }) {
                     // Can afford check
                     let canAfford = true;
                     for (const [k, v] of Object.entries(recipe.cost)) {
-                      const col = k === 'industry' ? 'production_points' : k;
+                      const col = k === 'industry' ? 'industry_points' : k;
                       if ((province?.[col] ?? 0) < v) { canAfford = false; break; }
                     }
 
