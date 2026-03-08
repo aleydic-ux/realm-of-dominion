@@ -6,7 +6,7 @@ const { lazyResourceUpdate, calculateBuildingCost } = require('../services/resou
 const { getProvinceTechEffects } = require('../services/techEngine');
 const { calculateAndStoreNetworth } = require('../services/networthCalc');
 const { checkAndReturnTroops } = require('../services/troopReturn');
-const { checkEndOfAge } = require('../services/endOfAge');
+const { checkAndEndSeason } = require('../services/seasonEngine');
 const raceConfig = require('../config/raceConfig');
 
 const router = express.Router();
@@ -23,7 +23,7 @@ router.get('/me', async (req, res) => {
   try {
     // Step 1: age check + tech effects in parallel (both independent)
     const [, techEffects] = await Promise.all([
-      checkEndOfAge(),
+      checkAndEndSeason(io),
       getProvinceTechEffects(provinceId),
     ]);
 
