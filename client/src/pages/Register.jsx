@@ -53,11 +53,23 @@ export default function Register({ onLogin }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
+    <div
+      className="relative min-h-screen flex items-center justify-center p-4"
+      style={{
+        backgroundImage: "url('/MAIN PAGE BACKGROUND.png')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
+      <div
+        className="absolute inset-0"
+        style={{ background: 'linear-gradient(to bottom, rgba(6,14,28,0.50) 0%, rgba(6,14,28,0.88) 100%)' }}
+      />
+      <div className="w-full max-w-2xl relative z-10">
         <div className="text-center mb-8">
-          <h1 className="text-4xl text-realm-gold font-display">⚔️ Realm of Dominion</h1>
-          <p className="text-realm-text-muted mt-2 text-sm">Forge your legend</p>
+          <h1 className="text-realm-gold font-display" style={{ fontSize: '3.2rem', letterSpacing: '0.12em', textShadow: '2px 2px 8px rgba(0,0,0,0.8), 0 0 20px rgba(200,160,72,0.4)' }}>Realm of Dominion</h1>
+          <p className="text-realm-text-muted mt-3 uppercase tracking-widest" style={{ letterSpacing: '0.25em', fontSize: '0.8rem' }}>Forge your legend</p>
         </div>
 
         <form onSubmit={handleSubmit} className="realm-panel flex flex-col gap-5">
@@ -115,7 +127,7 @@ export default function Register({ onLogin }) {
           </div>
 
           <div className="bg-realm-surface border border-realm-border/50 rounded p-3 text-xs text-realm-text-dim">
-            Your province will start with a <span className="text-blue-300">12-hour newbie shield</span>.
+            Your province will start with a <span className="text-blue-300">24-hour newbie shield</span>.
             You will not be attackable during this time.
           </div>
 
@@ -132,3 +144,4 @@ export default function Register({ onLogin }) {
     </div>
   );
 }
+
