@@ -18,6 +18,8 @@ const leaderboardRoutes = require('./routes/leaderboard');
 const techTreeRoutes = require('./routes/techTree');
 const feedRoutes = require('./routes/feed');
 const spellRoutes = require('./routes/spells');
+const craftingRoutes = require('./routes/crafting');
+const { collectCompletedCrafts } = require('./routes/crafting');
 const initSocket = require('./socket/chat');
 
 const app = express();
@@ -70,6 +72,7 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/tech-tree', techTreeRoutes);
 app.use('/api/feed', feedRoutes);
 app.use('/api/spells', spellRoutes);
+app.use('/api/crafting', craftingRoutes);
 
 // Serve React frontend
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
@@ -105,6 +108,22 @@ cron.schedule('0 * * * *', async () => {
     await checkAndEndSeason(io);
   } catch (err) {
     console.error('[cron] Season check failed:', err.message);
+  }
+});
+
+// Crafting cron — collect completed jobs + expire active_effects every 5 minutes
+cron.schedule('*/5 * * * *', async () => {
+  try {
+    // Expire timed effects
+    await pool.query(`DELETE FROM active_effects WHERE expires_at IS NOT NULL AND expires_at <= NOW()`);
+
+    // Collect completed crafting jobs for all provinces
+    const { rows } = await pool.query(
+      `SELECT DISTINCT province_id FROM crafting_queue WHERE status = 'in_progress' AND completes_at <= NOW()`
+    );
+    await Promise.all(rows.map(({ province_id }) => collectCompletedCrafts(province_id).catch(() => {})));
+  } catch (err) {
+    console.error('[cron] Crafting tick failed:', err.message);
   }
 });
 

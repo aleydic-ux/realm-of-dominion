@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { RECIPES, COST_RESOURCE_MAP } = require('../constants/craftingRecipes');
 const { lazyResourceUpdate, getBuildingLevels } = require('./resourceEngine');
 const { resolveAttack } = require('./combatEngine');
 const { calculateAndStoreNetworth } = require('./networthCalc');
@@ -115,6 +116,9 @@ async function tickSingleBot(bot) {
       await botAttack(refreshed, difficulty);
     }
   }
+
+  // Crafting branch
+  await botCraftingTick(province);
 
   await calculateAndStoreNetworth(province.id);
 }
@@ -324,6 +328,151 @@ async function botAttack(bot, difficulty) {
   }
 
   await calculateAndStoreNetworth(target.id);
+}
+
+// ─── Bot Crafting ─────────────────────────────────────────────────────────────
+
+async function botCraftingTick(bot) {
+  try {
+    // Collect any completed crafts
+    await botCollectCrafts(bot.id);
+
+    // Load tower
+    const { rows: [tower] } = await pool.query(
+      `SELECT * FROM alchemist_towers WHERE province_id = $1`, [bot.id]
+    );
+
+    // Build tower if enough resources and no tower yet
+    if (!tower) {
+      await pool.query(`SELECT gold, production_points FROM provinces WHERE id = $1`, [bot.id])
+        .then(async ({ rows: [p] }) => {
+          if (p && p.gold >= 500 && p.production_points >= 200) {
+            await pool.query(
+              `INSERT INTO alchemist_towers (province_id, tier, crafting_slots) VALUES ($1, 1, 2)
+               ON CONFLICT (province_id) DO NOTHING`,
+              [bot.id]
+            );
+            await pool.query(
+              `UPDATE provinces SET gold = gold - 500, production_points = production_points - 200, updated_at = NOW()
+               WHERE id = $1`, [bot.id]
+            );
+          }
+        }).catch(() => {});
+      return;
+    }
+
+    // Check open slots
+    const { rows: [qc] } = await pool.query(
+      `SELECT COUNT(*) as count FROM crafting_queue WHERE province_id = $1 AND status = 'in_progress'`,
+      [bot.id]
+    );
+    if (parseInt(qc.count) >= tower.crafting_slots) return;
+
+    // Reload province for current resources
+    const { rows: [province] } = await pool.query('SELECT * FROM provinces WHERE id = $1', [bot.id]);
+    if (!province) return;
+
+    // Bots only craft resource boosters (harvest_tonic, gold_infusion, industry_surge)
+    const BOT_PREFERRED = ['harvest_tonic', 'gold_infusion', 'industry_surge'];
+    const candidates = BOT_PREFERRED.filter(key => {
+      const r = RECIPES[key];
+      return r && r.tier_required <= tower.tier && canBotAfford(province, r.cost);
+    });
+    if (!candidates.length) return;
+
+    const itemKey = candidates[Math.floor(Math.random() * candidates.length)];
+    const recipe = RECIPES[itemKey];
+
+    // Deduct cost and enqueue
+    const setClauses = [];
+    const vals = [];
+    let idx = 1;
+    for (const [k, amount] of Object.entries(recipe.cost)) {
+      const col = COST_RESOURCE_MAP[k];
+      setClauses.push(`${col} = GREATEST(0, ${col} - $${idx})`);
+      vals.push(amount);
+      idx++;
+    }
+    vals.push(bot.id);
+    await pool.query(
+      `UPDATE provinces SET ${setClauses.join(', ')}, updated_at = NOW() WHERE id = $${idx}`, vals
+    );
+    const completesAt = new Date(Date.now() + recipe.craft_time_mins * 60000);
+    await pool.query(
+      `INSERT INTO crafting_queue (province_id, item_key, quantity, completes_at) VALUES ($1, $2, 1, $3)`,
+      [bot.id, itemKey, completesAt]
+    );
+
+    // List excess inventory (> 3 of same resource booster) on marketplace at 90% avg price
+    await botListExcess(bot.id);
+  } catch (err) {
+    // Non-critical — crafting tables may not exist yet
+  }
+}
+
+function canBotAfford(province, cost) {
+  for (const [k, amount] of Object.entries(cost)) {
+    const col = COST_RESOURCE_MAP[k];
+    if ((province[col] || 0) < amount) return false;
+  }
+  return true;
+}
+
+async function botCollectCrafts(botId) {
+  const { rows: completed } = await pool.query(
+    `SELECT * FROM crafting_queue
+     WHERE province_id = $1 AND status = 'in_progress' AND completes_at <= NOW()`,
+    [botId]
+  );
+  for (const job of completed) {
+    await pool.query(
+      `INSERT INTO crafted_items (province_id, item_key, quantity)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (province_id, item_key) DO UPDATE SET quantity = crafted_items.quantity + $3`,
+      [botId, job.item_key, job.quantity]
+    );
+    await pool.query(`UPDATE crafting_queue SET status = 'completed' WHERE id = $1`, [job.id]);
+  }
+}
+
+async function botListExcess(botId) {
+  const { rows: items } = await pool.query(
+    `SELECT item_key, quantity FROM crafted_items WHERE province_id = $1 AND quantity > 3`,
+    [botId]
+  );
+  for (const item of items) {
+    const recipe = RECIPES[item.item_key];
+    if (!recipe || recipe.effect_type !== 'resource_boost') continue;
+
+    // Get average recent price or default to 50g/unit
+    const { rows: [avg] } = await pool.query(
+      `SELECT ROUND(AVG(price_per_unit), 0) as avg_price FROM marketplace_listings
+       WHERE item_key = $1 AND is_sold = true`, [item.item_key]
+    );
+    const price = Math.max(10, Math.floor((parseFloat(avg?.avg_price) || 50) * 0.9));
+    const listQty = item.quantity - 2; // keep 2 in reserve
+    if (listQty < 1) continue;
+
+    // Check bot doesn't already have active listing for this item
+    const { rows: existing } = await pool.query(
+      `SELECT id FROM marketplace_listings
+       WHERE seller_province_id = $1 AND item_key = $2 AND is_sold = false AND expires_at > NOW()`,
+      [botId, item.item_key]
+    );
+    if (existing.length) continue;
+
+    // Deduct from inventory and create listing
+    await pool.query(
+      `UPDATE crafted_items SET quantity = quantity - $1 WHERE province_id = $2 AND item_key = $3`,
+      [listQty, botId, item.item_key]
+    );
+    const expiresAt = new Date(Date.now() + 72 * 3600000); // 3-day listings
+    await pool.query(
+      `INSERT INTO marketplace_listings (seller_province_id, item_key, quantity, price_per_unit, expires_at)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [botId, item.item_key, listQty, price, expiresAt]
+    );
+  }
 }
 
 module.exports = { tickBots, spawnBots };

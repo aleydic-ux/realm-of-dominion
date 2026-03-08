@@ -149,6 +149,23 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
       }
     } catch (_) { /* spell_effects table may not exist yet during migration */ }
 
+    // --- Active crafting effects (potions/elixirs applied to this province) ---
+    try {
+      const { rows: craftRows } = await client.query(
+        `SELECT modifier_key, modifier_value FROM active_effects
+         WHERE province_id = $1 AND expires_at > NOW()`,
+        [provinceId]
+      );
+      for (const row of craftRows) {
+        switch (row.modifier_key) {
+          case 'food_production_pct': foodRate       *= (1 + row.modifier_value); break;
+          case 'gold_income_pct':     goldRate        *= (1 + row.modifier_value); break;
+          case 'mana_regen_pct':      manaRate        *= (1 + row.modifier_value); break;
+          case 'industry_pct':        productionRate  *= (1 + row.modifier_value); break;
+        }
+      }
+    } catch (_) { /* active_effects table may not exist yet during migration */ }
+
     // Calculate totals
     const goldGained = Math.floor(goldRate * hoursElapsed);
     const foodGained = Math.floor(foodRate * hoursElapsed);

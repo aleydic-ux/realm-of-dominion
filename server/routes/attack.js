@@ -141,6 +141,35 @@ router.post('/', async (req, res) => {
       defenderSpellEffects = defenderSpellRes.rows.map(r => r.effect_json).filter(Boolean);
     } catch (_) { /* spell_effects table may not exist yet */ }
 
+    // Load active crafting effects and format as spell-compatible modifiers
+    // modifier_key 'attack_pct' → target 'troop_attack', 'defense_pct' → 'troop_defense'
+    const CRAFT_COMBAT_MAP = { attack_pct: 'troop_attack', defense_pct: 'troop_defense' };
+    let attackerCraftEffects = [], defenderCraftEffects = [];
+    try {
+      const [acRes, dcRes] = await Promise.all([
+        pool.query(
+          `SELECT modifier_key, SUM(modifier_value) as total FROM active_effects
+           WHERE province_id = $1 AND modifier_key IN ('attack_pct','defense_pct')
+             AND (expires_at IS NULL OR expires_at > NOW())
+           GROUP BY modifier_key`,
+          [attacker.id]
+        ),
+        pool.query(
+          `SELECT modifier_key, SUM(modifier_value) as total FROM active_effects
+           WHERE province_id = $1 AND modifier_key IN ('attack_pct','defense_pct')
+             AND (expires_at IS NULL OR expires_at > NOW())
+           GROUP BY modifier_key`,
+          [parseInt(target_id)]
+        ),
+      ]);
+      attackerCraftEffects = acRes.rows
+        .filter(r => CRAFT_COMBAT_MAP[r.modifier_key])
+        .map(r => ({ modifier_type: 'multiplier', target: CRAFT_COMBAT_MAP[r.modifier_key], value: parseFloat(r.total) }));
+      defenderCraftEffects = dcRes.rows
+        .filter(r => CRAFT_COMBAT_MAP[r.modifier_key])
+        .map(r => ({ modifier_type: 'multiplier', target: CRAFT_COMBAT_MAP[r.modifier_key], value: parseFloat(r.total) }));
+    } catch (_) { /* active_effects table may not exist yet */ }
+
     // Check enemy morale bonus
     const isEnemy = relation.length && relation[0].status === 'enemy';
     const attackerMoraleBonus = isEnemy ? 10 : 0;
@@ -158,8 +187,8 @@ router.post('/', async (req, res) => {
       buildings: defenderBuildings,
       attackerTechs,
       defenderTechs,
-      attackerSpellEffects,
-      defenderSpellEffects,
+      attackerSpellEffects: [...attackerSpellEffects, ...attackerCraftEffects],
+      defenderSpellEffects: [...defenderSpellEffects, ...defenderCraftEffects],
     });
 
     // Apply attacker losses (remove from home, add to deployed - losses)
@@ -308,6 +337,14 @@ router.post('/', async (req, res) => {
         JSON.stringify(result.defenderLosses), result.troopsReturnAt,
       ]
     );
+
+    // Delete single-battle crafting effects (expires_at IS NULL) for attacker after combat
+    try {
+      await pool.query(
+        `DELETE FROM active_effects WHERE province_id = $1 AND expires_at IS NULL`,
+        [attacker.id]
+      );
+    } catch (_) { /* active_effects may not exist yet */ }
 
     await client.query('COMMIT');
 
