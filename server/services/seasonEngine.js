@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { spawnBots } = require('./botEngine');
 
 const SEASON_LENGTH_DAYS = parseInt(process.env.SEASON_LENGTH_DAYS || '7');
 
@@ -140,7 +141,10 @@ async function checkAndEndSeason(io) {
       }
     }
 
-    // 6. Post world feed announcement
+    // 6. Spawn bot provinces for the new season
+    await spawnBots(client, newAge.id, protectionEndsAt);
+
+    // 7. Post world feed announcement
     await client.query(
       `INSERT INTO world_feed (type, author_name, province_id, message)
        VALUES ('event','World News',NULL,$1)`,

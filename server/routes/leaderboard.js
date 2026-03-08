@@ -6,12 +6,13 @@ const router = express.Router();
 // GET /api/leaderboard - Overall, military, economic, alliance rankings
 router.get('/', async (req, res) => {
   try {
-    // Overall networth
+    // Overall networth — LEFT JOIN so bots (null user_id) are included
     const { rows: overall } = await pool.query(
-      `SELECT p.id, p.name, p.race, p.land, p.networth, p.morale, u.username,
+      `SELECT p.id, p.name, p.race, p.land, p.networth, p.morale,
+              p.is_bot, COALESCE(u.username, '[BOT]') as username,
               a.name as alliance_name
        FROM provinces p
-       JOIN users u ON u.id = p.user_id
+       LEFT JOIN users u ON u.id = p.user_id
        JOIN ages ag ON ag.id = p.age_id AND ag.is_active = true
        LEFT JOIN alliance_members am ON am.province_id = p.id
        LEFT JOIN alliances a ON a.id = am.alliance_id
@@ -19,30 +20,32 @@ router.get('/', async (req, res) => {
        LIMIT 50`
     );
 
-    // Military score: successful attacks
+    // Military score: successful attacks — LEFT JOIN for bots
     const { rows: military } = await pool.query(
-      `SELECT p.id, p.name, p.race, u.username,
+      `SELECT p.id, p.name, p.race, p.is_bot,
+              COALESCE(u.username, '[BOT]') as username,
               COUNT(a.id) as successful_attacks,
               SUM(a.land_gained) as total_land_gained
        FROM provinces p
-       JOIN users u ON u.id = p.user_id
+       LEFT JOIN users u ON u.id = p.user_id
        JOIN ages ag ON ag.id = p.age_id AND ag.is_active = true
        LEFT JOIN attacks a ON a.attacker_province_id = p.id AND a.outcome = 'win'
-       GROUP BY p.id, p.name, p.race, u.username
+       GROUP BY p.id, p.name, p.race, p.is_bot, u.username
        ORDER BY successful_attacks DESC NULLS LAST
        LIMIT 50`
     );
 
-    // Economic score: marketplace volume
+    // Economic score: marketplace volume — LEFT JOIN for bots
     const { rows: economic } = await pool.query(
-      `SELECT p.id, p.name, p.race, u.username,
+      `SELECT p.id, p.name, p.race, p.is_bot,
+              COALESCE(u.username, '[BOT]') as username,
               COALESCE(SUM(ml.quantity * ml.price_per_unit), 0) as marketplace_volume,
               p.gold
        FROM provinces p
-       JOIN users u ON u.id = p.user_id
+       LEFT JOIN users u ON u.id = p.user_id
        JOIN ages ag ON ag.id = p.age_id AND ag.is_active = true
        LEFT JOIN marketplace_listings ml ON ml.seller_province_id = p.id AND ml.is_sold = true
-       GROUP BY p.id, p.name, p.race, u.username, p.gold
+       GROUP BY p.id, p.name, p.race, p.is_bot, u.username, p.gold
        ORDER BY marketplace_volume DESC NULLS LAST
        LIMIT 50`
     );

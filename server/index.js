@@ -99,11 +99,21 @@ async function clearStuckTimers() {
 
 // Season rollover — check every hour if current age has expired
 const { checkAndEndSeason } = require('./services/seasonEngine');
+const { tickBots } = require('./services/botEngine');
 cron.schedule('0 * * * *', async () => {
   try {
     await checkAndEndSeason(io);
   } catch (err) {
     console.error('[cron] Season check failed:', err.message);
+  }
+});
+
+// Bot tick — runs every 2 hours
+cron.schedule('0 */2 * * *', async () => {
+  try {
+    await tickBots();
+  } catch (err) {
+    console.error('[cron] Bot tick failed:', err.message);
   }
 });
 
