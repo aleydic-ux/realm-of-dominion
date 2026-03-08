@@ -12,7 +12,7 @@ async function seed() {
       return;
     }
 
-    const ageLengthDays = parseInt(process.env.AGE_LENGTH_DAYS || '90');
+    const ageLengthDays = parseInt(process.env.SEASON_LENGTH_DAYS || process.env.AGE_LENGTH_DAYS || '7');
     const startsAt = new Date();
     const endsAt = new Date(startsAt.getTime() + ageLengthDays * 24 * 60 * 60 * 1000);
 

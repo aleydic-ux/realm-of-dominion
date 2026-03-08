@@ -1,5 +1,6 @@
-import { useState, useCallback, lazy, Suspense } from 'react';
+import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import NavBar from './components/NavBar';
 import ResourceBar from './components/ResourceBar';
 import { useProvince } from './hooks/useProvince';
@@ -20,6 +21,18 @@ const WorldFeed = lazy(() => import('./pages/WorldFeed'));
 
 function ProtectedLayout({ onLogout }) {
   const { province, buildings, troops, research, alliance, loading, refresh } = useProvince();
+  const [seasonBanner, setSeasonBanner] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const socket = io('/', { auth: { token }, transports: ['websocket', 'polling'] });
+    socket.on('season_end', ({ old_season, new_season }) => {
+      setSeasonBanner({ old_season, new_season });
+      setTimeout(() => window.location.reload(), 5000);
+    });
+    return () => socket.disconnect();
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -29,6 +42,17 @@ function ProtectedLayout({ onLogout }) {
       >
         Skip to main content
       </a>
+      {seasonBanner && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <div className="bg-realm-panel border border-realm-gold rounded-lg p-8 max-w-md text-center space-y-4">
+            <div className="text-4xl">⚔</div>
+            <h2 className="text-2xl font-display text-realm-gold">Season Over!</h2>
+            <p className="text-realm-text">The <span className="text-realm-gold font-bold">{seasonBanner.old_season}</span> has ended.</p>
+            <p className="text-realm-text">A new era begins — <span className="text-realm-gold font-bold">{seasonBanner.new_season}</span>.</p>
+            <p className="text-realm-text-muted text-sm">All kingdoms have been reset. Reloading in 5 seconds...</p>
+          </div>
+        </div>
+      )}
       <NavBar onLogout={onLogout} />
       <ResourceBar province={province} />
       <main id="main-content" className="flex-1 p-4 max-w-7xl mx-auto w-full">

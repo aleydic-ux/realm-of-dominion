@@ -4,6 +4,7 @@ import { formatNumber, RACE_ICONS } from '../utils/formatters';
 
 export default function Leaderboard({ province }) {
   const [data, setData] = useState(null);
+  const [hof, setHof] = useState(null);
   const [tab, setTab] = useState('overall');
   const [loading, setLoading] = useState(true);
 
@@ -12,8 +13,12 @@ export default function Leaderboard({ province }) {
   useEffect(() => {
     async function load() {
       try {
-        const { data } = await api.get('/leaderboard');
-        setData(data);
+        const [lbRes, hofRes] = await Promise.all([
+          api.get('/leaderboard'),
+          api.get('/leaderboard/hall-of-fame'),
+        ]);
+        setData(lbRes.data);
+        setHof(hofRes.data);
       } catch {}
       setLoading(false);
     }
@@ -27,13 +32,13 @@ export default function Leaderboard({ province }) {
     <div className="space-y-4">
       <h1 className="text-2xl font-display text-realm-gold">Rankings</h1>
 
-      <div className="flex gap-1 border-b border-realm-border pb-2">
-        {['overall', 'military', 'economic', 'alliances'].map(t => (
+      <div className="flex gap-1 border-b border-realm-border pb-2 flex-wrap">
+        {['overall', 'military', 'economic', 'alliances', 'hall-of-fame'].map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-1.5 rounded-t text-sm capitalize transition-colors ${
               tab === t ? 'bg-realm-panel border-t border-x border-realm-border text-realm-gold' : 'text-realm-text-muted hover:text-realm-gold'
             }`}>
-            {t}
+            {t === 'hall-of-fame' ? 'Hall of Fame' : t}
           </button>
         ))}
       </div>
@@ -114,6 +119,68 @@ export default function Leaderboard({ province }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {tab === 'hall-of-fame' && (
+        <div className="space-y-6">
+          {!hof || hof.length === 0 ? (
+            <div className="realm-panel text-realm-text-muted text-sm text-center py-8">
+              No completed seasons yet. The first Hall of Fame will be recorded when the current season ends.
+            </div>
+          ) : (
+            (() => {
+              const byAge = {};
+              for (const row of hof) {
+                if (!byAge[row.age_id]) byAge[row.age_id] = { name: row.age_name, overall: [], military: [] };
+                byAge[row.age_id][row.category]?.push(row);
+              }
+              return Object.entries(byAge).reverse().map(([ageId, age]) => (
+                <div key={ageId} className="realm-panel space-y-3">
+                  <h2 className="text-realm-gold font-display text-lg border-b border-realm-border pb-1">{age.name}</h2>
+                  {age.overall.length > 0 && (
+                    <>
+                      <h3 className="text-realm-text-dim text-xs uppercase tracking-widest">Overall — Top Provinces</h3>
+                      <table className="realm-table">
+                        <thead><tr><th>#</th><th>Province</th><th>Player</th><th>Race</th><th>Land</th><th>Networth</th></tr></thead>
+                        <tbody>
+                          {age.overall.map(r => (
+                            <tr key={r.id}>
+                              <td className="text-realm-gold font-bold">{r.rank}</td>
+                              <td className="text-realm-text">{r.province_name}</td>
+                              <td className="text-realm-text-muted">{r.username}</td>
+                              <td className={`race-${r.race}`}>{RACE_ICONS[r.race]} {r.race}</td>
+                              <td>{formatNumber(r.final_land)}</td>
+                              <td className="text-realm-gold font-bold">{formatNumber(r.final_networth)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </>
+                  )}
+                  {age.military.length > 0 && (
+                    <>
+                      <h3 className="text-realm-text-dim text-xs uppercase tracking-widest mt-2">Military — Top Conquerors</h3>
+                      <table className="realm-table">
+                        <thead><tr><th>#</th><th>Province</th><th>Player</th><th>Race</th><th>Attacks Won</th></tr></thead>
+                        <tbody>
+                          {age.military.map(r => (
+                            <tr key={r.id}>
+                              <td className="text-red-400 font-bold">{r.rank}</td>
+                              <td className="text-realm-text">{r.province_name}</td>
+                              <td className="text-realm-text-muted">{r.username}</td>
+                              <td className={`race-${r.race}`}>{RACE_ICONS[r.race]} {r.race}</td>
+                              <td className="text-green-400">{r.successful_attacks}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </>
+                  )}
+                </div>
+              ));
+            })()
+          )}
         </div>
       )}
     </div>

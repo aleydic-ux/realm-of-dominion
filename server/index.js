@@ -95,6 +95,16 @@ async function clearStuckTimers() {
   }
 }
 
+// Season rollover — check every hour if current age has expired
+const { checkAndEndSeason } = require('./services/seasonEngine');
+cron.schedule('0 * * * *', async () => {
+  try {
+    await checkAndEndSeason(io);
+  } catch (err) {
+    console.error('[cron] Season check failed:', err.message);
+  }
+});
+
 // Resource production cron tick — runs every 10 minutes
 const { lazyResourceUpdate } = require('./services/resourceEngine');
 const CRON_BATCH_SIZE = 20;
