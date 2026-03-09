@@ -4,6 +4,7 @@ import { io } from 'socket.io-client';
 import NavBar from './components/NavBar';
 import ResourceBar from './components/ResourceBar';
 import { useProvince } from './hooks/useProvince';
+import HowToPlay from './help/HowToPlay';
 
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
@@ -24,6 +25,16 @@ const Crafting = lazy(() => import('./pages/Crafting'));
 function ProtectedLayout({ onLogout }) {
   const { province, buildings, troops, research, alliance, loading, error, refresh } = useProvince();
   const [seasonBanner, setSeasonBanner] = useState(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  // Auto-show How to Play on first login
+  useEffect(() => {
+    const seen = localStorage.getItem('rod_tutorial_seen');
+    if (!seen) {
+      setHelpOpen(true);
+      localStorage.setItem('rod_tutorial_seen', 'true');
+    }
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -55,8 +66,9 @@ function ProtectedLayout({ onLogout }) {
           </div>
         </div>
       )}
+      <HowToPlay isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
       <div className="sticky top-0 z-20">
-        <NavBar onLogout={onLogout} />
+        <NavBar onLogout={onLogout} onOpenHelp={() => setHelpOpen(true)} />
         <ResourceBar province={province} />
       </div>
       <main id="main-content" className="flex-1 p-4 max-w-7xl mx-auto w-full">
@@ -101,6 +113,7 @@ export default function App() {
   const handleLogout = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('rod_tutorial_seen');
     setAuthed(false);
   }, []);
 

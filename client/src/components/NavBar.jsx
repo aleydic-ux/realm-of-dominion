@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 
 const navLinks = [
@@ -17,8 +17,19 @@ const navLinks = [
   { path: '/world', label: 'World' },
 ];
 
-export default function NavBar({ onLogout }) {
+export default function NavBar({ onLogout, onOpenHelp }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Global keyboard shortcut: '?' opens help (when not in a text input)
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === '?' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+        onOpenHelp?.();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onOpenHelp]);
 
   return (
     <div>
@@ -38,6 +49,16 @@ export default function NavBar({ onLogout }) {
           >
             {mobileOpen ? '✕' : '☰'}
           </button>
+          {/* How to Play button */}
+          <button
+            onClick={onOpenHelp}
+            title="How to Play (press ?)"
+            style={{fontFamily:'Verdana, Arial, sans-serif', color:'#8090a8', fontSize:'0.75rem', border:'1px solid #243650', padding:'2px 8px', background:'transparent', cursor:'pointer', fontWeight:'bold'}}
+            onMouseOver={e => { e.target.style.color='#c8a048'; e.target.style.borderColor='#c8a048'; }}
+            onMouseOut={e => { e.target.style.color='#8090a8'; e.target.style.borderColor='#243650'; }}
+          >
+            ?
+          </button>
           <button
             onClick={onLogout}
             style={{fontFamily:'Verdana, Arial, sans-serif', color:'#8090a8', fontSize:'0.68rem', border:'1px solid #243650', padding:'2px 10px', background:'transparent', cursor:'pointer'}}
@@ -49,12 +70,11 @@ export default function NavBar({ onLogout }) {
         </div>
       </div>
 
-      {/* Nav tabs — horizontal on desktop, vertical dropdown on mobile */}
+      {/* Nav tabs */}
       <nav
         aria-label="Main navigation"
         style={{background:'linear-gradient(to bottom, #162038, #0e1828)', borderBottom:'2px solid #c8a048'}}
       >
-        {/* Desktop: flex row */}
         <div className="nav-desktop" style={{display:'flex', overflowX:'auto'}}>
           {navLinks.map(({ path, label }) => (
             <NavLink
@@ -81,7 +101,6 @@ export default function NavBar({ onLogout }) {
           ))}
         </div>
 
-        {/* Mobile: collapsible vertical menu */}
         {mobileOpen && (
           <div className="nav-mobile" style={{display:'flex', flexDirection:'column', borderTop:'1px solid #1e3050'}}>
             {navLinks.map(({ path, label }) => (
