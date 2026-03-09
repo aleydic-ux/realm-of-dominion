@@ -16,6 +16,17 @@ const pool = new Pool({
   // Use SSL whenever a DATABASE_URL is provided (i.e. on Render).
   // Avoids relying on NODE_ENV which may not be set in the Render environment.
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+  // Pool sizing — default 10 is too low for multiplayer + cron jobs + socket auth
+  max: 20,
+  // Return connections that sit idle for 30s so Neon doesn't drop them silently
+  idleTimeoutMillis: 30000,
+  // Don't wait forever for a connection — fail fast after 10s so requests don't hang
+  connectionTimeoutMillis: 10000,
+  // Kill queries that run longer than 15s (prevents hung connections)
+  statement_timeout: 15000,
+  // TCP keepalive — prevents Neon serverless from silently dropping idle connections
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
 });
 
 // NOTE: pool.on('connect') was removed — the fire-and-forget client.query() call inside it

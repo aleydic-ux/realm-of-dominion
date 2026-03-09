@@ -9,20 +9,27 @@ function initSocket(io) {
       if (!token) return next(new Error('Authentication required'));
 
       const payload = jwt.verify(token, process.env.JWT_SECRET);
-      const { rows } = await pool.query(
+
+      // Race against a 8s timeout to prevent hanging when pool is exhausted
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Auth query timeout')), 8000)
+      );
+      const query = pool.query(
         `SELECT p.id as province_id, p.name as province_name, p.race
          FROM provinces p
          JOIN ages a ON a.id = p.age_id AND a.is_active = true
          WHERE p.user_id = $1`,
         [payload.userId]
       );
+      const { rows } = await Promise.race([query, timeout]);
+
       if (!rows.length) return next(new Error('No active province'));
       socket.provinceId = rows[0].province_id;
       socket.provinceName = rows[0].province_name;
       socket.race = rows[0].race;
       next();
     } catch (err) {
-      next(new Error('Invalid token'));
+      next(new Error(err.message === 'Auth query timeout' ? 'Server busy, retry' : 'Invalid token'));
     }
   });
 

@@ -246,6 +246,11 @@ async function runMigrations() {
   }
 }
 
+// Prevent silent crashes from unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection:', err);
+});
+
 const PORT = process.env.PORT || 5000;
 
 // Start server only AFTER migrations + cleanup finish.
@@ -255,7 +260,8 @@ const PORT = process.env.PORT || 5000;
     await runMigrations();
     await clearStuckTimers();
   } catch (err) {
-    console.error('Startup tasks failed:', err.message);
+    console.error('Startup tasks failed — exiting:', err.message);
+    process.exit(1);
   }
   server.listen(PORT, () => {
     console.log(`Realm of Dominion server running on port ${PORT}`);
