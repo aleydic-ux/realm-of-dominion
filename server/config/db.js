@@ -18,30 +18,38 @@ if (connectionString && !connectionString.includes('connect_timeout')) {
 
 const pool = new Pool({
   connectionString,
-  // Use SSL whenever a DATABASE_URL is provided (i.e. on Render).
-  // Avoids relying on NODE_ENV which may not be set in the Render environment.
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
-  // Pool sizing — default 10 is too low for multiplayer + cron jobs + socket auth
-  max: 20,
-  // Return connections that sit idle for 30s so Neon doesn't drop them silently
-  idleTimeoutMillis: 30000,
-  // Don't wait forever for a connection — fail fast after 10s so requests don't hang
-  connectionTimeoutMillis: 10000,
+  // Pool sizing — Neon free tier limits concurrent connections; keep moderate
+  max: 10,
+  // Kill idle connections after 20s so Neon doesn't silently drop them
+  idleTimeoutMillis: 20000,
+  // Don't wait forever for a connection from the pool — fail fast after 8s
+  connectionTimeoutMillis: 8000,
 });
-
-// NOTE: pool.on('connect') was removed — the fire-and-forget client.query() call inside it
-// caused "concurrent client.query()" deprecation warnings (pg@9.0 will error).
-// Timestamp UTC handling is covered by types.setTypeParser above.
 
 // Handle errors on idle clients (e.g. connection dropped while in pool)
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err.message);
 });
 
-// Wrap pool.connect() so every checked-out client (used in BEGIN/COMMIT transactions)
-// gets a silent error handler. Without this, a FATAL PostgreSQL error (code 57P01 —
-// "terminating connection due to administrator command") emitted mid-query on a client
-// that has no listener causes an unhandled 'error' event and crashes the process.
+// Wrap pool.query() with a hard 20s timeout.
+// Neon can silently kill connections that are still in the pool.
+// When we try to query on a dead connection, the query hangs forever because
+// the TCP stack hasn't detected the dead socket yet. This wrapper ensures
+// we NEVER block indefinitely — queries either complete or fail within 20s.
+const _poolQuery = pool.query.bind(pool);
+pool.query = function queryWithTimeout(...args) {
+  return Promise.race([
+    _poolQuery(...args),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Query timeout (20s) — database unreachable')), 20000)
+    ),
+  ]);
+};
+
+// Wrap pool.connect() so every checked-out client gets a silent error handler.
+// Without this, a FATAL PostgreSQL error (code 57P01) on a client with no
+// listener causes an unhandled 'error' event and crashes the process.
 const _connect = pool.connect.bind(pool);
 pool.connect = async function wrappedConnect() {
   const client = await _connect();

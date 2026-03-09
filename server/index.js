@@ -127,9 +127,13 @@ app.get('/api/debug/me', authenticate, async (req, res) => {
 });
 
 // Health check — Render pings this to know the server is ready
+// Uses a tight 5s timeout so the probe never hangs
 app.get('/api/health', async (req, res) => {
   try {
-    await pool.query('SELECT 1');
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('DB ping timeout')), 5000)
+    );
+    await Promise.race([pool.query('SELECT 1'), timeout]);
     res.json({ status: 'ok' });
   } catch {
     res.status(503).json({ status: 'unavailable' });
@@ -260,10 +264,31 @@ const PORT = process.env.PORT || 5000;
 // Open the port FIRST so Render sees it, then run startup tasks.
 // Neon serverless DB can go cold between steps, causing TCP hangs
 // that block listen() if we wait for them.
+// Wake Neon's serverless compute with a retry loop before running startup tasks.
+// Cold starts can take 5-10s; without this, migrations hang on the first query.
+async function wakeDatabase(retries = 3) {
+  for (let i = 1; i <= retries; i++) {
+    try {
+      console.log(`[startup] DB wake ping attempt ${i}/${retries}...`);
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('ping timeout')), 10000)
+      );
+      await Promise.race([pool.query('SELECT 1'), timeout]);
+      console.log('[startup] Database is awake.');
+      return;
+    } catch (err) {
+      console.error(`[startup] DB ping ${i} failed: ${err.message}`);
+      if (i < retries) await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+  console.error('[startup] Could not reach database after retries — continuing anyway');
+}
+
 server.listen(PORT, () => {
   console.log(`Realm of Dominion server running on port ${PORT}`);
-  // Run migrations + cleanup in background — non-blocking
-  runMigrations()
+  // Run startup tasks in background — non-blocking
+  wakeDatabase()
+    .then(() => runMigrations())
     .then(() => clearStuckTimers())
     .catch((err) => console.error('Startup tasks failed:', err.message));
 });
