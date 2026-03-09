@@ -8,11 +8,21 @@ const PROVINCE_QUERY = `SELECT p.* FROM provinces p
   JOIN ages a ON a.id = p.age_id
   WHERE p.user_id = $1 AND a.is_active = true`;
 
+const UNIVERSAL_BUILDINGS = [
+  'farm', 'barracks', 'treasury', 'marketplace_stall', 'watchtower',
+  'walls', 'library', 'mine_quarry', 'temple_altar', 'war_hall', 'arcane_sanctum',
+];
+const RACE_BUILDINGS = {
+  human: 'royal_bank', orc: 'warchief_pit', undead: 'crypt',
+  elf: 'ancient_grove', dwarf: 'runic_forge',
+};
+
 /**
  * Recalculates AP lazily based on elapsed time.
  * Updates DB if AP was gained.
  * Attaches province to req.province (requires req.user to be set).
  * If no province found, attempts season rollover + age recovery.
+ * Final fallback: auto-creates a fresh province for the user.
  */
 async function apRegen(req, res, next) {
   if (!req.user) return next();
@@ -59,20 +69,51 @@ async function apRegen(req, res, next) {
 
       // Still no province in active age — reassign orphaned province
       if (!rows.length) {
-        const { rows: [activeAge] } = await pool.query(
+        const { rows: [currentAge] } = await pool.query(
           'SELECT id FROM ages WHERE is_active = true LIMIT 1'
         );
-        if (activeAge) {
+        if (currentAge) {
           // Find user's most recent province in any age
           const { rows: [orphan] } = await pool.query(
-            'SELECT id FROM provinces WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+            'SELECT id, name, race FROM provinces WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
             [req.user.id]
           );
           if (orphan) {
             await pool.query(
               'UPDATE provinces SET age_id = $1, updated_at = NOW() WHERE id = $2',
-              [activeAge.id, orphan.id]
+              [currentAge.id, orphan.id]
             );
+            ({ rows } = await pool.query(PROVINCE_QUERY, [req.user.id]));
+          } else {
+            // No province at all — create a fresh one for the user
+            console.warn(`[apRegen] User ${req.user.id} has no province anywhere — auto-creating.`);
+            const { rows: [user] } = await pool.query(
+              'SELECT username FROM users WHERE id = $1', [req.user.id]
+            );
+            const provinceName = user ? `${user.username}'s Kingdom` : 'Kingdom';
+            const race = 'human';
+            const protectionEndsAt = new Date(Date.now() + 72 * 3600000);
+            const { rows: [newProvince] } = await pool.query(
+              `INSERT INTO provinces (user_id, age_id, name, race, protection_ends_at)
+               VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+              [req.user.id, currentAge.id, provinceName, race, protectionEndsAt]
+            );
+            const buildingTypes = [...UNIVERSAL_BUILDINGS, RACE_BUILDINGS[race]];
+            for (const bt of buildingTypes) {
+              await pool.query(
+                'INSERT INTO province_buildings (province_id, building_type) VALUES ($1,$2)',
+                [newProvince.id, bt]
+              );
+            }
+            const { rows: troopTypes } = await pool.query(
+              'SELECT id FROM troop_types WHERE race = $1', [race]
+            );
+            for (const tt of troopTypes) {
+              await pool.query(
+                'INSERT INTO province_troops (province_id, troop_type_id) VALUES ($1,$2)',
+                [newProvince.id, tt.id]
+              );
+            }
             ({ rows } = await pool.query(PROVINCE_QUERY, [req.user.id]));
           }
         }
