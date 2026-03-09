@@ -215,8 +215,8 @@ cron.schedule('*/5 * * * *', async () => {
   }
 });
 
-// Bot tick — runs every 2 hours
-cron.schedule('0 */2 * * *', async () => {
+// Bot tick — runs every hour so bots stay active
+cron.schedule('0 * * * *', async () => {
   try {
     await tickBots();
   } catch (err) {

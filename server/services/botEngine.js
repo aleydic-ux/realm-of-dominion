@@ -1,19 +1,20 @@
 const pool = require('../config/db');
 const { RECIPES, COST_RESOURCE_MAP } = require('../constants/craftingRecipes');
-const { lazyResourceUpdate, getBuildingLevels } = require('./resourceEngine');
+const { lazyResourceUpdate, getBuildingLevels, calculateBuildingCost } = require('./resourceEngine');
 const { resolveAttack } = require('./combatEngine');
 const { calculateAndStoreNetworth } = require('./networthCalc');
 const { getProvinceTechEffects } = require('./techEngine');
+const raceConfig = require('../config/raceConfig');
 
 // ─── Personality configs ─────────────────────────────────────────────────────
 // attackRatio: minimum (bot troops / target troops) ratio required to attack
 // buildPriority: 'food' | 'gold' | 'army' | 'mixed'
 // trainRate: multiplier on how many troops to train per tick
 const PERSONALITIES = {
-  passive:    { attackRatio: Infinity, buildPriority: 'food',  trainRate: 0.10 },
-  economic:   { attackRatio: 2.0,     buildPriority: 'gold',  trainRate: 0.30 },
-  aggressive: { attackRatio: 1.5,     buildPriority: 'army',  trainRate: 0.60 },
-  adaptive:   { attackRatio: 1.3,     buildPriority: 'mixed', trainRate: 0.40 },
+  passive:    { attackRatio: Infinity, buildPriority: 'food',  trainRate: 0.25 },
+  economic:   { attackRatio: 2.0,     buildPriority: 'gold',  trainRate: 0.40 },
+  aggressive: { attackRatio: 1.5,     buildPriority: 'army',  trainRate: 0.70 },
+  adaptive:   { attackRatio: 1.3,     buildPriority: 'mixed', trainRate: 0.50 },
 };
 
 const UNIVERSAL_BUILDINGS = [
@@ -228,6 +229,17 @@ async function respawnWipedBots() {
          WHERE province_id = $1`,
         [bot.id]
       );
+      // Give starting T1 troops so respawned bots aren't helpless
+      await pool.query(
+        `UPDATE province_troops SET count_home = 40, updated_at = NOW()
+         WHERE province_id = $1
+           AND troop_type_id IN (
+             SELECT tt.id FROM troop_types tt
+             JOIN provinces p ON p.race = tt.race AND p.id = $1
+             WHERE tt.tier = 1 LIMIT 1
+           )`,
+        [bot.id]
+      );
       console.log(`[bot] Respawned wiped bot id=${bot.id}`);
     }
   } catch (err) {
@@ -298,25 +310,137 @@ async function tickSingleBot(bot) {
   const personality = province.bot_personality || 'economic';
   const config = PERSONALITIES[personality] || PERSONALITIES.economic;
 
-  // ── Decision priority order (handoff §6.1) ──
-  // 1. Food critical → build farm (implicit: train fewer troops)
-  // 2. Gold critical → conserve
-  // 3. Train troops based on personality trainRate
-  // 4. Attack if valid target found and army ratio sufficient
+  // ── Bot decision order ──
+  // 1. Explore for land (spend AP to grow)
+  // 2. Upgrade buildings (farms/barracks/treasury)
+  // 3. Train troops
+  // 4. Attack if army ratio sufficient
   // 5. Craft if tower owned
 
-  await botTrainTroops(province, config);
+  // 1. Explore — spend AP to gain land
+  await botExplore(province, config);
 
+  // 2. Upgrade buildings
+  const { rows: [afterExplore] } = await pool.query('SELECT * FROM provinces WHERE id = $1', [province.id]);
+  if (afterExplore) await botUpgradeBuildings(afterExplore, config);
+
+  // 3. Train troops
+  const { rows: [afterBuild] } = await pool.query('SELECT * FROM provinces WHERE id = $1', [province.id]);
+  if (afterBuild) await botTrainTroops(afterBuild, config);
+
+  // 4. Attack
   const { rows: [refreshed] } = await pool.query('SELECT * FROM provinces WHERE id = $1', [province.id]);
   if (refreshed && refreshed.action_points >= 3 && personality !== 'passive') {
     await botAttack(refreshed, personality, config);
-  } else if (personality === 'passive') {
-    await logAction(bot.id, 'idle', null, 'skipped', 'passive bots never attack');
   }
 
+  // 5. Craft
   await botCraftingTick(province);
   await updateLastAction(bot.id);
   await calculateAndStoreNetworth(province.id);
+}
+
+// ─── Explore land ────────────────────────────────────────────────────────────
+// Bots spend AP to explore and gain land, just like players do.
+// Aggressive bots explore less (save AP for attacks), passive/economic explore more.
+
+async function botExplore(province, config) {
+  // How many explores to do per tick based on personality
+  const exploreCount = config.buildPriority === 'army' ? 2
+    : config.buildPriority === 'food' ? 5
+    : config.buildPriority === 'gold' ? 4
+    : 3; // mixed
+
+  const maxExplores = Math.min(exploreCount, province.action_points - 1); // keep 1 AP reserve
+  if (maxExplores <= 0) return;
+
+  const cfg = raceConfig[province.race];
+  let totalLand = 0;
+
+  for (let i = 0; i < maxExplores; i++) {
+    const landGained = 5 + Math.floor(Math.random() * 21); // 5-25 acres
+    const adjustedLand = Math.floor(landGained * cfg.landResourceYieldMultiplier);
+    totalLand += adjustedLand;
+  }
+
+  await pool.query(
+    `UPDATE provinces SET
+      action_points = action_points - $1,
+      land = land + $2,
+      updated_at = NOW()
+     WHERE id = $3`,
+    [maxExplores, totalLand, province.id]
+  );
+
+  await logAction(province.id, 'explore', null, 'success', `explored ${totalLand} acres (${maxExplores} expeditions)`);
+}
+
+// ─── Upgrade buildings ──────────────────────────────────────────────────────
+// Bots upgrade key buildings based on personality priority.
+
+async function botUpgradeBuildings(province, config) {
+  // Don't build if low on gold
+  if (province.gold < 500) return;
+
+  const { rows: buildings } = await pool.query(
+    `SELECT * FROM province_buildings WHERE province_id = $1`,
+    [province.id]
+  );
+
+  // Check if anything is already upgrading
+  const upgrading = buildings.find(b => b.is_upgrading);
+  if (upgrading) {
+    // Check if it's done
+    const done = !upgrading.upgrade_completes_at || new Date(upgrading.upgrade_completes_at).getTime() <= Date.now();
+    if (done) {
+      await pool.query(
+        `UPDATE province_buildings SET is_upgrading = false, upgrade_completes_at = NULL, updated_at = NOW()
+         WHERE province_id = $1 AND building_type = $2`,
+        [province.id, upgrading.building_type]
+      );
+    } else {
+      return; // wait for current upgrade
+    }
+  }
+
+  // Priority order based on personality
+  let priorities;
+  if (config.buildPriority === 'army') {
+    priorities = ['barracks', 'walls', 'war_hall', 'farm', 'treasury'];
+  } else if (config.buildPriority === 'food') {
+    priorities = ['farm', 'treasury', 'barracks', 'walls', 'library'];
+  } else if (config.buildPriority === 'gold') {
+    priorities = ['treasury', 'farm', 'marketplace_stall', 'barracks', 'library'];
+  } else {
+    priorities = ['farm', 'barracks', 'treasury', 'walls', 'library'];
+  }
+
+  for (const bt of priorities) {
+    const building = buildings.find(b => b.building_type === bt);
+    if (!building || building.level >= 5) continue;
+
+    const targetLevel = building.level + 1;
+    const cost = calculateBuildingCost(targetLevel, province.race, bt);
+    if (province.gold < cost.gold || province.industry_points < cost.industry_points) continue;
+
+    // Build it
+    const buildTimeHours = cost.time_hours;
+    const completesAt = new Date(Date.now() + buildTimeHours * 3600000);
+
+    await pool.query(
+      `UPDATE provinces SET gold = gold - $1, industry_points = industry_points - $2, updated_at = NOW()
+       WHERE id = $3`,
+      [cost.gold, cost.industry_points, province.id]
+    );
+    await pool.query(
+      `UPDATE province_buildings SET level = level + 1, is_upgrading = true, upgrade_completes_at = $1, updated_at = NOW()
+       WHERE province_id = $2 AND building_type = $3`,
+      [completesAt, province.id, bt]
+    );
+
+    await logAction(province.id, 'build', null, 'success', `upgrading ${bt} to level ${targetLevel}`);
+    break; // one upgrade per tick
+  }
 }
 
 // ─── Train troops ─────────────────────────────────────────────────────────────
@@ -340,7 +464,7 @@ async function botTrainTroops(province, config) {
   const canAfford = Math.floor(budget / Math.max(1, target.gold_cost));
   if (canAfford < 3) return;
 
-  const maxTrain = config.buildPriority === 'army' ? 50 : config.buildPriority === 'mixed' ? 25 : 12;
+  const maxTrain = config.buildPriority === 'army' ? 100 : config.buildPriority === 'mixed' ? 60 : 30;
   const trainCount = Math.min(canAfford, maxTrain);
   const cost = trainCount * target.gold_cost;
 
