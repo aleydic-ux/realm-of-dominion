@@ -19,17 +19,18 @@ router.get('/me', async (req, res) => {
   const provinceId = req.province.id;
   const io = req.app.get('io');
 
+  let step = 'init';
   try {
-    // Step 1: tech effects (season check is handled by apRegen middleware)
+    step = 'techEffects';
     const techEffects = await getProvinceTechEffects(provinceId);
 
-    // Step 2: resource update + troop returns in parallel (both need techEffects/provinceId only)
+    step = 'resourceUpdate+troopReturn';
     await Promise.all([
       lazyResourceUpdate(provinceId, techEffects, io),
       checkAndReturnTroops(provinceId),
     ]);
 
-    // Step 3: fetch all display data in parallel
+    step = 'displayQueries';
     const [provinceRes, buildingsRes, troopsRes, researchRes, allianceRes] = await Promise.all([
       pool.query(
         `SELECT p.*, u.username, a.name as age_name, a.ends_at as age_ends_at
@@ -62,6 +63,7 @@ router.get('/me', async (req, res) => {
       ),
     ]);
 
+    step = 'response';
     res.json({
       province: provinceRes.rows[0],
       buildings: buildingsRes.rows,
@@ -70,8 +72,8 @@ router.get('/me', async (req, res) => {
       alliance: allianceRes.rows[0] || null,
     });
   } catch (err) {
-    console.error('Dashboard error:', err);
-    res.status(500).json({ error: 'Failed to load dashboard', detail: err.message });
+    console.error('Dashboard error at step:', step, err);
+    res.status(500).json({ error: 'Failed to load dashboard', step, detail: String(err) });
   }
 });
 
