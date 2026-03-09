@@ -12,7 +12,7 @@ export default function ResourceBar({ province }) {
   const val = { fontSize: '0.78rem', fontWeight: 'bold', color: '#c8d8e8' };
 
   return (
-    <div className="sticky top-0 z-10" style={{background:'linear-gradient(to bottom, #111828, #0e1620)', borderBottom:'1px solid #243650', boxShadow:'0 2px 8px rgba(0,0,0,0.5)'}}>
+    <div style={{background:'linear-gradient(to bottom, #111828, #0e1620)', borderBottom:'1px solid #243650', boxShadow:'0 2px 8px rgba(0,0,0,0.5)'}}>
       {/* Province name bar */}
       <div style={{padding:'4px 14px', borderBottom:'1px solid #1e3050', display:'flex', alignItems:'center', gap:'10px', background:'rgba(255,255,255,0.02)'}}>
         <span style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8a048', fontSize:'0.95rem', fontWeight:'700', letterSpacing:'0.08em'}}>

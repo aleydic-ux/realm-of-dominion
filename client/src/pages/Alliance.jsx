@@ -105,10 +105,11 @@ export default function Alliance({ province }) {
           <div className="mt-2 flex items-center gap-2 flex-wrap">
             <span className="text-xs text-realm-text-muted">Your Province ID:</span>
             <code className="bg-gray-900 border border-realm-border text-realm-gold px-2 py-0.5 rounded text-sm font-mono select-all">
-              {province?.id}
+              {province?.id ?? '...'}
             </code>
             <button
-              onClick={() => navigator.clipboard.writeText(String(province?.id))}
+              onClick={() => navigator.clipboard.writeText(String(province?.id ?? ''))}
+              disabled={!province?.id}
               className="text-xs text-realm-text-dim hover:text-realm-gold transition-colors"
               aria-label="Copy Province ID"
             >

@@ -33,7 +33,7 @@ export default function Attack({ province, troops = [], refresh }) {
     loadProvinces();
   }, []);
 
-  const homeTroops = troops.filter(t => t.count_home > 0);
+  const homeTroops = troops;
   const totalDeployed = Object.values(deployment).reduce((a, b) => a + (parseInt(b) || 0), 0);
 
   async function handleAttack() {
@@ -170,11 +170,13 @@ export default function Attack({ province, troops = [], refresh }) {
           <div className="realm-panel">
             <h2 className="text-realm-gold font-display mb-2">Deploy Troops</h2>
             {homeTroops.length === 0 ? (
-              <p className="text-realm-text-dim text-sm">No troops at home.</p>
+              <p className="text-realm-text-dim text-sm">No troops trained.</p>
             ) : (
               <div className="space-y-2">
-                {homeTroops.map(t => (
-                  <div key={t.troop_type_id} className="flex flex-col gap-1">
+                {homeTroops.map(t => {
+                  const hasHome = t.count_home > 0;
+                  return (
+                  <div key={t.troop_type_id} className={`flex flex-col gap-1 ${!hasHome ? 'opacity-40' : ''}`}>
                     <div className="flex items-center gap-2">
                       <span className="text-realm-text-muted text-sm w-28 truncate">{t.name}</span>
                       <span className="text-realm-text-dim text-xs">({t.count_home})</span>
@@ -182,12 +184,14 @@ export default function Attack({ province, troops = [], refresh }) {
                         type="number"
                         min="0"
                         max={t.count_home}
-                        className="realm-input text-xs w-20 py-1"
+                        disabled={!hasHome}
+                        className="realm-input text-xs w-20 py-1 disabled:opacity-50"
                         value={deployment[t.troop_type_id] || ''}
                         onChange={e => setDeployment({ ...deployment, [t.troop_type_id]: e.target.value })}
                         placeholder="0"
                       />
                     </div>
+                    {hasHome && (
                     <div className="flex gap-1 ml-0">
                       {[25, 50, 75, 100].map(pct => (
                         <button
@@ -199,8 +203,10 @@ export default function Attack({ province, troops = [], refresh }) {
                         </button>
                       ))}
                     </div>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
                 <div className="text-xs text-realm-text-dim mt-1">
                   Deploying: <span className="text-realm-gold">{totalDeployed}</span> troops | 5 AP
                 </div>

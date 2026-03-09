@@ -53,7 +53,7 @@ export default function TroopTable({ troops, showDeploy = false, onDeploy, gold 
             <td className="text-green-400">
               {showDeploy ? formatNumber(t.food_upkeep * ((t.count_home || 0) + (t.count_deployed || 0))) : t.food_upkeep}
             </td>
-            <td className="text-realm-text-dim text-xs max-w-xs truncate">{t.special_ability || '—'}</td>
+            <td className="text-realm-text-dim text-xs max-w-xs whitespace-normal">{t.special_ability || '—'}</td>
             {showDeploy && (
               <td>
                 <input

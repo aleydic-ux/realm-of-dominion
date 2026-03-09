@@ -104,7 +104,10 @@ export default function Marketplace({ province, refresh }) {
                 <input className="realm-input" type="number" min="1" value={form.quantity}
                   onChange={e => setForm({ ...form, quantity: e.target.value })} required />
                 <div className="text-xs text-realm-text-dim mt-1">
-                  Available: {formatNumber(province?.[form.resource_type] || 0)}
+                  Available:{' '}
+                  {province
+                    ? formatNumber(province[form.resource_type] ?? 0)
+                    : '...'}
                 </div>
               </div>
               <div>

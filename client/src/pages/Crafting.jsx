@@ -42,6 +42,7 @@ export default function Crafting({ province, buildings }) {
   const [status, setStatus] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -67,11 +68,16 @@ export default function Crafting({ province, buildings }) {
       ]);
       setStatus(statusRes.data);
       setLeaderboard(lbRes.data.overall || []);
-    } catch {}
+    } catch {
+      setLoadError(true);
+    }
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const timeout = setTimeout(() => { setLoadError(true); setLoading(false); }, 12000);
+    load().finally(() => clearTimeout(timeout));
+  }, [load]);
 
   const act = useCallback(async (fn, successMsg) => {
     setError(null);
@@ -126,6 +132,12 @@ export default function Crafting({ province, buildings }) {
   };
 
   if (loading) return <div className="text-realm-text-muted">Loading Alchemist Tower...</div>;
+  if (loadError && !status) return (
+    <div className="space-y-3 text-center py-8">
+      <p className="text-realm-text-muted">Failed to load. The server may be starting up.</p>
+      <button onClick={() => window.location.reload()} className="realm-btn-gold">Retry</button>
+    </div>
+  );
 
   const tower = status?.tower;
   const queue = status?.queue || [];

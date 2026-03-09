@@ -8,25 +8,39 @@ export default function Leaderboard({ province }) {
   const [hof, setHof] = useState(null);
   const [tab, setTab] = useState('overall');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => { document.title = 'Leaderboard — Realm of Dominion'; }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+      if (!cancelled) { setLoadError(true); setLoading(false); }
+    }, 12000);
     async function load() {
       try {
         const [lbRes, hofRes] = await Promise.all([
           api.get('/leaderboard'),
           api.get('/leaderboard/hall-of-fame'),
         ]);
-        setData(lbRes.data);
-        setHof(hofRes.data);
-      } catch {}
-      setLoading(false);
+        if (!cancelled) { setData(lbRes.data); setHof(hofRes.data); }
+      } catch {
+        if (!cancelled) setLoadError(true);
+      }
+      if (!cancelled) setLoading(false);
+      clearTimeout(timeout);
     }
     load();
+    return () => { cancelled = true; clearTimeout(timeout); };
   }, []);
 
   if (loading) return <div className="text-realm-text-muted">Loading rankings...</div>;
+  if (loadError) return (
+    <div className="space-y-3 text-center py-8">
+      <p className="text-realm-text-muted">Failed to load. The server may be starting up.</p>
+      <button onClick={() => window.location.reload()} className="realm-btn-gold">Retry</button>
+    </div>
+  );
   if (!data) return null;
 
   return (

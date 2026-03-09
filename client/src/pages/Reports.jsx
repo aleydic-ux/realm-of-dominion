@@ -6,19 +6,28 @@ export default function Reports({ province }) {
   const [attacks, setAttacks] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [filter, setFilter] = useState('all');
 
   useEffect(() => { document.title = 'Reports — Realm of Dominion'; }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+      if (!cancelled) { setLoadError(true); setLoading(false); }
+    }, 12000);
     async function load() {
       try {
         const { data } = await api.get('/province/me/attacks');
-        setAttacks(data);
-      } catch {}
-      setLoading(false);
+        if (!cancelled) setAttacks(data);
+      } catch {
+        if (!cancelled) setLoadError(true);
+      }
+      if (!cancelled) setLoading(false);
+      clearTimeout(timeout);
     }
     load();
+    return () => { cancelled = true; clearTimeout(timeout); };
   }, []);
 
   const filtered = attacks.filter(a => {
@@ -46,6 +55,11 @@ export default function Reports({ province }) {
         <div className="realm-panel overflow-x-auto">
           {loading ? (
             <p className="text-realm-text-muted">Loading...</p>
+          ) : loadError ? (
+            <div className="py-6 text-center space-y-2">
+              <p className="text-red-400 text-sm">Failed to load reports. The server may be starting up.</p>
+              <button onClick={() => window.location.reload()} className="realm-btn-gold text-xs">Retry</button>
+            </div>
           ) : (
             <table className="realm-table">
               <thead><tr><th>Type</th><th>Opponent</th><th>Outcome</th><th>Date</th></tr></thead>

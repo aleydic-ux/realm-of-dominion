@@ -55,8 +55,10 @@ function ProtectedLayout({ onLogout }) {
           </div>
         </div>
       )}
-      <NavBar onLogout={onLogout} />
-      <ResourceBar province={province} />
+      <div className="sticky top-0 z-20">
+        <NavBar onLogout={onLogout} />
+        <ResourceBar province={province} />
+      </div>
       <main id="main-content" className="flex-1 p-4 max-w-7xl mx-auto w-full">
         <Suspense fallback={<div className="text-realm-text-muted">Loading...</div>}>
           <Routes>

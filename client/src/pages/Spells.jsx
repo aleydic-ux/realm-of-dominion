@@ -16,6 +16,7 @@ export default function Spells({ province, buildings }) {
   const [activeEffects, setActiveEffects] = useState([]);
   const [provinces, setProvinces] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [casting, setCasting] = useState(null);
   const [results, setResults] = useState({});
   const [errors, setErrors] = useState({});
@@ -25,20 +26,30 @@ export default function Spells({ province, buildings }) {
   useEffect(() => { document.title = 'Arcane Sanctum — Realm of Dominion'; }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+      if (!cancelled) { setLoadError(true); setLoading(false); }
+    }, 12000);
     async function load() {
       try {
         const [spellsRes, lbRes] = await Promise.all([
           api.get('/spells'),
           api.get('/leaderboard'),
         ]);
-        setSpells(spellsRes.data.spells || []);
-        setCooldowns(spellsRes.data.cooldowns || {});
-        setActiveEffects(spellsRes.data.active_effects || []);
-        setProvinces(lbRes.data.overall || []);
-      } catch {}
-      setLoading(false);
+        if (!cancelled) {
+          setSpells(spellsRes.data.spells || []);
+          setCooldowns(spellsRes.data.cooldowns || {});
+          setActiveEffects(spellsRes.data.active_effects || []);
+          setProvinces(lbRes.data.overall || []);
+        }
+      } catch {
+        if (!cancelled) setLoadError(true);
+      }
+      if (!cancelled) setLoading(false);
+      clearTimeout(timeout);
     }
     load();
+    return () => { cancelled = true; clearTimeout(timeout); };
   }, []);
 
   async function castSpell(spellKey, targetProvinceId = null) {
@@ -72,6 +83,12 @@ export default function Spells({ province, buildings }) {
   };
 
   if (loading) return <div className="text-realm-text-muted">Loading spells...</div>;
+  if (loadError) return (
+    <div className="space-y-3 text-center py-8">
+      <p className="text-realm-text-muted">Failed to load. The server may be starting up.</p>
+      <button onClick={() => window.location.reload()} className="realm-btn-gold">Retry</button>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -176,7 +193,7 @@ function SpellCard({ spell, locked, onCooldown, cdRemaining, result, error, isCa
       p.id !== province?.id &&
       (search === '' ||
         p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.username.toLowerCase().includes(search.toLowerCase()))
+        (p.username || '').toLowerCase().includes(search.toLowerCase()))
     )
     .slice(0, 8);
 
