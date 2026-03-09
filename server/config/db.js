@@ -16,6 +16,8 @@ if (connectionString && !connectionString.includes('connect_timeout')) {
   connectionString += (connectionString.includes('?') ? '&' : '?') + 'connect_timeout=10';
 }
 
+const QUERY_TIMEOUT_MS = 15000;
+
 const pool = new Pool({
   connectionString,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
@@ -31,7 +33,6 @@ const pool = new Pool({
 if (connectionString) {
   const hostMatch = connectionString.match(/@([^/:]+)/);
   console.log('[db] Connecting to:', hostMatch ? hostMatch[1] : 'unknown host');
-  console.log('[db] DATABASE_URL length:', connectionString.length);
 }
 
 // Handle errors on idle clients (e.g. connection dropped while in pool)
@@ -39,25 +40,59 @@ pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err.message);
 });
 
-// Wrap pool.query() with a hard 20s timeout.
-// Neon can silently kill connections that are still in the pool.
-// When we try to query on a dead connection, the query hangs forever because
-// the TCP stack hasn't detected the dead socket yet. This wrapper ensures
-// we NEVER block indefinitely — queries either complete or fail within 20s.
+// Wrap pool.query() to DESTROY stuck connections on timeout.
+//
+// The old Promise.race approach had a fatal flaw: when the timeout fired,
+// the underlying pg query kept running and the connection was never released
+// back to the pool. Over time ALL connections leaked this way and the pool
+// became completely dead (total:10, idle:0, waiting:0).
+//
+// This version checks out a client explicitly so we can call
+// client.release(true) on timeout — which destroys the connection and lets
+// the pool create a fresh one.
 const _poolQuery = pool.query.bind(pool);
-pool.query = function queryWithTimeout(...args) {
-  return Promise.race([
-    _poolQuery(...args),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Query timeout (20s) — database unreachable')), 20000)
-    ),
-  ]);
+const _connect = pool.connect.bind(pool);
+
+pool.query = async function queryWithTimeout(text, params) {
+  let client;
+  try {
+    client = await _connect();
+  } catch (err) {
+    throw new Error('DB pool exhausted: ' + err.message);
+  }
+
+  let timer;
+  let timedOut = false;
+
+  return new Promise((resolve, reject) => {
+    timer = setTimeout(() => {
+      timedOut = true;
+      // DESTROY the stuck connection — don't return it to the pool
+      try { client.release(true); } catch (_) {}
+      reject(new Error(`Query timeout (${QUERY_TIMEOUT_MS / 1000}s) — connection destroyed`));
+    }, QUERY_TIMEOUT_MS);
+
+    client.query(text, params)
+      .then((result) => {
+        if (!timedOut) {
+          clearTimeout(timer);
+          client.release(); // return healthy connection to pool
+          resolve(result);
+        }
+      })
+      .catch((err) => {
+        if (!timedOut) {
+          clearTimeout(timer);
+          client.release(true); // destroy errored connection
+          reject(err);
+        }
+      });
+  });
 };
 
 // Wrap pool.connect() so every checked-out client gets a silent error handler.
 // Without this, a FATAL PostgreSQL error (code 57P01) on a client with no
 // listener causes an unhandled 'error' event and crashes the process.
-const _connect = pool.connect.bind(pool);
 pool.connect = async function wrappedConnect() {
   const client = await _connect();
   client.on('error', (err) => {
