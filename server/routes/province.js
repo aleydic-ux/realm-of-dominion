@@ -71,7 +71,7 @@ router.get('/me', async (req, res) => {
     });
   } catch (err) {
     console.error('Dashboard error:', err);
-    res.status(500).json({ error: 'Failed to load dashboard' });
+    res.status(500).json({ error: 'Failed to load dashboard', detail: err.message });
   }
 });
 
