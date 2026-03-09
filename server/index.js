@@ -200,9 +200,42 @@ cron.schedule('*/10 * * * *', async () => {
   }
 });
 
+// Run pending migrations on startup (ensures they always run regardless of start command)
+const fs = require('fs');
+async function runMigrations() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS migrations (
+        id SERIAL PRIMARY KEY,
+        filename VARCHAR(255) UNIQUE NOT NULL,
+        applied_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    const migrationsDir = path.join(__dirname, 'db', 'migrations');
+    const files = fs.readdirSync(migrationsDir).sort();
+    for (const file of files) {
+      if (!file.endsWith('.sql')) continue;
+      const { rows } = await client.query('SELECT id FROM migrations WHERE filename = $1', [file]);
+      if (rows.length > 0) continue;
+      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+      console.log(`[migrate] Applying ${file}...`);
+      await client.query(sql);
+      await client.query('INSERT INTO migrations (filename) VALUES ($1)', [file]);
+      console.log(`[migrate]   Done.`);
+    }
+    console.log('[migrate] All migrations up to date.');
+  } catch (err) {
+    console.error('[migrate] Migration failed:', err);
+  } finally {
+    client.release();
+  }
+}
+
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, async () => {
   console.log(`Realm of Dominion server running on port ${PORT}`);
+  await runMigrations();
   await clearStuckTimers();
 });
 
