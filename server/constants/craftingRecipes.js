@@ -144,9 +144,9 @@ const RECIPES = {
 
 // Tower tier unlock costs
 const TOWER_COSTS = {
-  build:   { gold: 800,  industry_points: 350  },
-  upgrade2:{ gold: 2000, industry_points: 800,  mana: 500  },
-  upgrade3:{ gold: 5000, industry_points: 1800, mana: 1200 },
+  build:   { gold: 800,  industry: 350  },
+  upgrade2:{ gold: 2000, industry: 800,  mana: 500  },
+  upgrade3:{ gold: 5000, industry: 1800, mana: 1200 },
 };
 
 // Tier → crafting slots
