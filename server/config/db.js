@@ -5,11 +5,16 @@ require('dotenv').config();
 // By default node-postgres interprets it in local system timezone, causing comparison bugs
 types.setTypeParser(1114, (val) => new Date(val + 'Z'));
 
-// Strip sslmode from connection string to suppress pg-connection-string v3 deprecation warning.
-// SSL is handled explicitly via the ssl option below.
-const connectionString = process.env.DATABASE_URL
+// Clean up connection string:
+// 1. Strip sslmode (handled via ssl option below, avoids pg deprecation warning)
+// 2. Add connect_timeout=10 so TCP connections to Neon fail fast instead of hanging
+//    when the serverless compute is cold (node-postgres has NO TCP-level timeout)
+let connectionString = process.env.DATABASE_URL
   ? process.env.DATABASE_URL.replace(/([?&])sslmode=[^&]*/i, '$1').replace(/[?&]$/, '')
   : undefined;
+if (connectionString && !connectionString.includes('connect_timeout')) {
+  connectionString += (connectionString.includes('?') ? '&' : '?') + 'connect_timeout=10';
+}
 
 const pool = new Pool({
   connectionString,
