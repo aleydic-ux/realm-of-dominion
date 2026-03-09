@@ -13,7 +13,9 @@ const connectionString = process.env.DATABASE_URL
 
 const pool = new Pool({
   connectionString,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  // Use SSL whenever a DATABASE_URL is provided (i.e. on Render).
+  // Avoids relying on NODE_ENV which may not be set in the Render environment.
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
 });
 
 // NOTE: pool.on('connect') was removed — the fire-and-forget client.query() call inside it
