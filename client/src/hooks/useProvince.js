@@ -31,7 +31,15 @@ export function useProvince() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    // 12s timeout for the initial load — prevents infinite loading if the server is cold-starting
+    const timeout = setTimeout(() => {
+      if (!initialLoadDone.current) {
+        setError('Server is taking too long to respond. It may be starting up.');
+        setLoading(false);
+      }
+    }, 12000);
+
+    refresh().finally(() => clearTimeout(timeout));
 
     // Poll every 60s for resource updates
     const slowInterval = setInterval(refresh, 60000);

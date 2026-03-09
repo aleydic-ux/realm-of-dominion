@@ -22,7 +22,7 @@ const Spells = lazy(() => import('./pages/Spells'));
 const Crafting = lazy(() => import('./pages/Crafting'));
 
 function ProtectedLayout({ onLogout }) {
-  const { province, buildings, troops, research, alliance, loading, refresh } = useProvince();
+  const { province, buildings, troops, research, alliance, loading, error, refresh } = useProvince();
   const [seasonBanner, setSeasonBanner] = useState(null);
 
   useEffect(() => {
@@ -60,6 +60,12 @@ function ProtectedLayout({ onLogout }) {
         <ResourceBar province={province} />
       </div>
       <main id="main-content" className="flex-1 p-4 max-w-7xl mx-auto w-full">
+        {error && !province && (
+          <div className="space-y-3 text-center py-8">
+            <p className="text-realm-text-muted">Failed to load province. The server may be starting up.</p>
+            <button onClick={refresh} className="realm-btn-gold">Retry</button>
+          </div>
+        )}
         <Suspense fallback={<div className="text-realm-text-muted">Loading...</div>}>
           <Routes>
             <Route path="/dashboard" element={<Dashboard province={province} loading={loading} refresh={refresh} />} />
