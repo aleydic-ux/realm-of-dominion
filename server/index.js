@@ -100,22 +100,23 @@ app.get('/api/debug/me', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     const provinceQuery = await pool.query(
-      `SELECT p.id, p.user_id, p.age_id, p.name, p.race, a.is_active as age_active, a.name as age_name
-       FROM provinces p
-       LEFT JOIN ages a ON a.id = p.age_id
-       WHERE p.user_id = $1`,
+      `SELECT p.* FROM provinces p
+       JOIN ages a ON a.id = p.age_id
+       WHERE p.user_id = $1 AND a.is_active = true`,
       [userId]
     );
-    const activeAge = await pool.query('SELECT id, name, is_active, ends_at FROM ages WHERE is_active = true LIMIT 1');
-    const joinQuery = await pool.query(
-      `SELECT p.id, p.name FROM provinces p JOIN ages a ON a.id = p.age_id WHERE p.user_id = $1 AND a.is_active = true`,
-      [userId]
+    const columns = await pool.query(
+      `SELECT column_name FROM information_schema.columns WHERE table_name = 'provinces' ORDER BY ordinal_position`
     );
+    const buildings = provinceQuery.rows[0] ? await pool.query(
+      'SELECT building_type, level FROM province_buildings WHERE province_id = $1',
+      [provinceQuery.rows[0].id]
+    ) : { rows: [] };
     res.json({
       jwt_user_id: userId,
-      user_provinces: provinceQuery.rows,
-      active_age: activeAge.rows[0] || null,
-      province_via_join: joinQuery.rows,
+      province: provinceQuery.rows[0] || null,
+      province_columns: columns.rows.map(r => r.column_name),
+      buildings: buildings.rows,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
