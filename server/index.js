@@ -94,6 +94,34 @@ app.get('/api/debug/state', async (req, res) => {
   }
 });
 
+// Authenticated debug — simulates the exact apRegen query for the logged-in user
+const authenticate = require('./middleware/auth');
+app.get('/api/debug/me', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const provinceQuery = await pool.query(
+      `SELECT p.id, p.user_id, p.age_id, p.name, p.race, a.is_active as age_active, a.name as age_name
+       FROM provinces p
+       LEFT JOIN ages a ON a.id = p.age_id
+       WHERE p.user_id = $1`,
+      [userId]
+    );
+    const activeAge = await pool.query('SELECT id, name, is_active, ends_at FROM ages WHERE is_active = true LIMIT 1');
+    const joinQuery = await pool.query(
+      `SELECT p.id, p.name FROM provinces p JOIN ages a ON a.id = p.age_id WHERE p.user_id = $1 AND a.is_active = true`,
+      [userId]
+    );
+    res.json({
+      jwt_user_id: userId,
+      user_provinces: provinceQuery.rows,
+      active_age: activeAge.rows[0] || null,
+      province_via_join: joinQuery.rows,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Serve React frontend
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist));
