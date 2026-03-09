@@ -126,6 +126,19 @@ app.get('/api/debug/me', authenticate, async (req, res) => {
   }
 });
 
+// Quick diagnostic — no DB needed, shows if env vars are set
+app.get('/api/ping', (req, res) => {
+  const url = process.env.DATABASE_URL || '';
+  const hostMatch = url.match(/@([^/:]+)/);
+  res.json({
+    status: 'server_ok',
+    db_host: hostMatch ? hostMatch[1] : 'NOT SET',
+    db_url_length: url.length,
+    node_env: process.env.NODE_ENV || 'not set',
+    uptime: Math.floor(process.uptime()) + 's',
+  });
+});
+
 // Health check — Render pings this to know the server is ready
 // Uses a tight 5s timeout so the probe never hangs
 app.get('/api/health', async (req, res) => {
@@ -277,8 +290,8 @@ async function wakeDatabase(retries = 3) {
       console.log('[startup] Database is awake.');
       return;
     } catch (err) {
-      console.error(`[startup] DB ping ${i} failed: ${err.message}`);
-      if (i < retries) await new Promise(r => setTimeout(r, 2000));
+      console.error(`[startup] DB ping ${i} failed:`, err.message, err.code || '');
+      if (i < retries) await new Promise(r => setTimeout(r, 3000));
     }
   }
   console.error('[startup] Could not reach database after retries — continuing anyway');

@@ -27,6 +27,13 @@ const pool = new Pool({
   connectionTimeoutMillis: 8000,
 });
 
+// Log the DB host on startup so we can verify the right endpoint is being used
+if (connectionString) {
+  const hostMatch = connectionString.match(/@([^/:]+)/);
+  console.log('[db] Connecting to:', hostMatch ? hostMatch[1] : 'unknown host');
+  console.log('[db] DATABASE_URL length:', connectionString.length);
+}
+
 // Handle errors on idle clients (e.g. connection dropped while in pool)
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err.message);
