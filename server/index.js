@@ -144,12 +144,17 @@ app.get('/api/ping', (req, res) => {
 app.get('/api/health', async (req, res) => {
   try {
     const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('DB ping timeout')), 5000)
+      setTimeout(() => reject(new Error('DB ping timeout (5s)')), 5000)
     );
     await Promise.race([pool.query('SELECT 1'), timeout]);
     res.json({ status: 'ok' });
-  } catch {
-    res.status(503).json({ status: 'unavailable' });
+  } catch (err) {
+    res.status(503).json({
+      status: 'unavailable',
+      error: err.message,
+      code: err.code || null,
+      pool: { total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount },
+    });
   }
 });
 
