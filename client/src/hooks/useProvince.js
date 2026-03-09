@@ -26,35 +26,53 @@ export function useProvince() {
       setSlowLoad(false);
       initialLoadDone.current = true;
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load province');
+      // Only surface errors after initial load succeeds once
+      if (initialLoadDone.current) {
+        setError(err.response?.data?.error || 'Failed to load province');
+      }
+      // During initial load, let the timers handle messaging — just keep retrying
     } finally {
-      setLoading(false);
+      if (initialLoadDone.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    let retryTimer = null;
+
+    // Retry every 8 seconds during initial load until server responds
+    function scheduleRetry() {
+      if (!initialLoadDone.current) {
+        retryTimer = setTimeout(() => {
+          refresh().finally(scheduleRetry);
+        }, 8000);
+      }
+    }
+
     // After 12s show a "warming up" message but keep waiting
     const slowTimer = setTimeout(() => {
       if (!initialLoadDone.current) setSlowLoad(true);
     }, 12000);
 
     // After 90s give up and show retry button
-    const hardTimeout = setTimeout(() => {
+    const hardTimer = setTimeout(() => {
       if (!initialLoadDone.current) {
-        setError('Server is taking too long to respond. It may be starting up.');
+        setError('Server is not responding. Please try again.');
         setLoading(false);
       }
     }, 90000);
 
-    refresh().finally(() => {
-      clearTimeout(slowTimer);
-      clearTimeout(hardTimeout);
+    // First attempt — kick off retry chain on failure
+    refresh().then(() => {
+      clearTimeout(retryTimer);
+    }).catch(() => {
+      scheduleRetry();
     });
 
-    // Poll every 60s for resource updates
-    const slowInterval = setInterval(refresh, 60000);
+    // Poll every 60s for resource updates after initial load
+    const pollInterval = setInterval(() => {
+      if (initialLoadDone.current) refresh();
+    }, 60000);
 
-    // Listen for server-pushed timer completion events via Socket.io
     const token = localStorage.getItem('token');
     let socket = null;
     if (token) {
@@ -63,9 +81,10 @@ export function useProvince() {
     }
 
     return () => {
+      clearTimeout(retryTimer);
       clearTimeout(slowTimer);
-      clearTimeout(hardTimeout);
-      clearInterval(slowInterval);
+      clearTimeout(hardTimer);
+      clearInterval(pollInterval);
       socket?.disconnect();
     };
   }, [refresh]);
