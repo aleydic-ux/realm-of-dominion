@@ -5,7 +5,8 @@ const { applyTechModifiers } = require('./techEngine');
 // Base resource generation rates (per hour)
 const BASE_GOLD_PER_LAND = 1.65;
 const BASE_FOOD_PER_LAND = 0.88;
-const BASE_MANA_PER_HOUR = 3.3;
+const BASE_MANA_PER_HOUR = 3.3;      // flat base — all provinces
+const BASE_MANA_PER_LAND = 0.04;     // land-scaled component — bigger provinces regen faster
 const BASE_PRODUCTION_PER_LAND = 0.55;
 const FOOD_PER_POPULATION_HOUR = 0.02;
 
@@ -121,7 +122,7 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
     foodRate -= (troopFoodConsumption + populationFoodConsumption);
 
     // --- Mana ---
-    let manaRate = BASE_MANA_PER_HOUR;
+    let manaRate = BASE_MANA_PER_HOUR + (province.land * BASE_MANA_PER_LAND);
     manaRate *= 1 + (templeLevel * 0.10); // +10% per temple level
     if (ancientGroveLevel > 0) manaRate *= 1 + (ancientGroveLevel * 0.15); // Elf grove
     if (arcaneSanctumLevel > 0) manaRate *= 1 + (arcaneSanctumLevel * 0.05); // +5% per sanctum level
