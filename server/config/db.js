@@ -22,11 +22,6 @@ const pool = new Pool({
   idleTimeoutMillis: 30000,
   // Don't wait forever for a connection — fail fast after 10s so requests don't hang
   connectionTimeoutMillis: 10000,
-  // Kill queries that run longer than 15s (prevents hung connections)
-  statement_timeout: 15000,
-  // TCP keepalive — prevents Neon serverless from silently dropping idle connections
-  keepAlive: true,
-  keepAliveInitialDelayMillis: 10000,
 });
 
 // NOTE: pool.on('connect') was removed — the fire-and-forget client.query() call inside it

@@ -153,12 +153,16 @@ app.use((err, req, res, next) => {
 const pool = require('./config/db');
 async function clearStuckTimers() {
   try {
+    console.log('[startup] Clearing stuck timers...');
     await pool.query(`UPDATE province_troops SET count_home = count_home + count_training, count_training = 0, training_completes_at = NULL, updated_at = NOW() WHERE count_training > 0`);
+    console.log('[startup] Cleared stuck troops.');
     await pool.query(`UPDATE province_buildings SET is_upgrading = false, upgrade_completes_at = NULL, updated_at = NOW() WHERE is_upgrading = true`);
+    console.log('[startup] Cleared stuck buildings.');
     await pool.query(`UPDATE province_research SET status = 'complete', updated_at = NOW() WHERE status = 'in_progress'`);
-    console.log('Cleared all stuck timers.');
+    console.log('[startup] Cleared stuck research.');
+    console.log('[startup] All stuck timers cleared.');
   } catch (err) {
-    console.error('Failed to clear stuck timers:', err.message);
+    console.error('[startup] Failed to clear stuck timers:', err.message);
   }
 }
 
