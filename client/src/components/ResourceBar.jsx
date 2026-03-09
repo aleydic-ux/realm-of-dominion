@@ -1,6 +1,6 @@
 import { formatNumber, formatTime } from '../utils/formatters';
 import Tooltip from './Tooltip';
-import { RESOURCE_TOOLTIPS } from '../help/tooltips';
+import { RESOURCE_TOOLTIPS } from '../help/tooltips.jsx';
 
 export default function ResourceBar({ province }) {
   if (!province) return null;
