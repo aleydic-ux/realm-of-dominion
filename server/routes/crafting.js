@@ -54,30 +54,48 @@ router.get('/tower/status', async (req, res) => {
   if (!req.province) return res.status(404).json({ error: 'No province found' });
 
   try {
-    const { rows: [tower] } = await pool.query(
-      `SELECT * FROM alchemist_towers WHERE province_id = $1`, [req.province.id]
-    );
+    const provinceId = req.province.id;
 
-    let queueCount = 0;
-    if (tower) {
-      const { rows: [qc] } = await pool.query(
-        `SELECT COUNT(*) as count FROM crafting_queue
-         WHERE province_id = $1 AND status = 'in_progress'`, [req.province.id]
-      );
-      queueCount = parseInt(qc.count);
-    }
+    const [towerRes, queueRes, inventoryRes, cooldownsRes, effectsRes] = await Promise.all([
+      pool.query(`SELECT * FROM alchemist_towers WHERE province_id = $1`, [provinceId]),
+      pool.query(
+        `SELECT * FROM crafting_queue WHERE province_id = $1 AND status = 'in_progress' ORDER BY completes_at ASC`,
+        [provinceId]
+      ),
+      pool.query(
+        `SELECT item_key, quantity FROM crafted_items WHERE province_id = $1 AND quantity > 0`,
+        [provinceId]
+      ),
+      pool.query(
+        `SELECT item_key, last_used_at + INTERVAL '4 hours' AS cooldown_ends_at
+         FROM crafting_cooldowns WHERE province_id = $1`,
+        [provinceId]
+      ),
+      pool.query(
+        `SELECT * FROM active_effects WHERE province_id = $1 AND (expires_at IS NULL OR expires_at > NOW())`,
+        [provinceId]
+      ),
+    ]);
 
-    const availableRecipes = Object.entries(RECIPES)
-      .filter(([, r]) => !tower || r.tier_required <= tower.tier)
-      .map(([key, r]) => ({ key, ...r }));
+    const tower = towerRes.rows[0] || null;
+
+    // Cooldowns as { item_key: cooldown_ends_at }
+    const cooldowns = {};
+    for (const row of cooldownsRes.rows) cooldowns[row.item_key] = row.cooldown_ends_at;
+
+    // All recipes as object keyed by item_key (frontend shows locked state for higher tiers)
+    const recipes = {};
+    for (const [key, r] of Object.entries(RECIPES)) recipes[key] = r;
 
     res.json({
-      tower: tower || null,
-      slots_used: queueCount,
-      slots_total: tower ? tower.crafting_slots : 0,
+      tower,
+      queue: queueRes.rows,
+      inventory: inventoryRes.rows,
+      cooldowns,
+      active_effects: effectsRes.rows,
+      recipes,
       build_cost: TOWER_COSTS.build,
       upgrade_cost: tower && tower.tier < 3 ? TOWER_COSTS[`upgrade${tower.tier + 1}`] : null,
-      available_recipes: availableRecipes,
     });
   } catch (err) {
     console.error('Tower status error:', err);
@@ -437,12 +455,12 @@ router.post('/items/use', async (req, res) => {
 router.post('/items/send', async (req, res) => {
   if (!req.province) return res.status(404).json({ error: 'No province found' });
   const senderProvince = req.province;
-  const { item_key, target_id } = req.body;
+  const { item_key, target_province_id: target_id } = req.body;
 
   const recipe = RECIPES[item_key];
   if (!recipe) return res.status(400).json({ error: 'Unknown item' });
   if (recipe.effect_type !== 'debuff') return res.status(400).json({ error: 'Only debuff items can be sent to enemies' });
-  if (!target_id) return res.status(400).json({ error: 'target_id required' });
+  if (!target_id) return res.status(400).json({ error: 'target_province_id required' });
   if (parseInt(target_id) === senderProvince.id) return res.status(400).json({ error: 'Cannot send debuff to yourself' });
 
   const client = await pool.connect();
