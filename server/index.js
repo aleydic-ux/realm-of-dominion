@@ -257,19 +257,15 @@ process.on('unhandledRejection', (err) => {
 
 const PORT = process.env.PORT || 5000;
 
-// Start server only AFTER migrations + cleanup finish.
-// This prevents Render from routing traffic to an unready server.
-(async () => {
-  try {
-    await runMigrations();
-    await clearStuckTimers();
-  } catch (err) {
-    console.error('Startup tasks failed — exiting:', err.message);
-    process.exit(1);
-  }
-  server.listen(PORT, () => {
-    console.log(`Realm of Dominion server running on port ${PORT}`);
-  });
-})();
+// Open the port FIRST so Render sees it, then run startup tasks.
+// Neon serverless DB can go cold between steps, causing TCP hangs
+// that block listen() if we wait for them.
+server.listen(PORT, () => {
+  console.log(`Realm of Dominion server running on port ${PORT}`);
+  // Run migrations + cleanup in background — non-blocking
+  runMigrations()
+    .then(() => clearStuckTimers())
+    .catch((err) => console.error('Startup tasks failed:', err.message));
+});
 
 module.exports = { app, server };
