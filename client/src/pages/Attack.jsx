@@ -65,7 +65,7 @@ export default function Attack({ province, troops = [], refresh }) {
   const filtered = provinces.filter(p =>
     p.id !== province?.id &&
     (p.name.toLowerCase().includes(search.toLowerCase()) ||
-     p.username.toLowerCase().includes(search.toLowerCase()))
+     (p.username || '').toLowerCase().includes(search.toLowerCase()))
   );
 
   return (

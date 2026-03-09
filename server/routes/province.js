@@ -82,10 +82,11 @@ router.get('/list', async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT p.id, p.name, p.race, p.land, p.networth, p.morale,
-              p.protection_ends_at, p.is_in_war, u.username,
+              p.protection_ends_at, p.is_in_war, p.is_bot,
+              COALESCE(u.username, '[BOT]') as username,
               a2.name as alliance_name
        FROM provinces p
-       JOIN users u ON u.id = p.user_id
+       LEFT JOIN users u ON u.id = p.user_id
        JOIN ages ag ON ag.id = p.age_id AND ag.is_active = true
        LEFT JOIN alliance_members am ON am.province_id = p.id
        LEFT JOIN alliances a2 ON a2.id = am.alliance_id

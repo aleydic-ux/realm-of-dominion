@@ -37,6 +37,9 @@ const io = new Server(server, {
 app.set('io', io);
 initSocket(io);
 
+// Trust Render's reverse proxy so express-rate-limit reads real client IPs
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(compression());
 app.use(cors({

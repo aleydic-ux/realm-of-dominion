@@ -12,7 +12,7 @@ const pool = new Pool({
 
 // Force every connection to use UTC so TIMESTAMP comparisons are consistent
 pool.on('connect', (client) => {
-  client.query("SET timezone = 'UTC'");
+  client.query("SET timezone = 'UTC'").catch(err => console.error('Timezone set error:', err));
 });
 
 pool.on('error', (err) => {
