@@ -76,6 +76,24 @@ app.use('/api/spells', spellRoutes);
 app.use('/api/crafting', craftingRoutes);
 app.use('/api/bots', botAdminRoutes);
 
+// Diagnostic endpoint (temporary) — shows DB state for debugging
+app.get('/api/debug/state', async (req, res) => {
+  try {
+    const [ages, provinces, migrations] = await Promise.all([
+      pool.query('SELECT id, name, is_active, ends_at FROM ages ORDER BY id'),
+      pool.query('SELECT id, user_id, age_id, name, race FROM provinces ORDER BY id'),
+      pool.query("SELECT filename FROM migrations WHERE filename LIKE '%age%' OR filename LIKE '%027%' ORDER BY filename"),
+    ]);
+    res.json({
+      ages: ages.rows,
+      provinces: provinces.rows,
+      age_migrations: migrations.rows.map(r => r.filename),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Serve React frontend
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist));
