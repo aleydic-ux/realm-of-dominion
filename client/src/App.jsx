@@ -23,7 +23,7 @@ const Spells = lazy(() => import('./pages/Spells'));
 const Crafting = lazy(() => import('./pages/Crafting'));
 
 function ProtectedLayout({ onLogout }) {
-  const { province, buildings, troops, research, alliance, loading, error, refresh } = useProvince();
+  const { province, buildings, troops, research, alliance, loading, error, slowLoad, refresh } = useProvince();
   const [seasonBanner, setSeasonBanner] = useState(null);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -72,10 +72,17 @@ function ProtectedLayout({ onLogout }) {
         <ResourceBar province={province} />
       </div>
       <main id="main-content" className="flex-1 p-4 max-w-7xl mx-auto w-full">
+        {slowLoad && !province && !error && (
+          <div style={{textAlign:'center', padding:'40px 16px', color:'#8090a8'}}>
+            <div style={{fontSize:'1.5rem', marginBottom:'12px'}}>⚔</div>
+            <p style={{fontSize:'0.85rem', marginBottom:'6px'}}>Server is warming up...</p>
+            <p style={{fontSize:'0.72rem', color:'#485868'}}>This takes up to 60 seconds on first load. Please wait.</p>
+          </div>
+        )}
         {error && !province && (
-          <div className="space-y-3 text-center py-8">
-            <p className="text-realm-text-muted">Failed to load province. The server may be starting up.</p>
-            <button onClick={refresh} className="realm-btn-gold">Retry</button>
+          <div style={{textAlign:'center', padding:'40px 16px', color:'#8090a8'}}>
+            <p style={{fontSize:'0.85rem', marginBottom:'12px'}}>Could not reach the server.</p>
+            <button onClick={refresh} style={{fontFamily:'Verdana, Arial, sans-serif', fontSize:'0.75rem', color:'#c8a048', border:'1px solid #c8a048', padding:'6px 18px', background:'transparent', cursor:'pointer'}}>Retry</button>
           </div>
         )}
         <Suspense fallback={<div className="text-realm-text-muted">Loading...</div>}>

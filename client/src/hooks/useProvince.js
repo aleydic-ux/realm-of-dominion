@@ -10,6 +10,7 @@ export function useProvince() {
   const [alliance, setAlliance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [slowLoad, setSlowLoad] = useState(false);
   const initialLoadDone = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -22,6 +23,7 @@ export function useProvince() {
       setResearch(data.research || []);
       setAlliance(data.alliance || null);
       setError(null);
+      setSlowLoad(false);
       initialLoadDone.current = true;
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load province');
@@ -31,15 +33,23 @@ export function useProvince() {
   }, []);
 
   useEffect(() => {
-    // 12s timeout for the initial load — prevents infinite loading if the server is cold-starting
-    const timeout = setTimeout(() => {
+    // After 12s show a "warming up" message but keep waiting
+    const slowTimer = setTimeout(() => {
+      if (!initialLoadDone.current) setSlowLoad(true);
+    }, 12000);
+
+    // After 90s give up and show retry button
+    const hardTimeout = setTimeout(() => {
       if (!initialLoadDone.current) {
         setError('Server is taking too long to respond. It may be starting up.');
         setLoading(false);
       }
-    }, 12000);
+    }, 90000);
 
-    refresh().finally(() => clearTimeout(timeout));
+    refresh().finally(() => {
+      clearTimeout(slowTimer);
+      clearTimeout(hardTimeout);
+    });
 
     // Poll every 60s for resource updates
     const slowInterval = setInterval(refresh, 60000);
@@ -53,10 +63,12 @@ export function useProvince() {
     }
 
     return () => {
+      clearTimeout(slowTimer);
+      clearTimeout(hardTimeout);
       clearInterval(slowInterval);
       socket?.disconnect();
     };
   }, [refresh]);
 
-  return { province, buildings, troops, research, alliance, loading, error, refresh };
+  return { province, buildings, troops, research, alliance, loading, error, slowLoad, refresh };
 }
