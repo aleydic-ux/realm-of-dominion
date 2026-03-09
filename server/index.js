@@ -126,6 +126,16 @@ app.get('/api/debug/me', authenticate, async (req, res) => {
   }
 });
 
+// Health check — Render pings this to know the server is ready
+app.get('/api/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok' });
+  } catch {
+    res.status(503).json({ status: 'unavailable' });
+  }
+});
+
 // Serve React frontend
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist));
@@ -237,10 +247,19 @@ async function runMigrations() {
 }
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, async () => {
-  console.log(`Realm of Dominion server running on port ${PORT}`);
-  await runMigrations();
-  await clearStuckTimers();
-});
+
+// Start server only AFTER migrations + cleanup finish.
+// This prevents Render from routing traffic to an unready server.
+(async () => {
+  try {
+    await runMigrations();
+    await clearStuckTimers();
+  } catch (err) {
+    console.error('Startup tasks failed:', err.message);
+  }
+  server.listen(PORT, () => {
+    console.log(`Realm of Dominion server running on port ${PORT}`);
+  });
+})();
 
 module.exports = { app, server };

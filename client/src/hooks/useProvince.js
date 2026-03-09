@@ -76,8 +76,20 @@ export function useProvince() {
     const token = localStorage.getItem('token');
     let socket = null;
     if (token) {
-      socket = io('/', { auth: { token }, transports: ['websocket', 'polling'] });
+      socket = io('/', {
+        auth: { token },
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 2000,
+        reconnectionDelayMax: 15000,
+      });
       socket.on('province_update', () => refresh());
+      socket.on('season_end', (data) => {
+        window.dispatchEvent(new CustomEvent('season_end', { detail: data }));
+      });
+      // Refresh data when socket reconnects after a server restart
+      socket.on('reconnect', () => refresh());
     }
 
     return () => {

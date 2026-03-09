@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { io } from 'socket.io-client';
 import NavBar from './components/NavBar';
 import ResourceBar from './components/ResourceBar';
 import { useProvince } from './hooks/useProvince';
@@ -36,15 +35,15 @@ function ProtectedLayout({ onLogout }) {
     }
   }, []);
 
+  // Listen for season_end on the shared socket from useProvince
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    const socket = io('/', { auth: { token }, transports: ['websocket', 'polling'] });
-    socket.on('season_end', ({ old_season, new_season }) => {
+    const handler = (e) => {
+      const { old_season, new_season } = e.detail;
       setSeasonBanner({ old_season, new_season });
       setTimeout(() => window.location.reload(), 5000);
-    });
-    return () => socket.disconnect();
+    };
+    window.addEventListener('season_end', handler);
+    return () => window.removeEventListener('season_end', handler);
   }, []);
 
   return (
