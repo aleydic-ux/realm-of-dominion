@@ -66,11 +66,11 @@ router.post('/register', async (req, res) => {
 
     // Calculate late-join bonus
     const { rows: [activeAge] } = await client.query(
-      'SELECT started_at FROM ages WHERE id = $1', [ageId]
+      'SELECT starts_at FROM ages WHERE id = $1', [ageId]
     );
     const msPerDay = 86400000;
-    const daysLate = activeAge?.started_at
-      ? Math.floor((Date.now() - new Date(activeAge.started_at).getTime()) / msPerDay)
+    const daysLate = activeAge?.starts_at
+      ? Math.floor((Date.now() - new Date(activeAge.starts_at).getTime()) / msPerDay)
       : 0;
     const joinedOnDay = daysLate + 1;
     const applyBonus = daysLate > 0 && daysLate <= 4;
