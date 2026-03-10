@@ -13,14 +13,14 @@ export default function ResourceBar({ province }) {
   const foodLow = province.food > 0 && province.food < 100;
   const foodStarving = province.food <= 0;
 
-  const cell = { padding: '3px 14px', borderRight: '1px solid #1e3050' };
+  const cell = { padding: '3px 10px', borderRight: '1px solid #1e3050', textAlign: 'center' };
   const lbl = { color: '#485868', fontSize: '0.6rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.06em' };
   const val = { fontSize: '0.78rem', fontWeight: 'bold', color: '#c8d8e8' };
 
   return (
     <div style={{background:'linear-gradient(to bottom, #111828, #0e1620)', borderBottom:'1px solid #243650', boxShadow:'0 2px 8px rgba(0,0,0,0.5)'}}>
       {/* Province name bar */}
-      <div style={{padding:'4px 14px', borderBottom:'1px solid #1e3050', display:'flex', alignItems:'center', gap:'10px', background:'rgba(255,255,255,0.02)'}}>
+      <div className="province-name-bar" style={{padding:'4px 14px', borderBottom:'1px solid #1e3050', display:'flex', alignItems:'center', justifyContent:'center', gap:'10px', flexWrap:'wrap', background:'rgba(255,255,255,0.02)'}}>
         <span style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8a048', fontSize:'0.95rem', fontWeight:'700', letterSpacing:'0.08em'}}>
           {province.name}
         </span>
@@ -43,8 +43,8 @@ export default function ResourceBar({ province }) {
         )}
       </div>
 
-      {/* Stats row */}
-      <div style={{display:'flex', flexWrap:'wrap', alignItems:'stretch'}}>
+      {/* Stats row — centered */}
+      <div className="resource-stats-row" style={{display:'flex', flexWrap:'wrap', alignItems:'stretch', justifyContent:'center'}}>
         <Tooltip content={RESOURCE_TOOLTIPS.gold} width={240}>
           <span style={cell}><span style={lbl}>Gold</span><span style={{...val, color:'#c8a048'}}>{formatNumber(province.gold)}</span></span>
         </Tooltip>
@@ -73,7 +73,7 @@ export default function ResourceBar({ province }) {
 
         {/* AP */}
         <Tooltip content={RESOURCE_TOOLTIPS.ap} width={240}>
-          <span style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:'6px', padding:'4px 14px', cursor:'help'}}>
+          <span style={{display:'flex', alignItems:'center', gap:'6px', padding:'4px 10px', cursor:'help'}}>
             <span style={lbl}>AP{apFull && <span style={{color:'#c8a048', marginLeft:'3px'}}>●</span>}</span>
             <span style={{...val, color: apColor}}>{province.action_points}/{maxAp}</span>
             <div
@@ -82,7 +82,7 @@ export default function ResourceBar({ province }) {
               aria-valuenow={province.action_points}
               aria-valuemin={0}
               aria-valuemax={maxAp}
-              style={{width:'70px', height:'6px', border:'1px solid #243650', background:'#0a1020', overflow:'hidden'}}
+              style={{width:'50px', height:'6px', border:'1px solid #243650', background:'#0a1020', overflow:'hidden'}}
             >
               <div style={{width:`${apPct}%`, height:'100%', background: apColor, transition:'width 0.3s'}} />
             </div>

@@ -121,3 +121,48 @@
 .race-undead { color: #9040c0; }
 .race-elf { color: #40c080; }
 .race-dwarf { color: #c0a040; }
+
+/* ── Mobile responsive ─────────────────────────────────────────────── */
+@media (max-width: 639px) {
+  html, body { font-size: 13px; }
+
+  /* Resource bar: compact grid on mobile */
+  .resource-stats-row {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0 !important;
+  }
+  .resource-stats-row > * {
+    border-right: none !important;
+    border-bottom: 1px solid #1e3050;
+    padding: 4px 6px !important;
+    text-align: center;
+  }
+
+  /* Province name bar */
+  .province-name-bar {
+    padding: 4px 8px !important;
+    gap: 6px !important;
+  }
+
+  /* Main content tighter padding */
+  #main-content { padding: 8px !important; }
+
+  /* Tables scroll horizontally */
+  .realm-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Panels reduced padding */
+  .realm-panel { padding: 8px !important; }
+
+  /* Buttons: larger tap targets */
+  .realm-btn, .realm-btn-gold, .realm-btn-red, .realm-btn-outline {
+    min-height: 36px;
+    padding: 6px 12px !important;
+  }
+
+  /* Inputs: larger tap targets */
+  .realm-input {
+    min-height: 36px;
+    font-size: 14px !important;
+  }
+}
