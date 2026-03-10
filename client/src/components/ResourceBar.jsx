@@ -43,8 +43,8 @@ export default function ResourceBar({ province }) {
         )}
       </div>
 
-      {/* Stats row — centered */}
-      <div className="resource-stats-row" style={{display:'flex', flexWrap:'wrap', alignItems:'stretch', justifyContent:'center'}}>
+      {/* Stats row — all resources + AP on one centered line */}
+      <div className="resource-stats-row" style={{display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'center'}}>
         <Tooltip content={RESOURCE_TOOLTIPS.gold} width={240}>
           <span style={cell}><span style={lbl}>Gold</span><span style={{...val, color:'#c8a048'}}>{formatNumber(province.gold)}</span></span>
         </Tooltip>
@@ -68,14 +68,16 @@ export default function ResourceBar({ province }) {
         </Tooltip>
 
         <Tooltip content={RESOURCE_TOOLTIPS.land} width={240}>
-          <span style={{...cell, borderRight:'none'}}><span style={lbl}>Land</span><span style={val}>{formatNumber(province.land)} ac</span></span>
+          <span style={cell}><span style={lbl}>Land</span><span style={val}>{formatNumber(province.land)} ac</span></span>
         </Tooltip>
 
-        {/* AP */}
+        {/* AP — inline with other resources */}
         <Tooltip content={RESOURCE_TOOLTIPS.ap} width={240}>
-          <span style={{display:'flex', alignItems:'center', gap:'6px', padding:'4px 10px', cursor:'help'}}>
-            <span style={lbl}>AP{apFull && <span style={{color:'#c8a048', marginLeft:'3px'}}>●</span>}</span>
-            <span style={{...val, color: apColor}}>{province.action_points}/{maxAp}</span>
+          <span style={{...cell, borderRight:'none', display:'flex', alignItems:'center', gap:'6px', cursor:'help'}}>
+            <span>
+              <span style={lbl}>AP{apFull && <span style={{color:'#c8a048', marginLeft:'3px'}}>●</span>}</span>
+              <span style={{...val, color: apColor}}>{province.action_points}/{maxAp}</span>
+            </span>
             <div
               role="progressbar"
               aria-label="Action Points"
