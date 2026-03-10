@@ -1,5 +1,6 @@
 import { formatNumber, formatTime, formatDateTime, formatRelativeDate, RACE_ICONS } from '../utils/formatters';
 import ProtectionBadge from '../components/ProtectionBadge';
+import Tooltip from '../components/Tooltip';
 import api from '../utils/api';
 import { useState, useEffect } from 'react';
 
@@ -26,9 +27,15 @@ function useAPCountdown(apLastRegen, actionPoints) {
 export default function Dashboard({ province, loading, refresh }) {
   const [exploreLoading, setExploreLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [rates, setRates] = useState(null);
   const apCountdown = useAPCountdown(province?.ap_last_regen, province?.action_points);
 
   useEffect(() => { document.title = 'Province — Realm of Dominion'; }, []);
+
+  useEffect(() => {
+    if (!province) return;
+    api.get('/province/rates').then(r => setRates(r.data)).catch(() => {});
+  }, [province?.id, province?.land]);
 
   if (loading) return <div className="text-realm-text-muted">Loading province...</div>;
   if (!province) return <div className="text-red-400">No province found for the active Age.</div>;
@@ -118,18 +125,26 @@ export default function Dashboard({ province, loading, refresh }) {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {[
           { label: 'Land', icon: '🗺️', value: `${formatNumber(province.land)} acres`, color: 'text-amber-400' },
-          { label: 'Gold', icon: '💰', value: formatNumber(province.gold), color: 'text-yellow-400' },
-          { label: 'Food', icon: '🌾', value: formatNumber(province.food), color: province.food < 0 ? 'text-red-400' : 'text-green-400' },
-          { label: 'Mana', icon: '🔮', value: formatNumber(province.mana), color: 'text-blue-400' },
-          { label: 'Industry', icon: '⚙️', value: formatNumber(province.industry_points), color: 'text-gray-300' },
+          { label: 'Gold', icon: '💰', value: formatNumber(province.gold), color: 'text-yellow-400',
+            tip: rates && `+${formatNumber(rates.gold_per_hour)}/hr` },
+          { label: 'Food', icon: '🌾', value: formatNumber(province.food), color: province.food < 0 ? 'text-red-400' : 'text-green-400',
+            tip: rates && `+${formatNumber(rates.food_production)}/hr production\n-${formatNumber(rates.food_upkeep)}/hr upkeep\nNet: ${rates.food_per_hour >= 0 ? '+' : ''}${formatNumber(rates.food_per_hour)}/hr` },
+          { label: 'Mana', icon: '🔮', value: formatNumber(province.mana), color: 'text-blue-400',
+            tip: rates && `+${formatNumber(rates.mana_per_hour)}/hr` },
+          { label: 'Industry', icon: '⚙️', value: formatNumber(province.industry_points), color: 'text-gray-300',
+            tip: rates && `+${formatNumber(rates.industry_per_hour)}/hr` },
           { label: 'Population', icon: '👥', value: formatNumber(province.population), color: 'text-pink-400' },
           { label: 'Morale', icon: '❤️', value: `${province.morale}%`, color: province.morale >= 80 ? 'text-green-400' : 'text-red-400' },
           { label: 'Networth', icon: '📈', value: formatNumber(province.networth), color: 'text-realm-gold' },
-        ].map(({ label, icon, value, color }) => (
-          <div key={label} className="realm-panel">
-            <div className="text-realm-text-dim text-xs mb-1">{icon} {label}</div>
-            <div className={`text-lg font-bold ${color}`}>{value}</div>
-          </div>
+        ].map(({ label, icon, value, color, tip }) => (
+          <Tooltip key={label} content={tip && (
+            <span style={{whiteSpace:'pre-line'}}>{tip}</span>
+          )} width={200}>
+            <div className="realm-panel" style={{cursor: tip ? 'help' : 'default'}}>
+              <div className="text-realm-text-dim text-xs mb-1">{icon} {label}</div>
+              <div className={`text-lg font-bold ${color}`}>{value}</div>
+            </div>
+          </Tooltip>
         ))}
       </div>
 

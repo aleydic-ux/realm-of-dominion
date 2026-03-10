@@ -2,8 +2,8 @@ const express = require('express');
 const pool = require('../config/db');
 const authenticate = require('../middleware/auth');
 const apRegen = require('../middleware/apRegen');
-const { lazyResourceUpdate, calculateBuildingCost } = require('../services/resourceEngine');
-const { getProvinceTechEffects } = require('../services/techEngine');
+const { lazyResourceUpdate, calculateBuildingCost, getBuildingLevels } = require('../services/resourceEngine');
+const { getProvinceTechEffects, applyTechModifiers } = require('../services/techEngine');
 const { calculateAndStoreNetworth } = require('../services/networthCalc');
 const { checkAndReturnTroops } = require('../services/troopReturn');
 const raceConfig = require('../config/raceConfig');
@@ -96,6 +96,111 @@ router.get('/list', async (req, res) => {
   } catch (err) {
     console.error('Province list error:', err);
     res.status(500).json({ error: 'Failed to load kingdoms' });
+  }
+});
+
+// GET /api/province/rates - Per-hour resource production rates
+router.get('/rates', async (req, res) => {
+  if (!req.province) return res.status(404).json({ error: 'No province found' });
+  const provinceId = req.province.id;
+  try {
+    const province = req.province;
+    const race = province.race;
+    const cfg = raceConfig[race];
+    const techEffects = await getProvinceTechEffects(provinceId);
+    const buildings = await getBuildingLevels(provinceId);
+
+    const BASE_GOLD_PER_LAND = 1.65;
+    const BASE_FOOD_PER_LAND = 0.88;
+    const BASE_MANA_PER_HOUR = 3.3;
+    const BASE_MANA_PER_LAND = 0.04;
+    const BASE_PRODUCTION_PER_LAND = 0.55;
+    const FOOD_PER_POPULATION_HOUR = 0.02;
+
+    const farmLevel = buildings['farm'] || 0;
+    const treasuryLevel = buildings['treasury'] || 0;
+    const mineLevel = buildings['mine_quarry'] || 0;
+    const templeLevel = buildings['temple_altar'] || 0;
+    const ancientGroveLevel = buildings['ancient_grove'] || 0;
+    const royalBankLevel = buildings['royal_bank'] || 0;
+    const arcaneSanctumLevel = buildings['arcane_sanctum'] || 0;
+
+    let goldRate = province.land * BASE_GOLD_PER_LAND;
+    goldRate *= 1 + (treasuryLevel * 0.04);
+    if (royalBankLevel > 0) goldRate *= 1 + (royalBankLevel * 0.15);
+    goldRate *= cfg.goldIncomeMultiplier;
+    goldRate = applyTechModifiers(goldRate, 'gold_income', techEffects);
+
+    let foodRate = province.land * BASE_FOOD_PER_LAND;
+    foodRate *= 1 + (farmLevel * 0.05);
+    if (ancientGroveLevel > 0) foodRate *= 1 + (ancientGroveLevel * 0.10);
+    foodRate *= cfg.foodProductionMultiplier;
+    foodRate = applyTechModifiers(foodRate, 'food_production', techEffects);
+
+    const { rows: troops } = await pool.query(
+      `SELECT SUM(pt.count_home * tt.food_upkeep) as total_upkeep
+       FROM province_troops pt
+       JOIN troop_types tt ON tt.id = pt.troop_type_id
+       WHERE pt.province_id = $1`, [provinceId]
+    );
+    const troopUpkeep = (parseFloat(troops[0].total_upkeep || 0)) * cfg.troopFoodUpkeepMultiplier;
+    const popUpkeep = province.population * FOOD_PER_POPULATION_HOUR;
+    const foodProduction = foodRate;
+    foodRate -= (troopUpkeep + popUpkeep);
+
+    let manaRate = BASE_MANA_PER_HOUR + (province.land * BASE_MANA_PER_LAND);
+    manaRate *= 1 + (templeLevel * 0.10);
+    if (ancientGroveLevel > 0) manaRate *= 1 + (ancientGroveLevel * 0.15);
+    if (arcaneSanctumLevel > 0) manaRate *= 1 + (arcaneSanctumLevel * 0.05);
+    manaRate *= cfg.manaRegenMultiplier;
+    manaRate = applyTechModifiers(manaRate, 'mana_regen', techEffects);
+
+    let industryRate = province.land * BASE_PRODUCTION_PER_LAND;
+    industryRate *= 1 + (mineLevel * 0.08);
+    industryRate = applyTechModifiers(industryRate, 'industry_points', techEffects);
+
+    // Apply spell effects
+    try {
+      const { rows: spellRows } = await pool.query(
+        `SELECT effect_json FROM spell_effects
+         WHERE target_province_id = $1 AND expires_at > NOW()
+           AND effect_json->>'modifier_type' IS NOT NULL`, [provinceId]
+      );
+      const mods = spellRows.map(r => r.effect_json).filter(Boolean);
+      if (mods.length > 0) {
+        manaRate = applyTechModifiers(manaRate, 'mana_regen', mods);
+        foodRate = applyTechModifiers(foodRate, 'food_production', mods);
+        goldRate = applyTechModifiers(goldRate, 'gold_income', mods);
+      }
+    } catch (_) {}
+
+    // Apply crafting effects
+    try {
+      const { rows: craftRows } = await pool.query(
+        `SELECT modifier_key, modifier_value FROM active_effects
+         WHERE province_id = $1 AND expires_at > NOW()`, [provinceId]
+      );
+      for (const row of craftRows) {
+        switch (row.modifier_key) {
+          case 'food_production_pct': foodRate *= (1 + row.modifier_value); break;
+          case 'gold_income_pct':     goldRate *= (1 + row.modifier_value); break;
+          case 'mana_regen_pct':      manaRate *= (1 + row.modifier_value); break;
+          case 'industry_pct':        industryRate *= (1 + row.modifier_value); break;
+        }
+      }
+    } catch (_) {}
+
+    res.json({
+      gold_per_hour: Math.floor(goldRate),
+      food_per_hour: Math.floor(foodRate),
+      food_production: Math.floor(foodProduction),
+      food_upkeep: Math.floor(troopUpkeep + popUpkeep),
+      mana_per_hour: Math.floor(manaRate),
+      industry_per_hour: Math.floor(industryRate),
+    });
+  } catch (err) {
+    console.error('Rates error:', err);
+    res.status(500).json({ error: 'Failed to calculate rates' });
   }
 });
 
