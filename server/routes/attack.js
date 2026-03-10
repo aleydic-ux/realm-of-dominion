@@ -7,6 +7,7 @@ const { getProvinceTechEffects } = require('../services/techEngine');
 const { calculateAndStoreNetworth } = require('../services/networthCalc');
 const { checkAndReturnTroops } = require('../services/troopReturn');
 const { getBuildingLevels } = require('../services/resourceEngine');
+const { awardGems, checkLandMilestone } = require('../services/gemEngine');
 
 const router = express.Router();
 
@@ -70,10 +71,11 @@ router.post('/', async (req, res) => {
       return res.status(403).json({ error: 'Cannot attack allied provinces' });
     }
 
-    // Remove attacker's newbie shield if attacking (drops early)
+    // Remove attacker's newbie shield if attacking (forced drop)
     if (attacker.protection_ends_at && new Date(attacker.protection_ends_at) > new Date()) {
       await client.query(
-        'UPDATE provinces SET protection_ends_at = NOW() WHERE id = $1', [attacker.id]
+        `UPDATE provinces SET protection_ends_at = NOW(), protection_dropped_at = NOW(), updated_at = NOW()
+         WHERE id = $1`, [attacker.id]
       );
     }
 
@@ -368,6 +370,20 @@ router.post('/', async (req, res) => {
     // Recalculate networth for both
     await calculateAndStoreNetworth(attacker.id);
     await calculateAndStoreNetworth(parseInt(target_id));
+
+    // Award gems for combat
+    try {
+      if (result.outcome === 'win') {
+        await awardGems(attacker.id, 3, 'Won attack');
+        // Check land milestones after conquest
+        if (result.landGained > 0) {
+          const { rows: [updated] } = await pool.query('SELECT land FROM provinces WHERE id = $1', [attacker.id]);
+          if (updated) await checkLandMilestone(attacker.id, updated.land);
+        }
+      } else if (result.outcome === 'loss') {
+        await awardGems(parseInt(target_id), 2, 'Defended attack');
+      }
+    } catch (_) { /* non-critical */ }
 
     res.json({
       message: `Attack ${result.outcome}`,

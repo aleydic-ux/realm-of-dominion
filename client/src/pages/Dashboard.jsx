@@ -54,6 +54,8 @@ export default function Dashboard({ province, loading, refresh }) {
   const [exploreLoading, setExploreLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [rates, setRates] = useState(null);
+  const [dropConfirm, setDropConfirm] = useState(false);
+  const [dropLoading, setDropLoading] = useState(false);
   const apCountdown = useAPCountdown(province?.ap_last_regen, province?.action_points);
 
   useEffect(() => { document.title = 'Province — Realm of Dominion'; }, []);
@@ -92,6 +94,22 @@ export default function Dashboard({ province, loading, refresh }) {
       setExploreLoading(false);
     }
   }
+
+  async function handleDropProtection() {
+    setDropLoading(true);
+    try {
+      await api.post('/province/drop-protection');
+      setMessage('Protection dropped. Your kingdom is now at war!');
+      setDropConfirm(false);
+      refresh();
+    } catch (err) {
+      setMessage(err.response?.data?.error || 'Failed to drop protection');
+    } finally {
+      setDropLoading(false);
+    }
+  }
+
+  const isProtected = province.protection_ends_at && new Date(province.protection_ends_at) > new Date();
 
   const statCards = [
     { label: 'Land', icon: '🗺️', value: `${formatNumber(province.land)} acres`, color: 'text-amber-400' },
@@ -167,6 +185,56 @@ export default function Dashboard({ province, loading, refresh }) {
             <span className="text-realm-gold" title={formatDateTime(province.age_ends_at)} style={{ fontSize: '11px' }}>
               Ends {formatRelativeDate(province.age_ends_at)}
             </span>
+          )}
+        </div>
+      )}
+
+      {/* Protection Banner */}
+      {isProtected && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(37,99,235,0.15), rgba(37,99,235,0.05))',
+          border: '1px solid rgba(59,130,246,0.4)',
+          borderLeft: '3px solid rgb(59,130,246)',
+          borderRadius: '4px',
+          padding: '12px 16px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexWrap: 'wrap', gap: '8px',
+        }}>
+          <div>
+            <div style={{ color: 'rgb(147,197,253)', fontWeight: 'bold', fontSize: '13px', marginBottom: '2px' }}>
+              🛡️ You are under Protection — expires {formatTime(province.protection_ends_at)}
+            </div>
+            <div style={{ color: 'rgb(107,137,167)', fontSize: '11px' }}>
+              Attacks, spying, offensive spells, and marketplace selling are disabled while protected.
+            </div>
+          </div>
+          {!dropConfirm ? (
+            <button
+              onClick={() => setDropConfirm(true)}
+              className="realm-btn-outline"
+              style={{ fontSize: '11px', padding: '4px 12px', borderColor: 'rgba(59,130,246,0.5)', color: 'rgb(147,197,253)' }}
+            >
+              Drop Early
+            </button>
+          ) : (
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <span style={{ color: 'rgb(248,113,113)', fontSize: '11px' }}>Are you sure?</span>
+              <button
+                onClick={handleDropProtection}
+                disabled={dropLoading}
+                className="realm-btn-outline"
+                style={{ fontSize: '11px', padding: '4px 10px', borderColor: 'rgba(248,113,113,0.5)', color: 'rgb(248,113,113)' }}
+              >
+                {dropLoading ? 'Dropping...' : 'Yes, drop shield'}
+              </button>
+              <button
+                onClick={() => setDropConfirm(false)}
+                className="realm-btn-outline"
+                style={{ fontSize: '11px', padding: '4px 10px' }}
+              >
+                Cancel
+              </button>
+            </div>
           )}
         </div>
       )}

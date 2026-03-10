@@ -7,6 +7,7 @@ const { getProvinceTechEffects, applyTechModifiers } = require('../services/tech
 const { calculateAndStoreNetworth } = require('../services/networthCalc');
 const { checkAndReturnTroops } = require('../services/troopReturn');
 const raceConfig = require('../config/raceConfig');
+const { awardGems, checkLandMilestone } = require('../services/gemEngine');
 
 const router = express.Router();
 
@@ -33,7 +34,7 @@ router.get('/me', async (req, res) => {
     step = 'displayQueries';
     const [provinceRes, buildingsRes, troopsRes, researchRes, allianceRes] = await Promise.all([
       pool.query(
-        `SELECT p.*, u.username, a.name as age_name, a.ends_at as age_ends_at
+        `SELECT p.*, u.username, a.name as age_name, a.ends_at as age_ends_at, a.started_at as age_started_at
          FROM provinces p
          JOIN users u ON u.id = p.user_id
          JOIN ages a ON a.id = p.age_id
@@ -262,6 +263,9 @@ router.post('/explore', async (req, res) => {
   }
 
   await calculateAndStoreNetworth(province.id);
+
+  // Check land milestones for gems
+  try { await checkLandMilestone(province.id, province.land + adjustedLand); } catch (_) {}
 
   res.json({ message: `Explored ${adjustedLand} acres`, land_gained: adjustedLand });
 });
@@ -523,6 +527,8 @@ router.post('/research', async (req, res) => {
         `UPDATE province_research SET status = 'complete', updated_at = NOW() WHERE id = $1`,
         [r.id]
       );
+      // Award gems for completing research
+      try { await awardGems(province.id, 5, 'Research completed'); } catch (_) {}
     }
   }
 
@@ -581,6 +587,36 @@ router.post('/research', async (req, res) => {
     completes_at: completesAt,
     cost: { gold: goldCost },
   });
+});
+
+// POST /api/province/drop-protection - Voluntarily drop protection early
+router.post('/drop-protection', async (req, res) => {
+  if (!req.province) return res.status(404).json({ error: 'No province found' });
+  const province = req.province;
+
+  if (!province.protection_ends_at || new Date(province.protection_ends_at) <= new Date()) {
+    return res.status(400).json({ error: 'You are not currently under protection' });
+  }
+
+  await pool.query(
+    `UPDATE provinces SET
+       protection_ends_at = NOW(),
+       protection_dropped_at = NOW(),
+       protection_manual_drop = true,
+       updated_at = NOW()
+     WHERE id = $1`,
+    [province.id]
+  );
+
+  try {
+    await pool.query(
+      `INSERT INTO world_feed (type, author_name, province_id, message)
+       VALUES ('event', 'World News', NULL, $1)`,
+      [`[SHIELD DOWN] ${province.name} has voluntarily dropped their new player shield!`]
+    );
+  } catch (_) {}
+
+  res.json({ message: 'Protection dropped. Your kingdom is now at war!' });
 });
 
 // GET /api/province/me/troops

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
+import { formatNumber } from '../utils/formatters';
 
 const RACES = [
   {
@@ -36,6 +37,8 @@ export default function Register({ onLogin }) {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [lateJoin, setLateJoin] = useState(null);
+  const [pendingLogin, setPendingLogin] = useState(null);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -44,7 +47,12 @@ export default function Register({ onLogin }) {
     setLoading(true);
     try {
       const { data } = await api.post('/auth/register', form);
-      onLogin(data.token, data.user);
+      if (data.late_join) {
+        setPendingLogin({ token: data.token, user: data.user });
+        setLateJoin(data.late_join);
+      } else {
+        onLogin(data.token, data.user);
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed');
     } finally {
@@ -141,6 +149,51 @@ export default function Register({ onLogin }) {
           </p>
         </form>
       </div>
+
+      {/* Late-Join Welcome Modal */}
+      {lateJoin && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" style={{ backdropFilter: 'blur(4px)' }}>
+          <div className="realm-panel w-full max-w-md space-y-4" style={{ borderTop: '2px solid rgb(200,160,72)' }}>
+            <div className="text-center">
+              <div style={{ fontSize: '2rem', marginBottom: '4px' }}>⚔</div>
+              <h2 className="text-realm-gold font-display text-xl">Welcome — You've Joined on Day {lateJoin.joined_on_day}</h2>
+            </div>
+            <p className="text-realm-text-muted text-sm text-center">
+              This Age is already in progress. We've given you a head-start bonus to help you catch up.
+            </p>
+            <div style={{ background: 'rgba(17,24,40,0.8)', border: '1px solid rgb(36,54,80)', borderRadius: '4px', padding: '10px 14px' }}>
+              <table style={{ width: '100%', fontSize: '13px' }}>
+                <tbody>
+                  {lateJoin.bonus.gold > 0 && (
+                    <tr><td className="text-realm-text-dim py-1">💰 Gold</td><td className="text-yellow-400 text-right font-bold">+{formatNumber(lateJoin.bonus.gold)}</td></tr>
+                  )}
+                  {lateJoin.bonus.food > 0 && (
+                    <tr><td className="text-realm-text-dim py-1">🌾 Food</td><td className="text-green-400 text-right font-bold">+{formatNumber(lateJoin.bonus.food)}</td></tr>
+                  )}
+                  {lateJoin.bonus.mana > 0 && (
+                    <tr><td className="text-realm-text-dim py-1">🔮 Mana</td><td className="text-blue-400 text-right font-bold">+{formatNumber(lateJoin.bonus.mana)}</td></tr>
+                  )}
+                  {lateJoin.bonus.industry_points > 0 && (
+                    <tr><td className="text-realm-text-dim py-1">⚙️ Industry</td><td className="text-gray-300 text-right font-bold">+{formatNumber(lateJoin.bonus.industry_points)}</td></tr>
+                  )}
+                  {lateJoin.bonus.population > 0 && (
+                    <tr><td className="text-realm-text-dim py-1">👥 Population</td><td className="text-realm-text text-right font-bold">+{formatNumber(lateJoin.bonus.population)}</td></tr>
+                  )}
+                  {lateJoin.bonus.gems > 0 && (
+                    <tr><td className="text-realm-text-dim py-1">💎 Gems</td><td className="text-purple-400 text-right font-bold">+{lateJoin.bonus.gems}</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <button
+              onClick={() => { onLogin(pendingLogin.token, pendingLogin.user); }}
+              className="realm-btn-gold w-full"
+            >
+              Begin My Kingdom
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

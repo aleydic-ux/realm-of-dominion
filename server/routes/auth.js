@@ -64,13 +64,47 @@ router.post('/register', async (req, res) => {
       [username, email, hash]
     );
 
+    // Calculate late-join bonus
+    const { rows: [activeAge] } = await client.query(
+      'SELECT started_at FROM ages WHERE id = $1', [ageId]
+    );
+    const msPerDay = 86400000;
+    const daysLate = activeAge?.started_at
+      ? Math.floor((Date.now() - new Date(activeAge.started_at).getTime()) / msPerDay)
+      : 0;
+    const joinedOnDay = daysLate + 1;
+    const applyBonus = daysLate > 0 && daysLate <= 4;
+
     // Create province with 24-hour newbie shield
     const protectionEndsAt = new Date(Date.now() + parseInt(process.env.NEWBIE_PROTECTION_HOURS || 24) * 3600000);
     const { rows: [province] } = await client.query(
-      `INSERT INTO provinces (user_id, age_id, name, race, protection_ends_at)
-       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [user.id, ageId, province_name, race, protectionEndsAt]
+      `INSERT INTO provinces (user_id, age_id, name, race, protection_ends_at, joined_on_day, late_join_bonus_applied, late_join_bonus_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+      [user.id, ageId, province_name, race, protectionEndsAt, joinedOnDay, applyBonus, applyBonus ? new Date() : null]
     );
+
+    // Apply late-join resource bonus (gold, food, mana, industry_points, population, gems)
+    let lateJoinBonus = null;
+    if (applyBonus) {
+      lateJoinBonus = {
+        gold: daysLate * 8000,
+        food: daysLate * 2500,
+        mana: daysLate * 1500,
+        industry_points: daysLate * 3000,
+        population: daysLate * 150,
+        gems: daysLate * 3,
+      };
+      await client.query(
+        `UPDATE provinces SET
+           gold = gold + $1, food = food + $2, mana = mana + $3,
+           industry_points = industry_points + $4, population = population + $5,
+           gems = gems + $6,
+           updated_at = NOW()
+         WHERE id = $7`,
+        [lateJoinBonus.gold, lateJoinBonus.food, lateJoinBonus.mana,
+         lateJoinBonus.industry_points, lateJoinBonus.population, lateJoinBonus.gems, province.id]
+      );
+    }
 
     // Init buildings (universal + race-specific)
     const buildingTypes = [...UNIVERSAL_BUILDINGS, RACE_BUILDINGS[race]];
@@ -98,7 +132,10 @@ router.post('/register', async (req, res) => {
       expiresIn: process.env.JWT_EXPIRES_IN || '7d',
     });
 
-    res.status(201).json({ token, user: { id: user.id, username, email }, province_id: province.id });
+    res.status(201).json({
+      token, user: { id: user.id, username, email }, province_id: province.id,
+      late_join: applyBonus ? { joined_on_day: joinedOnDay, days_late: daysLate, bonus: lateJoinBonus } : null,
+    });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Register error:', err);

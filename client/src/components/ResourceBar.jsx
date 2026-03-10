@@ -71,6 +71,10 @@ export default function ResourceBar({ province }) {
           <span style={cell}><span style={lbl}>Land</span><span style={val}>{formatNumber(province.land)} ac</span></span>
         </Tooltip>
 
+        <Tooltip content="Gems — earned through combat, research, and milestones. Spent on enhancements." width={220}>
+          <span style={cell}><span style={lbl}>Gems</span><span style={{...val, color:'#a78bfa'}}>{formatNumber(province.gems || 0)}💎</span></span>
+        </Tooltip>
+
         {/* AP — inline with other resources */}
         <Tooltip content={RESOURCE_TOOLTIPS.ap} width={240}>
           <span style={{...cell, borderRight:'none', display:'flex', alignItems:'center', gap:'6px', cursor:'help'}}>

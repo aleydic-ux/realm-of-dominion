@@ -21,6 +21,7 @@ const spellRoutes = require('./routes/spells');
 const craftingRoutes = require('./routes/crafting');
 const { collectCompletedCrafts } = require('./routes/crafting');
 const botAdminRoutes = require('./routes/bots');
+const gemRoutes = require('./routes/gems');
 const initSocket = require('./socket/chat');
 
 const app = express();
@@ -78,6 +79,7 @@ app.use('/api/feed', feedRoutes);
 app.use('/api/spells', spellRoutes);
 app.use('/api/crafting', craftingRoutes);
 app.use('/api/bots', botAdminRoutes);
+app.use('/api/gems', gemRoutes);
 
 // Diagnostic endpoint (temporary) — shows DB state for debugging
 app.get('/api/debug/state', async (req, res) => {

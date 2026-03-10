@@ -13,6 +13,7 @@ const navLinks = [
   { path: '/reports', label: 'Reports' },
   { path: '/spells', label: 'Spells' },
   { path: '/crafting', label: 'Alchemy' },
+  { path: '/gems', label: 'Gems' },
   { path: '/leaderboard', label: 'Ranks' },
   { path: '/world', label: 'World' },
 ];

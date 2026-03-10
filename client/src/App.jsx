@@ -20,6 +20,7 @@ const Leaderboard = lazy(() => import('./pages/Leaderboard'));
 const WorldFeed = lazy(() => import('./pages/WorldFeed'));
 const Spells = lazy(() => import('./pages/Spells'));
 const Crafting = lazy(() => import('./pages/Crafting'));
+const Gems = lazy(() => import('./pages/Gems'));
 
 function ProtectedLayout({ onLogout }) {
   const { province, buildings, troops, research, alliance, loading, error, slowLoad, refresh } = useProvince();
@@ -98,6 +99,7 @@ function ProtectedLayout({ onLogout }) {
             <Route path="/leaderboard" element={<Leaderboard province={province} />} />
             <Route path="/spells" element={<Spells province={province} buildings={buildings} />} />
             <Route path="/crafting" element={<Crafting province={province} buildings={buildings} refresh={refresh} />} />
+            <Route path="/gems" element={<Gems province={province} />} />
             <Route path="/world" element={<WorldFeed province={province} />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

@@ -106,6 +106,11 @@ router.post('/list', async (req, res) => {
     return res.status(403).json({ error: 'Undead provinces cannot post marketplace listings (lore restriction)' });
   }
 
+  // Block marketplace selling during protection
+  if (province.protection_ends_at && new Date(province.protection_ends_at) > new Date()) {
+    return res.status(403).json({ error: 'Cannot sell on the marketplace while under new player protection' });
+  }
+
   const { resource_type, item_key, quantity, price_per_unit, duration_hours = 24 } = req.body;
 
   const isItemListing = !!item_key;
