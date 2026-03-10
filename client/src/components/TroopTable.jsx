@@ -83,8 +83,8 @@ export default function TroopTable({ troops, showDeploy = false, onDeploy, gold 
       </tbody>
       {showDeploy && (
         <tfoot>
-          <tr className="border-t-2 border-realm-border font-bold text-sm">
-            <td colSpan={2} className="text-realm-text-dim pt-2">Totals</td>
+          <tr style={{ background: 'rgba(200,160,72,0.08)', borderTop: '1px solid rgba(200,160,72,0.3)' }} className="font-bold text-sm">
+            <td colSpan={2} className="text-realm-gold pt-2">Totals</td>
             <td className="text-red-400 pt-2">{formatNumber(totalAtk)}</td>
             <td className="text-blue-400 pt-2">{formatNumber(totalDef)}</td>
             <td colSpan={2}></td>

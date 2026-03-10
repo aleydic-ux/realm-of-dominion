@@ -64,15 +64,22 @@ export default function Leaderboard({ province }) {
             <thead><tr><th>#</th><th>Province</th><th>Player</th><th>Networth</th><th>Alliance</th></tr></thead>
             <tbody>
               {data.overall.map((p, i) => (
-                <tr key={p.id} className={p.id === province?.id ? 'border-l-2 border-realm-gold bg-realm-gold/5' : ''}>
-                  <td className="text-realm-gold font-bold">{i + 1}</td>
+                <tr key={p.id} style={p.id === province?.id ? { background: 'rgba(200,160,72,0.08)', outline: '1px solid rgba(200,160,72,0.2)' } : undefined}>
+                  <td className="text-realm-gold font-bold">{i === 0 ? '🏆 1' : i + 1}</td>
                   <td className="text-realm-text">
-                    {p.name}{p.id === province?.id && <span className="text-realm-text-dim text-xs ml-1">(you)</span>}
+                    {p.name}
+                    {p.id === province?.id && (
+                      <span style={{ marginLeft: '6px', fontSize: '10px', color: 'rgb(200,160,72)', background: 'rgba(200,160,72,0.15)', border: '1px solid rgba(200,160,72,0.4)', padding: '1px 5px', borderRadius: '3px' }}>you</span>
+                    )}
                     {p.protection_ends_at && new Date(p.protection_ends_at) > new Date() && (
                       <span className="ml-2 inline-block"><ProtectionBadge protection_ends_at={p.protection_ends_at} /></span>
                     )}
                   </td>
-                  <td className="text-realm-text-muted">{p.is_bot ? <span className="text-realm-text-dim">[BOT]</span> : p.username}</td>
+                  <td>{p.is_bot ? (
+                    <span style={{ fontSize: '10px', padding: '1px 5px', background: 'rgba(72,88,104,0.3)', border: '1px solid rgba(72,88,104,0.5)', color: 'rgb(72,88,104)', borderRadius: '3px', letterSpacing: '0.05em' }}>BOT</span>
+                  ) : (
+                    <span className="text-realm-text-muted">{p.username}</span>
+                  )}</td>
                   <td className="text-realm-gold font-bold">{formatNumber(p.networth)}</td>
                   <td className="text-realm-text-dim text-xs">{p.alliance_name || '—'}</td>
                 </tr>
@@ -89,9 +96,11 @@ export default function Leaderboard({ province }) {
             <tbody>
               {data.military.map((p, i) => (
                 <tr key={p.id}>
-                  <td className="text-red-400 font-bold">{i + 1}</td>
+                  <td className="text-red-400 font-bold">{i === 0 ? '🏆 1' : i + 1}</td>
                   <td className="text-realm-text">{p.name}</td>
-                  <td className="text-realm-text-muted">{p.is_bot ? <span className="text-realm-text-dim">[BOT]</span> : p.username}</td>
+                  <td>{p.is_bot ? (
+                    <span style={{ fontSize: '10px', padding: '1px 5px', background: 'rgba(72,88,104,0.3)', border: '1px solid rgba(72,88,104,0.5)', color: 'rgb(72,88,104)', borderRadius: '3px', letterSpacing: '0.05em' }}>BOT</span>
+                  ) : <span className="text-realm-text-muted">{p.username}</span>}</td>
                   <td className="text-green-400">{p.successful_attacks || 0}</td>
                   <td className="text-amber-400">{formatNumber(p.total_land_gained || 0)} acres</td>
                 </tr>
@@ -108,9 +117,11 @@ export default function Leaderboard({ province }) {
             <tbody>
               {data.economic.map((p, i) => (
                 <tr key={p.id}>
-                  <td className="text-yellow-400 font-bold">{i + 1}</td>
+                  <td className="text-yellow-400 font-bold">{i === 0 ? '🏆 1' : i + 1}</td>
                   <td className="text-realm-text">{p.name}</td>
-                  <td className="text-realm-text-muted">{p.is_bot ? <span className="text-realm-text-dim">[BOT]</span> : p.username}</td>
+                  <td>{p.is_bot ? (
+                    <span style={{ fontSize: '10px', padding: '1px 5px', background: 'rgba(72,88,104,0.3)', border: '1px solid rgba(72,88,104,0.5)', color: 'rgb(72,88,104)', borderRadius: '3px', letterSpacing: '0.05em' }}>BOT</span>
+                  ) : <span className="text-realm-text-muted">{p.username}</span>}</td>
                   <td className="text-realm-gold">{formatNumber(p.marketplace_volume)}g</td>
                   <td className="text-yellow-400">{formatNumber(p.gold)}g</td>
                 </tr>

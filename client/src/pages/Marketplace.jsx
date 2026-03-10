@@ -111,7 +111,7 @@ export default function Marketplace({ province, refresh }) {
               <div key={s.type} className="text-sm">
                 <span className="text-realm-text-muted">{RESOURCE_ICONS[s.type] || '⚗'} {ITEM_NAMES[s.type] || s.type}: </span>
                 <span className="text-realm-gold">{s.avg_price}g avg</span>
-                <span className="text-realm-text-dim ml-1">({s.transaction_count} sales)</span>
+                <span className="text-realm-text-dim ml-1">({s.transaction_count} sale{s.transaction_count !== 1 ? 's' : ''})</span>
               </div>
             ))}
           </div>

@@ -54,7 +54,7 @@ const BUILDING_LABELS = {
 };
 
 const BUILDING_EFFECTS = {
-  farm: '+5% food per level',
+  farm: '+10% food per level',
   barracks: '+10% train speed, +5% troop cap per level',
   treasury: '+8% gold cap, +4% income per level',
   marketplace_stall: '+1 trade slot, +5% trade value per level',
@@ -80,10 +80,20 @@ export default function BuildingCard({ building, onBuild, gold, industry_points,
   const nextCost = !isMax && !isUpgrading ? calcUpgradeCost(building.level, race, building.building_type) : null;
 
   return (
-    <div className="realm-panel flex flex-col gap-2">
+    <div className="realm-panel flex flex-col gap-2" style={{ position: 'relative' }}>
+      {isMax && (
+        <span style={{
+          position: 'absolute', top: '8px', right: '8px',
+          fontSize: '10px', padding: '1px 6px',
+          background: 'rgba(200,160,72,0.15)',
+          border: '1px solid rgba(200,160,72,0.5)',
+          color: 'rgb(200,160,72)',
+          borderRadius: '3px', fontWeight: 'bold'
+        }}>MAX</span>
+      )}
       <div className="flex items-center justify-between">
         <h3 className="text-realm-gold font-display">{label}</h3>
-        <div className="flex gap-1.5 items-center">
+        <div className="flex gap-1.5 items-center" style={{ marginRight: isMax ? '40px' : 0 }}>
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
@@ -112,7 +122,7 @@ export default function BuildingCard({ building, onBuild, gold, industry_points,
             <span>
               <span className={gold >= nextCost.gold ? 'text-yellow-400' : 'text-red-400'}>{formatNumber(nextCost.gold)}g</span>
               {' + '}
-              <span className={industry_points >= nextCost.pp ? 'text-gray-300' : 'text-red-400'}>{formatNumber(nextCost.pp)}ip</span>
+              <span className={industry_points >= nextCost.pp ? 'text-gray-300' : 'text-red-400'}><abbr title="Industry Points">{formatNumber(nextCost.pp)} IP</abbr></span>
             </span>
           </div>
           <div className="flex justify-between text-realm-text-dim">
@@ -132,9 +142,7 @@ export default function BuildingCard({ building, onBuild, gold, industry_points,
         </button>
       )}
 
-      {isMax && (
-        <span className="text-realm-gold text-xs text-center">MAX</span>
-      )}
+      {/* MAX badge is in corner */}
     </div>
   );
 }

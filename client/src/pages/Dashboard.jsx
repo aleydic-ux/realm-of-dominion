@@ -24,6 +24,32 @@ function useAPCountdown(apLastRegen, actionPoints) {
   return countdown;
 }
 
+const STATUS_COLORS = {
+  healthy: 'rgb(74, 222, 128)',
+  warning: 'rgb(251, 191, 36)',
+  critical: 'rgb(248, 113, 113)',
+  neutral: 'rgb(36, 54, 80)',
+};
+
+function getCardStatus(label, province, rates) {
+  if (label === 'Food') {
+    if (province.food < 1000) return 'critical';
+    if (rates && rates.food_per_hour < 0) return 'warning';
+    return 'healthy';
+  }
+  if (label === 'Morale') {
+    if (province.morale < 50) return 'critical';
+    if (province.morale < 75) return 'warning';
+    return 'healthy';
+  }
+  if (label === 'Gold') {
+    if (province.gold < 20) return 'critical';
+    if (province.gold < 100) return 'warning';
+    return 'neutral';
+  }
+  return 'neutral';
+}
+
 export default function Dashboard({ province, loading, refresh }) {
   const [exploreLoading, setExploreLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -40,6 +66,19 @@ export default function Dashboard({ province, loading, refresh }) {
   if (loading) return <div className="text-realm-text-muted">Loading province...</div>;
   if (!province) return <div className="text-red-400">No province found for the active Age.</div>;
 
+  const ap = province.action_points;
+  const maxAp = 20;
+  const apPct = (ap / maxAp) * 100;
+
+  // Age progress calculation
+  let agePct = null;
+  if (province.age_ends_at && province.age_started_at) {
+    const start = new Date(province.age_started_at).getTime();
+    const end = new Date(province.age_ends_at).getTime();
+    const now = Date.now();
+    if (end > start) agePct = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+  }
+
   async function handleExplore() {
     setExploreLoading(true);
     setMessage('');
@@ -53,6 +92,26 @@ export default function Dashboard({ province, loading, refresh }) {
       setExploreLoading(false);
     }
   }
+
+  const statCards = [
+    { label: 'Land', icon: '🗺️', value: `${formatNumber(province.land)} acres`, color: 'text-amber-400' },
+    { label: 'Gold', icon: '💰', value: formatNumber(province.gold), color: 'text-yellow-400',
+      sub: rates && `+${formatNumber(rates.gold_per_hour)}/hr`,
+      tip: rates && `+${formatNumber(rates.gold_per_hour)}/hr` },
+    { label: 'Food', icon: '🌾', value: formatNumber(province.food), color: province.food < 0 ? 'text-red-400' : 'text-green-400',
+      sub: rates && `Net: ${rates.food_per_hour >= 0 ? '+' : ''}${formatNumber(rates.food_per_hour)}/hr`,
+      tip: rates && `+${formatNumber(rates.food_production)}/hr production\n-${formatNumber(rates.food_upkeep)}/hr upkeep\nNet: ${rates.food_per_hour >= 0 ? '+' : ''}${formatNumber(rates.food_per_hour)}/hr` },
+    { label: 'Mana', icon: '🔮', value: formatNumber(province.mana), color: 'text-blue-400',
+      sub: rates && `+${formatNumber(rates.mana_per_hour)}/hr`,
+      tip: rates && `+${formatNumber(rates.mana_per_hour)}/hr` },
+    { label: 'Industry', icon: '⚙️', value: formatNumber(province.industry_points), color: 'text-gray-300',
+      sub: rates && `+${formatNumber(rates.industry_per_hour)}/hr`,
+      tip: rates && `+${formatNumber(rates.industry_per_hour)}/hr` },
+    { label: 'Population', icon: '👥', value: formatNumber(province.population), color: 'text-realm-text' },
+    { label: 'Morale', icon: '❤️', value: `${province.morale}%`, color: province.morale >= 80 ? 'text-green-400' : 'text-red-400',
+      sub: `+${province.morale}% ATK/DEF bonus` },
+    { label: 'Networth', icon: '📈', value: formatNumber(province.networth), color: 'text-realm-gold' },
+  ];
 
   return (
     <div className="space-y-4">
@@ -69,8 +128,8 @@ export default function Dashboard({ province, loading, refresh }) {
           alt="Castle Banner"
           style={{width:'100%', display:'block', maxHeight:'220px', objectFit:'cover', objectPosition:'center'}}
         />
-        {/* Overlay text */}
-        <div style={{position:'absolute', inset:0, background:'linear-gradient(to right, rgba(6,14,28,0.75) 0%, rgba(6,14,28,0.1) 50%, rgba(6,14,28,0.6) 100%)', display:'flex', alignItems:'flex-end', justifyContent:'space-between', padding:'12px 20px'}}>
+        {/* Overlay with improved gradient scrim */}
+        <div style={{position:'absolute', inset:0, background:'linear-gradient(to top, rgba(6,14,28,0.85) 0%, rgba(6,14,28,0.15) 50%), linear-gradient(to right, rgba(6,14,28,0.7) 0%, transparent 40%, rgba(6,14,28,0.7) 100%)', display:'flex', alignItems:'flex-end', justifyContent:'space-between', padding:'12px 20px'}}>
           <div>
             <div style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8a048', fontSize:'1.6rem', fontWeight:'700', textShadow:'2px 2px 4px #000, 0 0 12px rgba(200,160,72,0.5)', letterSpacing:'0.1em'}}>
               {province.name}
@@ -79,21 +138,33 @@ export default function Dashboard({ province, loading, refresh }) {
               {RACE_ICONS[province.race]} {province.race.toUpperCase()} PROVINCE
             </div>
           </div>
-          <div style={{textAlign:'right'}}>
-            <div style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8a048', fontSize:'0.7rem', letterSpacing:'0.08em'}}>NETWORTH</div>
-            <div style={{fontFamily:'Cinzel, Georgia, serif', color:'#fdf8ef', fontSize:'1.2rem', fontWeight:'700', textShadow:'1px 1px 2px #000'}}>{formatNumber(province.networth)}</div>
+          {/* Networth pill badge */}
+          <div style={{
+            background: 'rgba(10, 16, 32, 0.75)',
+            border: '1px solid rgba(200, 160, 72, 0.5)',
+            borderRadius: '4px',
+            padding: '4px 10px',
+            textAlign: 'right'
+          }}>
+            <div className="text-realm-text-dim" style={{ fontSize: '9px', letterSpacing: '0.08em' }}>NETWORTH</div>
+            <div className="text-realm-gold font-display font-bold" style={{ fontSize: '18px' }}>{formatNumber(province.networth)}</div>
           </div>
         </div>
       </div>
 
-      {/* Age banner */}
+      {/* Age banner with progress bar */}
       {province.age_name && (
-        <div className="flex items-center justify-between gap-4 px-1 py-1 text-xs border-b border-realm-border">
+        <div className="flex items-center justify-between px-1 py-1 text-xs border-b border-realm-border" style={{ flexWrap: 'wrap', gap: '8px' }}>
           <span className="text-realm-text-dim">
             ⏳ <span className="text-realm-text-muted font-medium">{province.age_name}</span>
           </span>
+          {agePct !== null && (
+            <div style={{ flex: 1, margin: '0 12px', height: '3px', background: 'rgba(36,54,80,1)', borderRadius: '2px', minWidth: '60px' }}>
+              <div style={{ width: `${agePct}%`, height: '100%', background: 'rgb(200,160,72)', borderRadius: '2px' }} />
+            </div>
+          )}
           {province.age_ends_at && (
-            <span className="text-realm-gold" title={formatDateTime(province.age_ends_at)}>
+            <span className="text-realm-gold" title={formatDateTime(province.age_ends_at)} style={{ fontSize: '11px' }}>
               Ends {formatRelativeDate(province.age_ends_at)}
             </span>
           )}
@@ -121,73 +192,114 @@ export default function Dashboard({ province, loading, refresh }) {
         </div>
       )}
 
-      {/* Stats Grid */}
+      {/* Stats Grid with sub-labels and status borders */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {[
-          { label: 'Land', icon: '🗺️', value: `${formatNumber(province.land)} acres`, color: 'text-amber-400' },
-          { label: 'Gold', icon: '💰', value: formatNumber(province.gold), color: 'text-yellow-400',
-            tip: rates && `+${formatNumber(rates.gold_per_hour)}/hr` },
-          { label: 'Food', icon: '🌾', value: formatNumber(province.food), color: province.food < 0 ? 'text-red-400' : 'text-green-400',
-            tip: rates && `+${formatNumber(rates.food_production)}/hr production\n-${formatNumber(rates.food_upkeep)}/hr upkeep\nNet: ${rates.food_per_hour >= 0 ? '+' : ''}${formatNumber(rates.food_per_hour)}/hr` },
-          { label: 'Mana', icon: '🔮', value: formatNumber(province.mana), color: 'text-blue-400',
-            tip: rates && `+${formatNumber(rates.mana_per_hour)}/hr` },
-          { label: 'Industry', icon: '⚙️', value: formatNumber(province.industry_points), color: 'text-gray-300',
-            tip: rates && `+${formatNumber(rates.industry_per_hour)}/hr` },
-          { label: 'Population', icon: '👥', value: formatNumber(province.population), color: 'text-pink-400' },
-          { label: 'Morale', icon: '❤️', value: `${province.morale}%`, color: province.morale >= 80 ? 'text-green-400' : 'text-red-400' },
-          { label: 'Networth', icon: '📈', value: formatNumber(province.networth), color: 'text-realm-gold' },
-        ].map(({ label, icon, value, color, tip }) => (
-          <Tooltip key={label} content={tip && (
-            <span style={{whiteSpace:'pre-line'}}>{tip}</span>
-          )} width={200}>
-            <div className="realm-panel" style={{cursor: tip ? 'help' : 'default'}}>
-              <div className="text-realm-text-dim text-xs mb-1">{icon} {label}</div>
-              <div className={`text-lg font-bold ${color}`}>{value}</div>
-            </div>
-          </Tooltip>
-        ))}
+        {statCards.map(({ label, icon, value, color, sub, tip }) => {
+          const status = getCardStatus(label, province, rates);
+          return (
+            <Tooltip key={label} content={tip && (
+              <span style={{whiteSpace:'pre-line'}}>{tip}</span>
+            )} width={200}>
+              <div className="realm-panel" style={{cursor: tip ? 'help' : 'default', borderLeft: `3px solid ${STATUS_COLORS[status]}`}}>
+                <div className="text-realm-text-dim text-xs mb-1">{icon} {label}</div>
+                <div className={`text-lg font-bold ${color}`}>{value}</div>
+                {sub && (
+                  <div className="text-realm-text-dim" style={{ fontSize: '10px', marginTop: '3px' }}>{sub}</div>
+                )}
+              </div>
+            </Tooltip>
+          );
+        })}
       </div>
 
-      {/* Action Points */}
+      {/* Resource Rate Row */}
+      {rates && (
+        <div style={{
+          display: 'flex', gap: '16px', flexWrap: 'wrap',
+          padding: '8px 12px',
+          background: 'rgba(17,24,40,0.8)',
+          border: '1px solid rgb(36,54,80)',
+          borderRadius: '4px',
+          fontSize: '11px'
+        }}>
+          <span className="text-realm-text-dim">Income/hr:</span>
+          <span><span className="text-yellow-400">+{formatNumber(rates.gold_per_hour)}g</span> <span className="text-realm-text-dim">gold</span></span>
+          <span style={{ color: rates.food_per_hour >= 0 ? 'rgb(74,222,128)' : 'rgb(248,113,113)' }}>
+            {rates.food_per_hour >= 0 ? '+' : ''}{formatNumber(rates.food_per_hour)} <span className="text-realm-text-dim">food</span>
+          </span>
+          <span><span className="text-blue-400">+{formatNumber(rates.mana_per_hour)}</span> <span className="text-realm-text-dim">mana</span></span>
+          <span><span className="text-gray-300">+{formatNumber(rates.industry_per_hour)}</span> <span className="text-realm-text-dim">industry</span></span>
+        </div>
+      )}
+
+      {/* Action Points — improved */}
       <div className="realm-panel">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-realm-gold font-display">Action Points</h2>
-          <span className="text-realm-gold font-bold">{province.action_points} / 20</span>
+          <span className="text-realm-gold font-bold">{ap} / {maxAp}</span>
         </div>
         <div
           role="progressbar"
           aria-label="Action Points"
-          aria-valuenow={province.action_points}
+          aria-valuenow={ap}
           aria-valuemin={0}
-          aria-valuemax={20}
+          aria-valuemax={maxAp}
           className="w-full h-4 bg-realm-surface rounded-full border border-realm-border overflow-hidden"
+          style={{ position: 'relative' }}
         >
           <div
-            className="h-full rounded-full transition-all"
+            className="h-full transition-all"
             style={{
-              width: `${(province.action_points / 20) * 100}%`,
-              background: province.action_points > 10 ? '#c9a227' : province.action_points > 4 ? '#e87c00' : '#8b1a1a',
+              width: `${apPct}%`,
+              background: 'linear-gradient(to right, rgb(200,100,0), rgb(240,150,20))',
+              borderRadius: '9999px',
             }}
           />
+          {[5, 10, 15].map(tick => (
+            <div key={tick} style={{
+              position: 'absolute', top: 0, bottom: 0,
+              left: `${(tick / maxAp) * 100}%`,
+              width: '1px',
+              background: 'rgba(255,255,255,0.15)',
+              pointerEvents: 'none',
+            }} />
+          ))}
         </div>
-        <p className="text-realm-text-dim text-xs mt-1">
-          Regenerates 1 AP every 30 minutes (max 20)
-          {apCountdown && <span className="ml-2 text-realm-gold">· Next in ~{apCountdown}</span>}
-        </p>
+        <div className="flex items-center justify-between mt-1">
+          <span className="text-realm-text-dim" style={{ fontSize: '10px' }}>
+            Regenerates 1 AP / 30 min (max {maxAp})
+          </span>
+          {apCountdown && (
+            <span className="text-realm-gold font-bold" style={{ fontSize: '11px' }}>
+              Next in {apCountdown}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Explore */}
-      <div className="realm-panel">
-        <h2 className="text-realm-gold font-display mb-3">Explore Territory</h2>
-        <p className="text-realm-text-muted text-sm mb-3">
-          Send scouts to claim unclaimed land. Costs 1 AP. Gains 5–25 acres.
+      {/* Explore Territory — ActionCard pattern */}
+      <div className="realm-panel" style={{ borderLeft: '3px solid rgba(200,160,72,0.5)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <h2 className="text-realm-gold font-display" style={{ fontSize: '14px', margin: 0 }}>
+            🗺️ Explore Territory
+          </h2>
+          <span className="realm-badge" style={{
+            background: 'rgba(200,160,72,0.15)',
+            color: 'rgb(200,160,72)',
+            border: '1px solid rgba(200,160,72,0.4)',
+            fontSize: '10px', padding: '1px 6px'
+          }}>1 AP</span>
+        </div>
+        <p className="text-realm-text-muted text-sm" style={{ marginBottom: '10px' }}>
+          Send scouts to claim unclaimed land. Gains 5-25 acres.
         </p>
         <button
           onClick={handleExplore}
-          disabled={exploreLoading || province.action_points < 1}
+          disabled={exploreLoading || ap < 1}
           className="realm-btn-gold"
+          style={{ width: '100%' }}
         >
-          {exploreLoading ? 'Exploring...' : '🗺️ Explore (1 AP)'}
+          {exploreLoading ? 'Exploring...' : 'Explore'}
         </button>
       </div>
 

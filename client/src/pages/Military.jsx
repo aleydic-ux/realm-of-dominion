@@ -52,7 +52,7 @@ export default function Military({ province, troops = [], refresh }) {
           { label: 'Defense Power', value: formatNumber(totalDef), color: 'text-blue-400' },
           { label: 'Food/hr', value: formatNumber(totalFoodPerHour), color: 'text-green-400' },
         ].map(({ label, value, color }) => (
-          <div key={label} className="realm-panel text-center">
+          <div key={label} className="realm-panel">
             <div className="text-realm-text-dim text-xs mb-1">{label}</div>
             <div className={`text-lg font-bold ${color}`}>{value}</div>
           </div>
