@@ -185,21 +185,41 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
   let landGained = 0;
   let resourcesStolen = {};
 
+  // Army strength multiplier: scales rewards by troop count and average tier
+  // More troops + higher tier = bigger rewards (1.0x to 2.5x)
+  let totalTroopCount = 0;
+  let weightedTierSum = 0;
+  for (const [troopTypeIdStr, count] of Object.entries(troopsDeployed)) {
+    const troopType = attackerTroopTypes.find(t => t.id === parseInt(troopTypeIdStr));
+    if (!troopType || count <= 0) continue;
+    totalTroopCount += count;
+    weightedTierSum += troopType.tier * count;
+  }
+  const avgTier = totalTroopCount > 0 ? weightedTierSum / totalTroopCount : 1;
+  // Tier scaling: T1=1.0x, T2=1.15x, T3=1.35x, T4=1.6x, T5=2.0x
+  const tierMultiplier = 1 + (avgTier - 1) * 0.25;
+  // Troop count scaling: more troops = more loot, soft caps at 2x around 500+ troops
+  const countMultiplier = 1 + Math.min(1, Math.log10(Math.max(1, totalTroopCount)) / 2.7);
+  // Combined army strength multiplier (1.0x to ~2.5x)
+  const armyStrengthMult = Math.min(2.5, tierMultiplier * countMultiplier);
+
   if (outcome === 'win') {
     if (attackType === 'conquest') {
-      // Land gained: 10-30% of attacker's army power ratio
+      // Land gained: 10-30% of attacker's army power ratio, scaled by army strength
       const ratio = attackerPower / Math.max(1, defenderPower);
-      const landPct = Math.min(0.30, Math.max(0.10, ratio * 0.10));
+      const baseLandPct = Math.min(0.30, Math.max(0.10, ratio * 0.10));
+      const landPct = Math.min(0.50, baseLandPct * armyStrengthMult);
       landGained = Math.floor(defender.land * landPct);
     }
 
     if (attackType === 'raid') {
-      // Steal resources: 5-15% of defender's resources
-      const stealPct = 0.05 + Math.random() * 0.10;
+      // Steal resources: 5-15% base, scaled by army strength
+      const baseStealPct = 0.05 + Math.random() * 0.10;
+      const scaledStealPct = baseStealPct * armyStrengthMult;
       // Human Knight bonus
       const knightCount = troopsDeployed[getIdByName(attackerTroopTypes, 'Knight')] || 0;
       const knightBonus = knightCount > 0 ? 0.10 : 0;
-      const finalStealPct = stealPct + knightBonus;
+      const finalStealPct = scaledStealPct + knightBonus;
       // Apply Pillage Mastery tech
       const effectiveStealPct = applyTechModifiers(finalStealPct, 'raid_resources', attackerTechs);
 
@@ -216,8 +236,8 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
     }
 
     if (attackType === 'massacre') {
-      // Reduce population
-      specialEffects.push({ type: 'massacre', value: Math.floor(defender.population * 0.10) });
+      // Reduce population, scaled by army strength
+      specialEffects.push({ type: 'massacre', value: Math.floor(defender.population * 0.10 * armyStrengthMult) });
     }
   }
 
