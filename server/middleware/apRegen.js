@@ -32,19 +32,22 @@ async function apRegen(req, res, next) {
 
     // No province found — try recovery
     if (!rows.length) {
+      console.log(`[apRegen] No province for user ${req.user.id} — starting recovery`);
+
       try {
         const io = req.app.get('io');
         await checkAndEndSeason(io);
       } catch (e) {
-        console.error('apRegen season check:', e.message);
+        console.error('[apRegen] season check failed:', e.message);
       }
 
       // Ensure an active age exists
-      const { rows: [activeAge] } = await pool.query(
+      let { rows: [activeAge] } = await pool.query(
         'SELECT id FROM ages WHERE is_active = true LIMIT 1'
       );
       if (!activeAge) {
-        // Reactivate the age that provinces belong to
+        console.log('[apRegen] No active age — attempting reactivation');
+        // Reactivate the most-used age
         await pool.query(`
           UPDATE ages SET is_active = true, ends_at = NOW() + INTERVAL '7 days'
           WHERE id = (
@@ -52,41 +55,41 @@ async function apRegen(req, res, next) {
             GROUP BY age_id ORDER BY COUNT(*) DESC LIMIT 1
           )
         `);
-        // If still no age, create a fresh one
-        const { rows: [check] } = await pool.query(
+        ({ rows: [activeAge] } = await pool.query(
           'SELECT id FROM ages WHERE is_active = true LIMIT 1'
-        );
-        if (!check) {
-          await pool.query(
+        ));
+        // If still no age, create a fresh one
+        if (!activeAge) {
+          console.log('[apRegen] Creating fresh age');
+          const { rows: [newAge] } = await pool.query(
             `INSERT INTO ages (name, starts_at, ends_at, is_active)
-             VALUES ('Age of Iron', NOW(), NOW() + INTERVAL '7 days', true)`
+             VALUES ('Age of Iron', NOW(), NOW() + INTERVAL '7 days', true) RETURNING id`
           );
+          activeAge = newAge;
         }
       }
 
-      // Re-query for province after recovery
-      ({ rows } = await pool.query(PROVINCE_QUERY, [req.user.id]));
+      if (activeAge) {
+        // Re-query for province after age recovery
+        ({ rows } = await pool.query(PROVINCE_QUERY, [req.user.id]));
 
-      // Still no province in active age — reassign orphaned province
-      if (!rows.length) {
-        const { rows: [currentAge] } = await pool.query(
-          'SELECT id FROM ages WHERE is_active = true LIMIT 1'
-        );
-        if (currentAge) {
-          // Find user's most recent province in any age
+        // Still no province in active age — reassign orphaned province
+        if (!rows.length) {
+          console.log(`[apRegen] Attempting orphan recovery for user ${req.user.id}, age ${activeAge.id}`);
           const { rows: [orphan] } = await pool.query(
             'SELECT id, name, race FROM provinces WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
             [req.user.id]
           );
           if (orphan) {
+            console.log(`[apRegen] Reassigning province ${orphan.id} to age ${activeAge.id}`);
             await pool.query(
               'UPDATE provinces SET age_id = $1, updated_at = NOW() WHERE id = $2',
-              [currentAge.id, orphan.id]
+              [activeAge.id, orphan.id]
             );
             ({ rows } = await pool.query(PROVINCE_QUERY, [req.user.id]));
           } else {
             // No province at all — create a fresh one for the user
-            console.warn(`[apRegen] User ${req.user.id} has no province anywhere — auto-creating.`);
+            console.warn(`[apRegen] User ${req.user.id} has no province anywhere — auto-creating`);
             const { rows: [user] } = await pool.query(
               'SELECT username FROM users WHERE id = $1', [req.user.id]
             );
@@ -96,7 +99,7 @@ async function apRegen(req, res, next) {
             const { rows: [newProvince] } = await pool.query(
               `INSERT INTO provinces (user_id, age_id, name, race, protection_ends_at)
                VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-              [req.user.id, currentAge.id, provinceName, race, protectionEndsAt]
+              [req.user.id, activeAge.id, provinceName, race, protectionEndsAt]
             );
             const buildingTypes = [...UNIVERSAL_BUILDINGS, RACE_BUILDINGS[race]];
             for (const bt of buildingTypes) {
@@ -117,6 +120,12 @@ async function apRegen(req, res, next) {
             ({ rows } = await pool.query(PROVINCE_QUERY, [req.user.id]));
           }
         }
+      }
+
+      if (rows.length) {
+        console.log(`[apRegen] Recovery successful for user ${req.user.id}`);
+      } else {
+        console.error(`[apRegen] Recovery FAILED for user ${req.user.id} — no province after all attempts`);
       }
     }
 

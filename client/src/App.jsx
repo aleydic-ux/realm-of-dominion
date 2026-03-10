@@ -81,8 +81,9 @@ function ProtectedLayout({ onLogout }) {
         )}
         {error && !province && (
           <div style={{textAlign:'center', padding:'40px 16px', color:'#8090a8'}}>
-            <p style={{fontSize:'0.85rem', marginBottom:'12px'}}>Could not reach the server.</p>
-            <button onClick={refresh} style={{fontFamily:'Verdana, Arial, sans-serif', fontSize:'0.75rem', color:'#c8a048', border:'1px solid #c8a048', padding:'6px 18px', background:'transparent', cursor:'pointer'}}>Retry</button>
+            <p style={{fontSize:'0.85rem', marginBottom:'12px'}}>{error}</p>
+            <button onClick={refresh} style={{fontFamily:'Verdana, Arial, sans-serif', fontSize:'0.75rem', color:'#c8a048', border:'1px solid #c8a048', padding:'6px 18px', background:'transparent', cursor:'pointer', marginRight:'8px'}}>Retry</button>
+            <button onClick={onLogout} style={{fontFamily:'Verdana, Arial, sans-serif', fontSize:'0.75rem', color:'#8090a8', border:'1px solid #243650', padding:'6px 18px', background:'transparent', cursor:'pointer'}}>Logout & Re-login</button>
           </div>
         )}
         <Suspense fallback={<div className="text-realm-text-muted">Loading...</div>}>

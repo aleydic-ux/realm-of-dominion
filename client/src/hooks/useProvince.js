@@ -26,9 +26,18 @@ export function useProvince() {
       setSlowLoad(false);
       initialLoadDone.current = true;
     } catch (err) {
-      // Only surface errors after initial load succeeds once
+      const status = err.response?.status;
+      const msg = err.response?.data?.error || 'Failed to load province';
+      // 404 = server is running but no province found — show immediately, no point retrying
+      if (status === 404) {
+        setError(msg);
+        setLoading(false);
+        initialLoadDone.current = true;
+        return;
+      }
+      // Other errors: only surface after initial load succeeded once
       if (initialLoadDone.current) {
-        setError(err.response?.data?.error || 'Failed to load province');
+        setError(msg);
       }
       // During initial load, let the timers handle messaging — just keep retrying
     } finally {
