@@ -50,13 +50,13 @@ router.post('/', async (req, res) => {
       return res.status(403).json({ error: 'This province is under a new player shield', protection_ends_at: defender.protection_ends_at });
     }
 
-    // Attack ratio check — defender must be within 50%–200% of attacker's land
-    const minLand = Math.floor(attacker.land * 0.5);
-    const maxLand = Math.floor(attacker.land * 2.0);
+    // Attack ratio check — defender must be within 30%–350% of attacker's land
+    const minLand = Math.floor(attacker.land * 0.3);
+    const maxLand = Math.floor(attacker.land * 3.5);
     if (defender.land < minLand || defender.land > maxLand) {
       await client.query('ROLLBACK');
       return res.status(403).json({
-        error: `Target is out of your attack range. You can only attack provinces with ${minLand}–${maxLand} acres (50%–200% of your ${attacker.land} acres).`,
+        error: `Target is out of your attack range. You can only attack provinces with ${minLand}–${maxLand} acres (30%–350% of your ${attacker.land} acres).`,
       });
     }
 
