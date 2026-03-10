@@ -350,6 +350,75 @@ router.post('/', async (req, res) => {
 
     await client.query('COMMIT');
 
+    // ── Notifications ──
+    try {
+      const io = req.app.get('io');
+
+      const lostTroopCount = Object.values(result.defenderLosses).reduce((s, v) => s + v, 0);
+      const stolenSummary = Object.entries(result.resourcesStolen || {})
+        .filter(([, v]) => v > 0)
+        .map(([k, v]) => `${v} ${k}`)
+        .join(', ');
+
+      let defTitle, defMsg;
+      if (result.outcome === 'win') {
+        defTitle = `${attacker.name} raided you!`;
+        const parts = [];
+        if (result.landGained > 0) parts.push(`seized ${result.landGained} acres`);
+        if (stolenSummary) parts.push(`stole ${stolenSummary}`);
+        if (lostTroopCount > 0) parts.push(`you lost ${lostTroopCount} troops`);
+        defMsg = `${attacker.name} launched a ${attack_type} and was victorious. ${parts.join('. ')}.`;
+      } else if (result.outcome === 'loss') {
+        defTitle = `You repelled ${attacker.name}!`;
+        defMsg = `${attacker.name} launched a ${attack_type} against you but was defeated.${lostTroopCount > 0 ? ` You lost ${lostTroopCount} troops in the defense.` : ''}`;
+      } else {
+        defTitle = `Draw with ${attacker.name}`;
+        defMsg = `${attacker.name} launched a ${attack_type}. The battle ended in a stalemate.${lostTroopCount > 0 ? ` You lost ${lostTroopCount} troops.` : ''}`;
+      }
+
+      const defMeta = {
+        attack_id: attackRecord.id, attacker_name: attacker.name, attacker_race: attacker.race,
+        attack_type, outcome: result.outcome, land_lost: result.landGained || 0,
+        resources_stolen: result.resourcesStolen, defender_losses: result.defenderLosses,
+        attacker_power: result.attackerPower, defender_power: result.defenderPower,
+      };
+
+      // Save notification for defender
+      await pool.query(
+        `INSERT INTO notifications (province_id, type, title, message, metadata) VALUES ($1, 'raid_report', $2, $3, $4)`,
+        [parseInt(target_id), defTitle, defMsg, JSON.stringify(defMeta)]
+      );
+
+      // Save notification for attacker
+      const atkTitle = result.outcome === 'win' ? `Victory against ${defender.name}!`
+        : result.outcome === 'loss' ? `Defeat against ${defender.name}` : `Draw with ${defender.name}`;
+      const atkParts = [];
+      if (result.landGained > 0) atkParts.push(`gained ${result.landGained} acres`);
+      if (stolenSummary) atkParts.push(`stole ${stolenSummary}`);
+      const atkLost = Object.values(result.attackerLosses).reduce((s, v) => s + v, 0);
+      if (atkLost > 0) atkParts.push(`lost ${atkLost} troops`);
+
+      await pool.query(
+        `INSERT INTO notifications (province_id, type, title, message, metadata) VALUES ($1, 'raid_report', $2, $3, $4)`,
+        [attacker.id, atkTitle, `Your ${attack_type} on ${defender.name}: ${result.outcome}. ${atkParts.join('. ')}.`,
+         JSON.stringify({
+           attack_id: attackRecord.id, defender_name: defender.name, defender_race: defender.race,
+           attack_type, outcome: result.outcome, land_gained: result.landGained || 0,
+           resources_stolen: result.resourcesStolen, attacker_losses: result.attackerLosses,
+           attacker_power: result.attackerPower, defender_power: result.defenderPower,
+         })]
+      );
+
+      // Real-time socket push to defender
+      if (io) {
+        io.to(`province_${target_id}`).emit('raid_alert', {
+          title: defTitle, message: defMsg, attack_id: attackRecord.id,
+          attacker_name: attacker.name, attacker_race: attacker.race, attack_type, outcome: result.outcome,
+        });
+        io.to(`province_${target_id}`).emit('province_update', { type: 'raid' });
+      }
+    } catch (e) { console.error('Notification error:', e.message); }
+
     // Post world feed event
     try {
       let eventMsg;

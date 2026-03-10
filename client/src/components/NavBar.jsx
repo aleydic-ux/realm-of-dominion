@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
+import NotificationBell from './NotificationBell';
 
 const navLinks = [
   { path: '/dashboard', label: 'Province' },
@@ -18,7 +19,7 @@ const navLinks = [
   { path: '/world', label: 'World' },
 ];
 
-export default function NavBar({ onLogout, onOpenHelp }) {
+export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, onNotificationOpen }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Global keyboard shortcut: '?' opens help (when not in a text input)
@@ -50,6 +51,7 @@ export default function NavBar({ onLogout, onOpenHelp }) {
           >
             {mobileOpen ? '✕' : '☰'}
           </button>
+          <NotificationBell unreadCount={unreadCount} onOpen={onNotificationOpen} />
           {/* How to Play button */}
           <button
             onClick={onOpenHelp}

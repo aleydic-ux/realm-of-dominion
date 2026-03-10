@@ -11,6 +11,8 @@ export function useProvince() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [slowLoad, setSlowLoad] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [raidAlert, setRaidAlert] = useState(null);
   const initialLoadDone = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -25,6 +27,11 @@ export function useProvince() {
       setError(null);
       setSlowLoad(false);
       initialLoadDone.current = true;
+      // Fetch unread notification count
+      try {
+        const countRes = await api.get('/notifications/unread-count');
+        setUnreadCount(countRes.data.count || 0);
+      } catch { /* ignore — table may not exist yet */ }
     } catch (err) {
       const status = err.response?.status;
       const msg = err.response?.data?.error || 'Failed to load province';
@@ -94,6 +101,10 @@ export function useProvince() {
         reconnectionDelayMax: 15000,
       });
       socket.on('province_update', () => refresh());
+      socket.on('raid_alert', (data) => {
+        setRaidAlert(data);
+        setUnreadCount(c => c + 1);
+      });
       socket.on('season_end', (data) => {
         window.dispatchEvent(new CustomEvent('season_end', { detail: data }));
       });
@@ -110,5 +121,13 @@ export function useProvince() {
     };
   }, [refresh]);
 
-  return { province, buildings, troops, research, alliance, loading, error, slowLoad, refresh };
+  const dismissRaidAlert = useCallback(() => setRaidAlert(null), []);
+  const refreshUnread = useCallback(async () => {
+    try {
+      const { data } = await api.get('/notifications/unread-count');
+      setUnreadCount(data.count || 0);
+    } catch { /* ignore */ }
+  }, []);
+
+  return { province, buildings, troops, research, alliance, loading, error, slowLoad, refresh, unreadCount, raidAlert, dismissRaidAlert, refreshUnread };
 }

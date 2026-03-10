@@ -6,6 +6,10 @@ const { calculateAndStoreNetworth } = require('./networthCalc');
 const { getProvinceTechEffects } = require('./techEngine');
 const raceConfig = require('../config/raceConfig');
 
+// Socket.io reference — set from index.js to avoid circular imports
+let _io = null;
+function setIO(io) { _io = io; }
+
 // ─── Personality configs ─────────────────────────────────────────────────────
 // attackRatio: minimum (bot troops / target troops) ratio required to attack
 // buildPriority: 'food' | 'gold' | 'army' | 'mixed'
@@ -665,6 +669,48 @@ async function botAttack(bot, personality, config) {
     await client.query('COMMIT');
     console.log(`[bot] ${bot.name} [${personality}] ${result.outcome} ${attackType} vs ${target.name}`);
 
+    // Notification for defender (especially important for human players attacked by bots)
+    try {
+      const lostTroopCount = Object.values(result.defenderLosses).reduce((s, v) => s + v, 0);
+      const stolenSummary = Object.entries(result.resourcesStolen || {})
+        .filter(([, v]) => v > 0).map(([k, v]) => `${v} ${k}`).join(', ');
+
+      let defTitle, defMsg;
+      if (result.outcome === 'win') {
+        defTitle = `${bot.name} raided you!`;
+        const parts = [];
+        if (result.landGained > 0) parts.push(`seized ${result.landGained} acres`);
+        if (stolenSummary) parts.push(`stole ${stolenSummary}`);
+        if (lostTroopCount > 0) parts.push(`you lost ${lostTroopCount} troops`);
+        defMsg = `${bot.name} launched a ${attackType} and was victorious. ${parts.join('. ')}.`;
+      } else if (result.outcome === 'loss') {
+        defTitle = `You repelled ${bot.name}!`;
+        defMsg = `${bot.name} launched a ${attackType} against you but was defeated.${lostTroopCount > 0 ? ` You lost ${lostTroopCount} troops.` : ''}`;
+      } else {
+        defTitle = `Draw with ${bot.name}`;
+        defMsg = `${bot.name} launched a ${attackType}. Stalemate.${lostTroopCount > 0 ? ` You lost ${lostTroopCount} troops.` : ''}`;
+      }
+
+      await pool.query(
+        `INSERT INTO notifications (province_id, type, title, message, metadata) VALUES ($1, 'raid_report', $2, $3, $4)`,
+        [target.id, defTitle, defMsg, JSON.stringify({
+          attacker_name: bot.name, attacker_race: bot.race, attack_type: attackType,
+          outcome: result.outcome, land_lost: result.landGained || 0,
+          resources_stolen: result.resourcesStolen, defender_losses: result.defenderLosses,
+          attacker_power: result.attackerPower, defender_power: result.defenderPower,
+        })]
+      );
+
+      // Real-time push if target is online
+      if (!target.is_bot && _io) {
+        _io.to(`province_${target.id}`).emit('raid_alert', {
+          title: defTitle, message: defMsg, attacker_name: bot.name,
+          attacker_race: bot.race, attack_type: attackType, outcome: result.outcome,
+        });
+        _io.to(`province_${target.id}`).emit('province_update', { type: 'raid' });
+      }
+    } catch (notifErr) { /* non-critical */ }
+
     if (result.outcome === 'win') {
       const details = [];
       if (result.landGained > 0) details.push(`${result.landGained} acres seized`);
@@ -1045,4 +1091,4 @@ async function botBuyListings(bot, personality) {
   }
 }
 
-module.exports = { tickBots, spawnBots, spawnSingleBot, respawnWipedBots, autoPopulate };
+module.exports = { tickBots, spawnBots, spawnSingleBot, respawnWipedBots, autoPopulate, setIO };

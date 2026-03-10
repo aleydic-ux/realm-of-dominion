@@ -22,6 +22,7 @@ const craftingRoutes = require('./routes/crafting');
 const { collectCompletedCrafts } = require('./routes/crafting');
 const botAdminRoutes = require('./routes/bots');
 const gemRoutes = require('./routes/gems');
+const notificationRoutes = require('./routes/notifications');
 const initSocket = require('./socket/chat');
 
 const app = express();
@@ -80,6 +81,7 @@ app.use('/api/spells', spellRoutes);
 app.use('/api/crafting', craftingRoutes);
 app.use('/api/bots', botAdminRoutes);
 app.use('/api/gems', gemRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Diagnostic endpoint (temporary) — shows DB state for debugging
 app.get('/api/debug/state', async (req, res) => {
@@ -251,7 +253,8 @@ async function clearStuckTimers() {
 
 // Season rollover — check every hour if current age has expired
 const { checkAndEndSeason } = require('./services/seasonEngine');
-const { tickBots } = require('./services/botEngine');
+const { tickBots, setIO: setBotIO } = require('./services/botEngine');
+setBotIO(io);
 cron.schedule('0 * * * *', async () => {
   try {
     await checkAndEndSeason(io);

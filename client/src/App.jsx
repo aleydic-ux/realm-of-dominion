@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import NavBar from './components/NavBar';
 import ResourceBar from './components/ResourceBar';
+import RaidToast from './components/RaidToast';
 import { useProvince } from './hooks/useProvince';
 import HowToPlay from './help/HowToPlay';
 
@@ -23,7 +24,7 @@ const Crafting = lazy(() => import('./pages/Crafting'));
 const Gems = lazy(() => import('./pages/Gems'));
 
 function ProtectedLayout({ onLogout }) {
-  const { province, buildings, troops, research, alliance, loading, error, slowLoad, refresh } = useProvince();
+  const { province, buildings, troops, research, alliance, loading, error, slowLoad, refresh, unreadCount, raidAlert, dismissRaidAlert, refreshUnread } = useProvince();
   const [seasonBanner, setSeasonBanner] = useState(null);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -67,8 +68,9 @@ function ProtectedLayout({ onLogout }) {
         </div>
       )}
       <HowToPlay isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
+      <RaidToast alert={raidAlert} onDismiss={dismissRaidAlert} />
       <div className="sticky top-0 z-20">
-        <NavBar onLogout={onLogout} onOpenHelp={() => setHelpOpen(true)} />
+        <NavBar onLogout={onLogout} onOpenHelp={() => setHelpOpen(true)} unreadCount={unreadCount} onNotificationOpen={refreshUnread} />
         <ResourceBar province={province} />
       </div>
       <main id="main-content" className="flex-1 p-4 max-w-7xl mx-auto w-full">
