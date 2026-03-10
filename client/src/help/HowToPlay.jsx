@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const TABS = ['Getting Started', 'Resources', 'Combat', 'Buildings & Research', 'Tips & Strategy'];
+const TABS = ['Getting Started', 'Resources', 'Combat', 'Buildings & Research', 'Tips & Strategy', 'Patch Notes'];
 
 const TAB_CONTENT = [
   // Tab 0 — Getting Started
@@ -116,6 +116,31 @@ const TAB_CONTENT = [
       </div>
 
       <div className="realm-panel space-y-2">
+        <h3 className="text-realm-gold font-bold">Raid Notifications</h3>
+        <p className="text-xs text-realm-text-muted">
+          When another player or bot attacks your province, you'll receive a <strong className="text-realm-text">real-time toast alert</strong> in the top-right corner of the screen.
+          Alerts are color-coded: <span className="text-red-400">red</span> if the attacker won, <span className="text-green-400">green</span> if you successfully defended, <span className="text-yellow-400">yellow</span> for a draw.
+        </p>
+        <p className="text-xs text-realm-text-muted">
+          The <strong className="text-realm-text">notification bell</strong> in the top bar tracks all alerts.
+          A red badge shows unread notifications. Click the bell to see your notification history and mark them as read.
+        </p>
+      </div>
+
+      <div className="realm-panel space-y-2">
+        <h3 className="text-realm-gold font-bold">Combat Reports</h3>
+        <p className="text-xs text-realm-text-muted">
+          Every attack — sent or received — generates a detailed <strong className="text-realm-text">battle report</strong> on the Reports page.
+          Filter by <strong>All</strong>, <strong>Sent</strong>, or <strong>Received</strong> to find specific battles.
+        </p>
+        <p className="text-xs text-realm-text-muted">
+          Click any report to see the full breakdown: combatant info, a power comparison bar, battle narrative,
+          resources plundered or lost, casualty details for both sides, and troop return timers.
+          Outcomes are displayed from <strong className="text-realm-text">your perspective</strong> — green for your victories, red for defeats.
+        </p>
+      </div>
+
+      <div className="realm-panel space-y-2">
         <h3 className="text-realm-gold font-bold">Race Comparison</h3>
         <div className="overflow-x-auto">
           <table className="realm-table text-xs w-full">
@@ -194,6 +219,7 @@ const TAB_CONTENT = [
         { icon: '🏪', tip: 'Check the Marketplace', detail: 'If you\'re low on Food or Mana, check if players are selling. You can also sell excess resources to fund troop training.' },
         { icon: '🛡️', tip: 'Build Arcane Sanctum early', detail: 'Even 1 level unlocks Clairvoyance (scout enemies) and Mana Shield (+15% DEF). The earlier you cast, the more intel you have.' },
         { icon: '⚔️', tip: 'New player protection', detail: 'Provinces under 48 hours old cannot be attacked by bots. Use this window to build, explore, and prepare your defenses.' },
+        { icon: '🔔', tip: 'Check your notifications', detail: 'The bell icon shows incoming raids in real-time. Review the Reports page after being attacked to understand what you lost and adjust your defenses.' },
       ].map(t => (
         <div key={t.tip} className="realm-panel flex gap-3">
           <span className="text-xl shrink-0">{t.icon}</span>
@@ -201,6 +227,93 @@ const TAB_CONTENT = [
             <div className="font-bold text-xs text-realm-gold">{t.tip}</div>
             <div className="text-xs text-realm-text-muted">{t.detail}</div>
           </div>
+        </div>
+      ))}
+    </div>
+  ),
+
+  // Tab 5 — Patch Notes
+  () => (
+    <div className="space-y-4 text-sm">
+      {[
+        {
+          version: 'v0.6',
+          date: 'Mar 10, 2026',
+          title: 'Raid Notifications & Combat Reports',
+          changes: [
+            'Real-time toast alerts when your province is attacked',
+            'Notification bell with unread badge and history dropdown',
+            'Enhanced combat reports with power comparison bars, battle narratives, and casualty breakdowns',
+            'Reports now show outcomes from your perspective (victory/defeat)',
+            'Updated How to Play guide with new feature documentation',
+          ],
+        },
+        {
+          version: 'v0.5',
+          date: 'Mar 9, 2026',
+          title: 'Bot Trading & Stability',
+          changes: [
+            'Bots now list surplus resources on the marketplace',
+            'Bots buy bargain-priced listings from the market',
+            'Improved error handling and province recovery',
+            'Fixed age system column naming bug that caused site-wide crash',
+          ],
+        },
+        {
+          version: 'v0.4',
+          date: 'Mar 2026',
+          title: 'Gems & Alchemy',
+          changes: [
+            'Gem socket system — find, equip, and upgrade gems for province buffs',
+            'Alchemy crafting — brew potions at the Alchemist Tower for combat and resource boosts',
+            'New Alchemist Tower building',
+          ],
+        },
+        {
+          version: 'v0.3',
+          date: 'Mar 2026',
+          title: 'Alliances & World Feed',
+          changes: [
+            'Alliance system — create or join alliances, shared chat, and member management',
+            'World Feed — global event log of attacks, conquests, and major events',
+            'Leaderboard with province and alliance rankings',
+          ],
+        },
+        {
+          version: 'v0.2',
+          date: 'Mar 2026',
+          title: 'Spells & Marketplace',
+          changes: [
+            'Magic system with race-specific and universal spells',
+            'Arcane Sanctum building unlocks spell tiers',
+            'Player-to-player marketplace for trading resources',
+            'Bot provinces that explore, build, and attack autonomously',
+          ],
+        },
+        {
+          version: 'v0.1',
+          date: 'Mar 2026',
+          title: 'Launch',
+          changes: [
+            'Province creation with 5 races: Human, Orc, Undead, Elf, Dwarf',
+            'Building and research systems with race-specific tech trees',
+            'Military training with 5 troop tiers per race',
+            'Combat system with 4 attack types: Raid, Conquest, Raze, Massacre',
+            'Resource engine with hourly income ticks',
+            'Age/season system with periodic resets',
+          ],
+        },
+      ].map(patch => (
+        <div key={patch.version} className="realm-panel space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-realm-gold font-bold">{patch.version} — {patch.title}</h3>
+            <span className="text-realm-text-dim text-xs">{patch.date}</span>
+          </div>
+          <ul className="text-xs text-realm-text-muted space-y-1 list-disc list-inside">
+            {patch.changes.map((c, i) => (
+              <li key={i}>{c}</li>
+            ))}
+          </ul>
         </div>
       ))}
     </div>
