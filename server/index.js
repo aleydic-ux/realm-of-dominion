@@ -128,6 +128,65 @@ app.get('/api/debug/me', authenticate, async (req, res) => {
   }
 });
 
+// Manual stuck-timer clear + province/me simulation for ANY user (temp debug)
+app.get('/api/debug/fix/:userId', async (req, res) => {
+  const userId = parseInt(req.params.userId);
+  const results = { userId, steps: [] };
+  try {
+    // Step 1: Clear stuck timers
+    await pool.query(`UPDATE province_troops SET count_home = count_home + count_training, count_training = 0, training_completes_at = NULL, updated_at = NOW() WHERE count_training > 0`);
+    results.steps.push('cleared stuck troops');
+    await pool.query(`UPDATE province_buildings SET is_upgrading = false, upgrade_completes_at = NULL, updated_at = NOW() WHERE is_upgrading = true`);
+    results.steps.push('cleared stuck buildings');
+    await pool.query(`UPDATE province_research SET status = 'complete', updated_at = NOW() WHERE status = 'in_progress'`);
+    results.steps.push('cleared stuck research');
+    await pool.query(`UPDATE crafting_queue SET status = 'complete' WHERE status = 'in_progress' AND completes_at <= NOW()`);
+    results.steps.push('cleared stuck crafting');
+
+    // Step 2: Find province
+    const { rows: [province] } = await pool.query(
+      `SELECT p.id, p.name, p.race, p.age_id, a.is_active as age_active
+       FROM provinces p LEFT JOIN ages a ON a.id = p.age_id
+       WHERE p.user_id = $1 ORDER BY p.created_at DESC LIMIT 1`, [userId]
+    );
+    results.province = province || null;
+
+    // Step 3: Try the same queries as province/me
+    if (province) {
+      try {
+        const { getProvinceTechEffects } = require('./services/techEngine');
+        await getProvinceTechEffects(province.id);
+        results.steps.push('techEffects OK');
+      } catch (e) { results.steps.push('techEffects FAILED: ' + e.message); }
+
+      try {
+        const { lazyResourceUpdate } = require('./services/resourceEngine');
+        await lazyResourceUpdate(province.id);
+        results.steps.push('resourceUpdate OK');
+      } catch (e) { results.steps.push('resourceUpdate FAILED: ' + e.message); }
+
+      try {
+        const { checkAndReturnTroops } = require('./services/troopReturn');
+        await checkAndReturnTroops(province.id);
+        results.steps.push('troopReturn OK');
+      } catch (e) { results.steps.push('troopReturn FAILED: ' + e.message); }
+
+      try {
+        await pool.query(
+          `SELECT p.*, u.username, a.name as age_name, a.ends_at as age_ends_at, a.started_at as age_started_at
+           FROM provinces p JOIN users u ON u.id = p.user_id JOIN ages a ON a.id = p.age_id WHERE p.id = $1`, [province.id]
+        );
+        results.steps.push('displayQuery OK');
+      } catch (e) { results.steps.push('displayQuery FAILED: ' + e.message); }
+    }
+
+    res.json(results);
+  } catch (err) {
+    results.steps.push('FATAL: ' + err.message);
+    res.status(500).json(results);
+  }
+});
+
 // Quick diagnostic — no DB needed, shows if env vars are set
 app.get('/api/ping', (req, res) => {
   const url = process.env.DATABASE_URL || '';
