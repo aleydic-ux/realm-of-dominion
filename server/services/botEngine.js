@@ -316,6 +316,7 @@ async function tickSingleBot(bot) {
   // 3. Train troops
   // 4. Attack if army ratio sufficient
   // 5. Craft if tower owned
+  // 6. Marketplace — list surplus resources + buy bargains
 
   // 1. Explore — spend AP to gain land
   await botExplore(province, config);
@@ -336,6 +337,11 @@ async function tickSingleBot(bot) {
 
   // 5. Craft
   await botCraftingTick(province);
+
+  // 6. Marketplace — list surplus resources + buy bargains
+  const { rows: [afterCraft] } = await pool.query('SELECT * FROM provinces WHERE id = $1', [province.id]);
+  if (afterCraft) await botMarketplaceTick(afterCraft, personality);
+
   await updateLastAction(bot.id);
   await calculateAndStoreNetworth(province.id);
 }
@@ -812,6 +818,230 @@ async function botListExcess(botId) {
        VALUES ($1, $2, $3, $4, $5)`,
       [botId, item.item_key, listQty, price, expiresAt]
     );
+  }
+}
+
+// ─── Bot Marketplace ─────────────────────────────────────────────────────────
+// Bots list surplus resources for sale and buy bargains from the marketplace.
+// Undead bots skip selling (lore restriction). All bots can buy.
+
+// Surplus thresholds — bot lists excess above these levels
+const SURPLUS_THRESHOLDS = {
+  gold:             { passive: 15000, economic: 10000, aggressive: 8000, adaptive: 10000 },
+  food:             { passive: 8000,  economic: 6000,  aggressive: 5000, adaptive: 6000  },
+  mana:             { passive: 3000,  economic: 3000,  aggressive: 2000, adaptive: 2500  },
+  industry_points:  { passive: 5000,  economic: 4000,  aggressive: 3000, adaptive: 4000  },
+};
+
+// Base prices bots use when no market history exists
+const BASE_PRICES = { gold: 1, food: 2, mana: 4, industry_points: 3 };
+
+// What each personality wants to buy
+const BUY_PRIORITIES = {
+  passive:    ['food', 'mana'],
+  economic:   ['food', 'industry_points'],
+  aggressive: ['food', 'gold'],
+  adaptive:   ['food', 'mana', 'industry_points'],
+};
+
+async function botMarketplaceTick(bot, personality) {
+  try {
+    // Selling: list surplus resources (skip undead — lore restriction)
+    if (bot.race !== 'undead') {
+      await botListResources(bot, personality);
+    }
+
+    // Buying: look for bargains
+    await botBuyListings(bot, personality);
+  } catch (err) {
+    // Non-critical — don't let marketplace errors block other bot actions
+  }
+}
+
+async function botListResources(bot, personality) {
+  // Check listing slot availability
+  const { rows: [stall] } = await pool.query(
+    `SELECT level FROM province_buildings WHERE province_id = $1 AND building_type = 'marketplace_stall'`,
+    [bot.id]
+  );
+  const maxSlots = Math.max(1, stall ? stall.level : 1);
+  const { rows: [{ count: activeCount }] } = await pool.query(
+    `SELECT COUNT(*) as count FROM marketplace_listings
+     WHERE seller_province_id = $1 AND is_sold = false AND expires_at > NOW()`,
+    [bot.id]
+  );
+  const slotsAvailable = maxSlots - parseInt(activeCount);
+  if (slotsAvailable <= 0) return;
+
+  const resources = ['gold', 'food', 'mana', 'industry_points'];
+  let listed = 0;
+
+  for (const res of resources) {
+    if (listed >= slotsAvailable) break;
+
+    const threshold = SURPLUS_THRESHOLDS[res]?.[personality] || 10000;
+    const surplus = bot[res] - threshold;
+    if (surplus <= 0) continue;
+
+    // List 30-60% of surplus
+    const listPct = 0.3 + Math.random() * 0.3;
+    const listQty = Math.floor(surplus * listPct);
+    if (listQty < 50) continue; // not worth listing tiny amounts
+
+    // Don't list gold for gold — that's pointless
+    if (res === 'gold') continue;
+
+    // Check if we already have an active listing for this resource
+    const { rows: existing } = await pool.query(
+      `SELECT id FROM marketplace_listings
+       WHERE seller_province_id = $1 AND resource_type = $2 AND is_sold = false AND expires_at > NOW()`,
+      [bot.id, res]
+    );
+    if (existing.length) continue;
+
+    // Price: use recent avg or base price, with ±15% variation
+    const { rows: [avgRow] } = await pool.query(
+      `SELECT ROUND(AVG(price_per_unit), 2) as avg_price FROM marketplace_listings
+       WHERE resource_type = $1 AND is_sold = true AND sold_at > NOW() - INTERVAL '48 hours'`,
+      [res]
+    );
+    const avgPrice = parseFloat(avgRow?.avg_price) || BASE_PRICES[res] || 2;
+    const variation = 0.85 + Math.random() * 0.30; // 85%-115% of avg
+    const price = Math.max(1, Math.round(avgPrice * variation));
+
+    // Deduct resources and create listing
+    await pool.query(
+      `UPDATE provinces SET ${res} = ${res} - $1, updated_at = NOW() WHERE id = $2`,
+      [listQty, bot.id]
+    );
+    const expiresAt = new Date(Date.now() + 48 * 3600000); // 48h listing
+    await pool.query(
+      `INSERT INTO marketplace_listings (seller_province_id, resource_type, quantity, price_per_unit, expires_at)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [bot.id, res, listQty, price, expiresAt]
+    );
+
+    listed++;
+    await logAction(bot.id, 'market_list', null, 'success', `listed ${listQty} ${res} at ${price}g each`);
+  }
+}
+
+async function botBuyListings(bot, personality) {
+  // Need gold to buy and at least some budget
+  const budget = Math.floor(bot.gold * 0.15); // spend up to 15% of gold
+  if (budget < 100) return;
+
+  const wantedResources = BUY_PRIORITIES[personality] || ['food'];
+
+  // Find cheap listings (not our own, not expired)
+  const { rows: listings } = await pool.query(
+    `SELECT ml.id, ml.resource_type, ml.item_key, ml.quantity, ml.price_per_unit,
+            ml.seller_province_id
+     FROM marketplace_listings ml
+     WHERE ml.is_sold = false AND ml.expires_at > NOW()
+       AND ml.seller_province_id != $1
+     ORDER BY ml.price_per_unit ASC
+     LIMIT 20`,
+    [bot.id]
+  );
+
+  if (!listings.length) return;
+
+  let spent = 0;
+  for (const listing of listings) {
+    if (spent >= budget) break;
+
+    // Check if this is something we want
+    const isWantedResource = listing.resource_type && wantedResources.includes(listing.resource_type);
+    const isWantedItem = listing.item_key && RECIPES[listing.item_key];
+
+    if (!isWantedResource && !isWantedItem) continue;
+
+    // For resources: only buy if price is reasonable (≤ 150% of base)
+    if (listing.resource_type) {
+      const basePrice = BASE_PRICES[listing.resource_type] || 2;
+      if (listing.price_per_unit > basePrice * 1.5) continue;
+    }
+
+    // For items: only buy combat/resource boosters at reasonable prices
+    if (listing.item_key) {
+      if (listing.price_per_unit > 80) continue; // don't overpay for items
+      // Aggressive bots buy combat items, others buy resource boosters
+      const recipe = RECIPES[listing.item_key];
+      if (!recipe) continue;
+      if (personality === 'aggressive' && recipe.effect_type !== 'combat_boost') continue;
+      if (personality !== 'aggressive' && recipe.effect_type !== 'resource_boost') continue;
+    }
+
+    const totalCost = Math.ceil(listing.quantity * listing.price_per_unit);
+    const tax = Math.ceil(totalCost * 0.05);
+    const totalWithTax = totalCost + tax;
+
+    if (totalWithTax > budget - spent) continue;
+
+    // Refresh bot gold to make sure we can afford it
+    const { rows: [current] } = await pool.query('SELECT gold FROM provinces WHERE id = $1', [bot.id]);
+    if (!current || current.gold < totalWithTax) break;
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Re-check listing is still available
+      const { rows: [fresh] } = await client.query(
+        `SELECT * FROM marketplace_listings WHERE id = $1 AND is_sold = false FOR UPDATE`,
+        [listing.id]
+      );
+      if (!fresh) { await client.query('ROLLBACK'); continue; }
+
+      // Deduct buyer gold
+      await client.query(
+        `UPDATE provinces SET gold = gold - $1, updated_at = NOW() WHERE id = $2`,
+        [totalWithTax, bot.id]
+      );
+
+      // Give buyer the goods
+      if (fresh.item_key) {
+        await client.query(
+          `INSERT INTO crafted_items (province_id, item_key, quantity)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (province_id, item_key) DO UPDATE SET quantity = crafted_items.quantity + $3`,
+          [bot.id, fresh.item_key, fresh.quantity]
+        );
+      } else {
+        await client.query(
+          `UPDATE provinces SET ${fresh.resource_type} = ${fresh.resource_type} + $1, updated_at = NOW() WHERE id = $2`,
+          [fresh.quantity, bot.id]
+        );
+      }
+
+      // Give seller gold (96% after 4% fee, + race bonus)
+      const { rows: [seller] } = await client.query('SELECT race FROM provinces WHERE id = $1', [fresh.seller_province_id]);
+      const sellerCfg = raceConfig[seller?.race || 'human'];
+      const sellerReceives = Math.floor(totalCost * 0.96 * (1 + sellerCfg.marketplaceSaleBonus));
+      await client.query(
+        `UPDATE provinces SET gold = gold + $1, updated_at = NOW() WHERE id = $2`,
+        [sellerReceives, fresh.seller_province_id]
+      );
+
+      // Mark sold
+      await client.query(
+        `UPDATE marketplace_listings SET is_sold = true, buyer_province_id = $1, sold_at = NOW() WHERE id = $2`,
+        [bot.id, listing.id]
+      );
+
+      await client.query('COMMIT');
+      spent += totalWithTax;
+
+      const what = fresh.item_key
+        ? `${fresh.quantity}x ${RECIPES[fresh.item_key]?.name || fresh.item_key}`
+        : `${fresh.quantity} ${fresh.resource_type}`;
+      await logAction(bot.id, 'market_buy', fresh.seller_province_id, 'success', `bought ${what} for ${totalWithTax}g`);
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+    } finally {
+      client.release();
+    }
   }
 }
 

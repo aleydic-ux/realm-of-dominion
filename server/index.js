@@ -173,7 +173,7 @@ app.get('/api/debug/fix/:userId', async (req, res) => {
 
       try {
         await pool.query(
-          `SELECT p.*, u.username, a.name as age_name, a.ends_at as age_ends_at, a.started_at as age_started_at
+          `SELECT p.*, u.username, a.name as age_name, a.ends_at as age_ends_at, a.starts_at as age_started_at
            FROM provinces p JOIN users u ON u.id = p.user_id JOIN ages a ON a.id = p.age_id WHERE p.id = $1`, [province.id]
         );
         results.steps.push('displayQuery OK');
