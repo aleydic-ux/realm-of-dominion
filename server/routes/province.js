@@ -132,7 +132,7 @@ router.get('/rates', async (req, res) => {
     goldRate = applyTechModifiers(goldRate, 'gold_income', techEffects);
 
     let foodRate = province.land * BASE_FOOD_PER_LAND;
-    foodRate *= 1 + (farmLevel * 0.05);
+    foodRate *= 1 + (farmLevel * 0.10);
     if (ancientGroveLevel > 0) foodRate *= 1 + (ancientGroveLevel * 0.10);
     foodRate *= cfg.foodProductionMultiplier;
     foodRate = applyTechModifiers(foodRate, 'food_production', techEffects);

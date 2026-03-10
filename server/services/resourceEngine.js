@@ -104,7 +104,7 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
 
     // --- Food ---
     let foodRate = province.land * BASE_FOOD_PER_LAND;
-    foodRate *= 1 + (farmLevel * 0.05); // +5% per farm level
+    foodRate *= 1 + (farmLevel * 0.10); // +10% per farm level
     if (ancientGroveLevel > 0) foodRate *= 1 + (ancientGroveLevel * 0.10); // Elf grove
     foodRate *= cfg.foodProductionMultiplier;
     foodRate = applyTechModifiers(foodRate, 'food_production', techEffects);
