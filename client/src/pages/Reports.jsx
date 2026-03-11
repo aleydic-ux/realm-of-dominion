@@ -101,7 +101,7 @@ function DetailPanel({ selected, province, onClose }) {
       </div>
 
       {/* Combatants */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+      <div className="grid grid-cols-2 gap-2">
         <div style={{
           background: isSent ? 'rgba(200,160,72,0.08)' : 'transparent',
           border: `1px solid ${isSent ? '#c8a04830' : '#1e3050'}`,

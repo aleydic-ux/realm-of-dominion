@@ -63,7 +63,7 @@ export default function WorldFeed({ province }) {
     <div className="space-y-4">
       <h1 className="text-2xl font-display text-realm-gold">World Feed</h1>
 
-      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px'}}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
         {/* Recent Battles */}
         <div className="realm-panel" style={{display:'flex', flexDirection:'column', gap:'0'}}>

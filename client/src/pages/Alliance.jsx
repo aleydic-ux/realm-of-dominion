@@ -222,7 +222,7 @@ export default function Alliance({ province }) {
       )}
 
       {activeTab === 'chat' && (
-        <div className="realm-panel flex flex-col" style={{ height: '400px' }}>
+        <div className="realm-panel flex flex-col" style={{ minHeight: '280px', maxHeight: '60vh' }}>
           <div className="flex-1 overflow-y-auto space-y-2 mb-3 pr-1">
             {messages.map((m, i) => (
               <div key={m.id || i} className="text-sm">

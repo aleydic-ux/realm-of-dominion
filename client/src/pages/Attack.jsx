@@ -185,7 +185,7 @@ export default function Attack({ province, troops = [], refresh }) {
                         min="0"
                         max={t.count_home}
                         disabled={!hasHome}
-                        className="realm-input text-xs w-20 py-1 disabled:opacity-50"
+                        className="realm-input text-xs w-20 sm:w-20 py-1 disabled:opacity-50 flex-shrink-0"
                         value={deployment[t.troop_type_id] || ''}
                         onChange={e => setDeployment({ ...deployment, [t.troop_type_id]: e.target.value })}
                         placeholder="0"
@@ -196,7 +196,7 @@ export default function Attack({ province, troops = [], refresh }) {
                       {[25, 50, 75, 100].map(pct => (
                         <button
                           key={pct}
-                          className="text-xs text-realm-text-dim hover:text-realm-gold border border-realm-border/50 rounded px-1.5 py-0.5"
+                          className="text-xs text-realm-text-dim hover:text-realm-gold border border-realm-border/50 rounded px-2 py-1 min-h-[30px]"
                           onClick={() => setDeployment({ ...deployment, [t.troop_type_id]: Math.floor(t.count_home * pct / 100) })}
                         >
                           {pct === 100 ? 'Max' : `${pct}%`}
