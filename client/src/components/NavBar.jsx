@@ -38,7 +38,7 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, onNotifi
       {/* Title bar */}
       <div style={{background:'linear-gradient(to bottom, #0a1428, #060e1c)', borderBottom:'1px solid #1e3050', padding:'6px 16px', display:'flex', alignItems:'center', justifyContent:'space-between'}}>
         <span style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8a048', fontSize:'1.25rem', letterSpacing:'0.12em', textShadow:'0 0 12px rgba(200,160,72,0.4), 1px 1px 2px #000'}}>
-          ⚔ Realm of Dominion ⚔
+          Realm of Dominion
         </span>
         <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
           {/* Hamburger — visible only on small screens */}
