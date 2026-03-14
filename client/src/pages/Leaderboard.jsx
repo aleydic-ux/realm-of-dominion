@@ -134,13 +134,19 @@ export default function Leaderboard({ province }) {
       {tab === 'alliances' && (
         <div className="realm-panel overflow-x-auto">
           <table className="realm-table">
-            <thead><tr><th>#</th><th>Alliance</th><th>Members</th><th>Total Networth</th></tr></thead>
+            <thead><tr><th>#</th><th>Alliance</th><th>Members</th><th>Bank</th><th>War W/L</th><th>Total Networth</th></tr></thead>
             <tbody>
               {data.alliances.map((a, i) => (
                 <tr key={a.id}>
                   <td className="text-purple-400 font-bold">{i + 1}</td>
                   <td className="text-realm-text font-medium">{a.name}</td>
                   <td className="text-realm-text-muted">{a.member_count}</td>
+                  <td className="text-realm-gold">{formatNumber(a.bank_gold || 0)}</td>
+                  <td className="text-sm">
+                    <span className="text-green-400">{a.war_wins || 0}</span>
+                    <span className="text-realm-text-dim">/</span>
+                    <span className="text-red-400">{a.war_losses || 0}</span>
+                  </td>
                   <td className="text-realm-gold font-bold">{formatNumber(a.total_networth)}</td>
                 </tr>
               ))}

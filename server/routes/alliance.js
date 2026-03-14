@@ -345,4 +345,387 @@ router.post('/:id/chat', async (req, res) => {
   }
 });
 
+
+// ─── Alliance buff definitions ────────────────────────────────────────────────
+const ALLIANCE_BUFFS = {
+  gold_rush: {
+    name: 'Gold Rush',
+    description: '+15% gold income for all members for 24 hours',
+    cost: 5000,
+    durationHours: 24,
+    modifier_key: 'gold_income_pct',
+    modifier_value: 0.15,
+  },
+  war_drums: {
+    name: 'War Drums',
+    description: '+20% troop attack for all members for 12 hours',
+    cost: 8000,
+    durationHours: 12,
+    modifier_key: 'attack_pct',
+    modifier_value: 0.20,
+  },
+  iron_pact: {
+    name: 'Iron Pact',
+    description: '+20% troop defense for all members for 12 hours',
+    cost: 8000,
+    durationHours: 12,
+    modifier_key: 'defense_pct',
+    modifier_value: 0.20,
+  },
+  scholars_call: {
+    name: "Scholar's Call",
+    description: '+25% research speed for all members for 48 hours',
+    cost: 6000,
+    durationHours: 48,
+    modifier_key: 'research_speed_pct',
+    modifier_value: 0.25,
+  },
+};
+
+// POST /api/alliances/:id/leave — leave an alliance
+router.post('/:id/leave', async (req, res) => {
+  if (!req.province) return res.status(404).json({ error: 'No province found' });
+  const allianceId = parseInt(req.params.id);
+  const provinceId = req.province.id;
+
+  try {
+    const { rows: [membership] } = await pool.query(
+      'SELECT rank FROM alliance_members WHERE alliance_id = $1 AND province_id = $2',
+      [allianceId, provinceId]
+    );
+    if (!membership) return res.status(403).json({ error: 'Not a member of this alliance' });
+
+    const { rows: [{ count }] } = await pool.query(
+      'SELECT COUNT(*) as count FROM alliance_members WHERE alliance_id = $1',
+      [allianceId]
+    );
+
+    if (membership.rank === 'leader' && parseInt(count) > 1) {
+      return res.status(400).json({ error: 'Transfer leadership before leaving' });
+    }
+
+    await pool.query(
+      'DELETE FROM alliance_members WHERE alliance_id = $1 AND province_id = $2',
+      [allianceId, provinceId]
+    );
+    await pool.query('UPDATE provinces SET is_in_war = false WHERE id = $1', [provinceId]);
+
+    // Disband if last member
+    if (parseInt(count) <= 1) {
+      await pool.query('DELETE FROM alliances WHERE id = $1', [allianceId]);
+    }
+
+    res.json({ message: 'Left alliance' });
+  } catch (err) {
+    console.error('Leave alliance error:', err);
+    res.status(500).json({ error: 'Failed to leave alliance' });
+  }
+});
+
+// POST /api/alliances/:id/promote — promote member to officer
+router.post('/:id/promote', async (req, res) => {
+  if (!req.province) return res.status(404).json({ error: 'No province found' });
+  const { province_id } = req.body;
+  if (!province_id) return res.status(400).json({ error: 'province_id required' });
+
+  try {
+    const { rows: [me] } = await pool.query(
+      'SELECT rank FROM alliance_members WHERE alliance_id = $1 AND province_id = $2',
+      [req.params.id, req.province.id]
+    );
+    if (!me || me.rank !== 'leader') return res.status(403).json({ error: 'Only leader can promote' });
+
+    const { rows: [target] } = await pool.query(
+      'SELECT rank FROM alliance_members WHERE alliance_id = $1 AND province_id = $2',
+      [req.params.id, province_id]
+    );
+    if (!target) return res.status(404).json({ error: 'Member not found' });
+    if (target.rank === 'leader') return res.status(400).json({ error: 'Cannot promote the leader' });
+
+    await pool.query(
+      "UPDATE alliance_members SET rank = 'officer' WHERE alliance_id = $1 AND province_id = $2",
+      [req.params.id, province_id]
+    );
+    res.json({ message: 'Member promoted to officer' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to promote' });
+  }
+});
+
+// POST /api/alliances/:id/demote — demote officer to member
+router.post('/:id/demote', async (req, res) => {
+  if (!req.province) return res.status(404).json({ error: 'No province found' });
+  const { province_id } = req.body;
+  if (!province_id) return res.status(400).json({ error: 'province_id required' });
+
+  try {
+    const { rows: [me] } = await pool.query(
+      'SELECT rank FROM alliance_members WHERE alliance_id = $1 AND province_id = $2',
+      [req.params.id, req.province.id]
+    );
+    if (!me || me.rank !== 'leader') return res.status(403).json({ error: 'Only leader can demote' });
+
+    await pool.query(
+      "UPDATE alliance_members SET rank = 'member' WHERE alliance_id = $1 AND province_id = $2",
+      [req.params.id, province_id]
+    );
+    res.json({ message: 'Member demoted' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to demote' });
+  }
+});
+
+// POST /api/alliances/:id/transfer-leader — transfer leadership to a member
+router.post('/:id/transfer-leader', async (req, res) => {
+  if (!req.province) return res.status(404).json({ error: 'No province found' });
+  const { province_id } = req.body;
+  if (!province_id) return res.status(400).json({ error: 'province_id required' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: [me] } = await client.query(
+      'SELECT rank FROM alliance_members WHERE alliance_id = $1 AND province_id = $2',
+      [req.params.id, req.province.id]
+    );
+    if (!me || me.rank !== 'leader') {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Only leader can transfer leadership' });
+    }
+    const { rows: [target] } = await client.query(
+      'SELECT rank FROM alliance_members WHERE alliance_id = $1 AND province_id = $2',
+      [req.params.id, province_id]
+    );
+    if (!target) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Target member not found' });
+    }
+    await client.query(
+      "UPDATE alliance_members SET rank = 'officer' WHERE alliance_id = $1 AND province_id = $2",
+      [req.params.id, req.province.id]
+    );
+    await client.query(
+      "UPDATE alliance_members SET rank = 'leader' WHERE alliance_id = $1 AND province_id = $2",
+      [req.params.id, province_id]
+    );
+    await client.query(
+      'UPDATE alliances SET leader_province_id = $1, updated_at = NOW() WHERE id = $2',
+      [province_id, req.params.id]
+    );
+    await client.query('COMMIT');
+    res.json({ message: 'Leadership transferred' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'Failed to transfer leadership' });
+  } finally {
+    client.release();
+  }
+});
+
+// POST /api/alliances/:id/peace — end all wars for this alliance
+router.post('/:id/peace', async (req, res) => {
+  if (!req.province) return res.status(404).json({ error: 'No province found' });
+  const { rows: [me] } = await pool.query(
+    'SELECT rank FROM alliance_members WHERE alliance_id = $1 AND province_id = $2',
+    [req.params.id, req.province.id]
+  );
+  if (!me || me.rank !== 'leader') return res.status(403).json({ error: 'Only leader can sue for peace' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: enemies } = await client.query(
+      "SELECT target_alliance_id FROM alliance_diplomacy WHERE alliance_id = $1 AND status = 'war'",
+      [req.params.id]
+    );
+    const { rows: enemies2 } = await client.query(
+      "SELECT alliance_id as target_alliance_id FROM alliance_diplomacy WHERE target_alliance_id = $1 AND status = 'war'",
+      [req.params.id]
+    );
+    const allEnemyIds = [...enemies, ...enemies2].map(r => r.target_alliance_id);
+    const allIds = [parseInt(req.params.id), ...allEnemyIds];
+
+    await client.query('UPDATE alliances SET is_at_war = false, updated_at = NOW() WHERE id = ANY($1)', [allIds]);
+    await client.query(
+      'UPDATE provinces SET is_in_war = false WHERE id IN (SELECT province_id FROM alliance_members WHERE alliance_id = ANY($1))',
+      [allIds]
+    );
+    await client.query(
+      "UPDATE alliance_diplomacy SET status = 'peace', updated_at = NOW() WHERE alliance_id = $1 OR target_alliance_id = $1",
+      [req.params.id]
+    );
+
+    await client.query('COMMIT');
+    res.json({ message: 'Peace declared — all wars ended' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Peace error:', err);
+    res.status(500).json({ error: 'Failed to declare peace' });
+  } finally {
+    client.release();
+  }
+});
+
+// POST /api/alliances/:id/nap/:target_id — establish Non-Aggression Pact (48h)
+router.post('/:id/nap/:target_id', async (req, res) => {
+  if (!req.province) return res.status(404).json({ error: 'No province found' });
+  const allianceId = parseInt(req.params.id);
+  const targetId = parseInt(req.params.target_id);
+
+  const { rows: [me] } = await pool.query(
+    'SELECT rank FROM alliance_members WHERE alliance_id = $1 AND province_id = $2',
+    [allianceId, req.province.id]
+  );
+  if (!me || me.rank !== 'leader') return res.status(403).json({ error: 'Only leader can set NAP' });
+  if (allianceId === targetId) return res.status(400).json({ error: 'Cannot NAP yourself' });
+
+  const { rows: [target] } = await pool.query('SELECT id FROM alliances WHERE id = $1', [targetId]);
+  if (!target) return res.status(404).json({ error: 'Target alliance not found' });
+
+  const expiresAt = new Date(Date.now() + 48 * 3600000);
+  try {
+    await pool.query(
+      `INSERT INTO alliance_diplomacy (alliance_id, target_alliance_id, status, expires_at)
+       VALUES ($1, $2, 'nap', $3), ($2, $1, 'nap', $3)
+       ON CONFLICT (alliance_id, target_alliance_id) DO UPDATE
+       SET status = 'nap', expires_at = EXCLUDED.expires_at, updated_at = NOW()`,
+      [allianceId, targetId, expiresAt]
+    );
+    res.json({ message: 'Non-Aggression Pact established for 48 hours', expires_at: expiresAt });
+  } catch (err) {
+    console.error('NAP error:', err);
+    res.status(500).json({ error: 'Failed to establish NAP' });
+  }
+});
+
+// POST /api/alliances/:id/declare-war/:target_id — declare war + record in alliance_diplomacy
+router.post('/:id/declare-war/:target_id', async (req, res) => {
+  if (!req.province) return res.status(404).json({ error: 'No province found' });
+  const allianceId = parseInt(req.params.id);
+  const targetId = parseInt(req.params.target_id);
+
+  const { rows: [me] } = await pool.query(
+    'SELECT rank FROM alliance_members WHERE alliance_id = $1 AND province_id = $2',
+    [allianceId, req.province.id]
+  );
+  if (!me || me.rank !== 'leader') return res.status(403).json({ error: 'Only leader can declare war' });
+  if (allianceId === targetId) return res.status(400).json({ error: 'Cannot declare war on yourself' });
+
+  const { rows: [targetAlliance] } = await pool.query('SELECT id FROM alliances WHERE id = $1', [targetId]);
+  if (!targetAlliance) return res.status(404).json({ error: 'Target alliance not found' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      'UPDATE alliances SET is_at_war = true, updated_at = NOW() WHERE id = $1 OR id = $2',
+      [allianceId, targetId]
+    );
+    await client.query(
+      'UPDATE provinces SET is_in_war = true WHERE id IN (SELECT province_id FROM alliance_members WHERE alliance_id = $1 OR alliance_id = $2)',
+      [allianceId, targetId]
+    );
+    await client.query(
+      `UPDATE provinces SET protection_ends_at = NOW()
+       WHERE id IN (SELECT province_id FROM alliance_members WHERE alliance_id = $1 OR alliance_id = $2)
+         AND protection_ends_at > NOW()`,
+      [allianceId, targetId]
+    );
+    await client.query(
+      `INSERT INTO alliance_diplomacy (alliance_id, target_alliance_id, status)
+       VALUES ($1, $2, 'war'), ($2, $1, 'war')
+       ON CONFLICT (alliance_id, target_alliance_id) DO UPDATE SET status = 'war', updated_at = NOW()`,
+      [allianceId, targetId]
+    );
+    await client.query('COMMIT');
+    res.json({ message: 'War declared' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Declare war error:', err);
+    res.status(500).json({ error: 'Failed to declare war' });
+  } finally {
+    client.release();
+  }
+});
+
+// GET /api/alliances/:id/buffs — active buffs + purchasable catalogue
+router.get('/:id/buffs', async (req, res) => {
+  if (!req.province) return res.status(404).json({ error: 'No province found' });
+  try {
+    const { rows: activeBuffs } = await pool.query(
+      `SELECT buff_key, buff_name, expires_at FROM alliance_buffs
+       WHERE alliance_id = $1 AND expires_at > NOW() ORDER BY expires_at DESC`,
+      [req.params.id]
+    );
+    const catalogue = Object.entries(ALLIANCE_BUFFS).map(([key, b]) => ({
+      key, name: b.name, description: b.description,
+      cost: b.cost, duration_hours: b.durationHours,
+    }));
+    res.json({ active: activeBuffs, catalogue });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load buffs' });
+  }
+});
+
+// POST /api/alliances/:id/buff — purchase an alliance buff from bank
+router.post('/:id/buff', async (req, res) => {
+  if (!req.province) return res.status(404).json({ error: 'No province found' });
+  const { buff_key } = req.body;
+  if (!buff_key) return res.status(400).json({ error: 'buff_key required' });
+
+  const buffDef = ALLIANCE_BUFFS[buff_key];
+  if (!buffDef) return res.status(400).json({ error: 'Unknown buff' });
+
+  const { rows: [me] } = await pool.query(
+    'SELECT rank FROM alliance_members WHERE alliance_id = $1 AND province_id = $2',
+    [req.params.id, req.province.id]
+  );
+  if (!me || me.rank !== 'leader') return res.status(403).json({ error: 'Only leader can purchase buffs' });
+
+  const { rows: [alliance] } = await pool.query(
+    'SELECT bank_gold FROM alliances WHERE id = $1', [req.params.id]
+  );
+  if (!alliance) return res.status(404).json({ error: 'Alliance not found' });
+  if (alliance.bank_gold < buffDef.cost) {
+    return res.status(400).json({ error: `Not enough gold in bank (need ${buffDef.cost.toLocaleString()})` });
+  }
+
+  const expiresAt = new Date(Date.now() + buffDef.durationHours * 3600000);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    await client.query(
+      'UPDATE alliances SET bank_gold = bank_gold - $1, updated_at = NOW() WHERE id = $2',
+      [buffDef.cost, req.params.id]
+    );
+    await client.query(
+      'INSERT INTO alliance_buffs (alliance_id, buff_key, buff_name, expires_at) VALUES ($1, $2, $3, $4)',
+      [req.params.id, buff_key, buffDef.name, expiresAt]
+    );
+
+    // Apply to every current member via active_effects
+    const { rows: members } = await client.query(
+      'SELECT province_id FROM alliance_members WHERE alliance_id = $1', [req.params.id]
+    );
+    for (const { province_id } of members) {
+      await client.query(
+        `INSERT INTO active_effects
+           (province_id, item_key, effect_type, modifier_key, modifier_value, stacks, expires_at)
+         VALUES ($1, $2, 'alliance_buff', $3, $4, 1, $5)`,
+        [province_id, `alliance_${buff_key}`, buffDef.modifier_key, buffDef.modifier_value, expiresAt]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ message: `${buffDef.name} activated!`, expires_at: expiresAt });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Buff purchase error:', err);
+    res.status(500).json({ error: 'Failed to purchase buff' });
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;

@@ -470,6 +470,43 @@ router.post('/', async (req, res) => {
       }
     } catch (_) { /* non-critical */ }
 
+    // Alliance war scoring — if both sides are in alliances at war, record win/loss
+    try {
+      const [atkAlliRes, defAlliRes] = await Promise.all([
+        pool.query('SELECT alliance_id FROM alliance_members WHERE province_id = $1', [attacker.id]),
+        pool.query('SELECT alliance_id FROM alliance_members WHERE province_id = $1', [parseInt(target_id)]),
+      ]);
+      const atkAlliId = atkAlliRes.rows[0]?.alliance_id;
+      const defAlliId = defAlliRes.rows[0]?.alliance_id;
+      if (atkAlliId && defAlliId && atkAlliId !== defAlliId) {
+        const { rows: diplomacy } = await pool.query(
+          "SELECT status FROM alliance_diplomacy WHERE alliance_id = $1 AND target_alliance_id = $2 AND status = 'war'",
+          [atkAlliId, defAlliId]
+        );
+        if (diplomacy.length) {
+          if (result.outcome === 'win') {
+            await pool.query(
+              'UPDATE alliances SET war_wins = war_wins + 1 WHERE id = $1',
+              [atkAlliId]
+            );
+            await pool.query(
+              'UPDATE alliances SET war_losses = war_losses + 1 WHERE id = $1',
+              [defAlliId]
+            );
+          } else if (result.outcome === 'loss') {
+            await pool.query(
+              'UPDATE alliances SET war_wins = war_wins + 1 WHERE id = $1',
+              [defAlliId]
+            );
+            await pool.query(
+              'UPDATE alliances SET war_losses = war_losses + 1 WHERE id = $1',
+              [atkAlliId]
+            );
+          }
+        }
+      }
+    } catch (_) { /* non-critical */ }
+
     res.json({
       message: `Attack ${result.outcome}`,
       attack_id: attackRecord.id,

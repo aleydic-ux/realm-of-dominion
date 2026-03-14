@@ -52,13 +52,14 @@ router.get('/', async (req, res) => {
 
     // Alliance score: sum of member networths
     const { rows: allianceRanks } = await pool.query(
-      `SELECT al.id, al.name, COUNT(am.province_id) as member_count,
+      `SELECT al.id, al.name, al.bank_gold, al.war_wins, al.war_losses,
+              COUNT(am.province_id) as member_count,
               SUM(p.networth) as total_networth
        FROM alliances al
        JOIN alliance_members am ON am.alliance_id = al.id
        JOIN provinces p ON p.id = am.province_id
        JOIN ages ag ON ag.id = al.age_id AND ag.is_active = true
-       GROUP BY al.id, al.name
+       GROUP BY al.id, al.name, al.bank_gold, al.war_wins, al.war_losses
        ORDER BY total_networth DESC
        LIMIT 20`
     );
