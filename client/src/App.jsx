@@ -25,6 +25,7 @@ const WorldFeed = lazy(() => import('./pages/WorldFeed'));
 const Spells = lazy(() => import('./pages/Spells'));
 const Crafting = lazy(() => import('./pages/Crafting'));
 const Gems = lazy(() => import('./pages/Gems'));
+const Achievements = lazy(() => import('./pages/Achievements'));
 
 function ProtectedLayout({ onLogout }) {
   const { province, buildings, troops, research, alliance, loading, error, slowLoad, refresh, unreadCount, raidAlert, dismissRaidAlert, refreshUnread } = useProvince();
@@ -107,6 +108,7 @@ function ProtectedLayout({ onLogout }) {
             <Route path="/crafting" element={<Crafting province={province} buildings={buildings} refresh={refresh} />} />
             <Route path="/gems" element={<Gems province={province} />} />
             <Route path="/world" element={<WorldFeed province={province} />} />
+            <Route path="/achievements" element={<Achievements />} />
             <Route path="/settings" element={<Settings onLogout={onLogout} />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

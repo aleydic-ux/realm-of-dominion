@@ -50,6 +50,94 @@ function getCardStatus(label, province, rates) {
   return 'neutral';
 }
 
+// Minimal SVG sparkline for a single metric across time snapshots
+function Sparkline({ snapshots, metric, color, label }) {
+  if (!snapshots || snapshots.length < 2) {
+    return (
+      <div style={{ color: '#485868', fontSize: '0.65rem', fontFamily: 'Verdana, Arial, sans-serif', textAlign: 'center', padding: '20px 0' }}>
+        No history yet — check back in an hour.
+      </div>
+    );
+  }
+  const values = snapshots.map(s => parseFloat(s[metric]) || 0);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const W = 400, H = 60;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * W;
+    const y = H - 4 - ((v - min) / range) * (H - 8);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const first = values[0], last = values[values.length - 1];
+  const delta = last - first;
+  const deltaColor = delta >= 0 ? '#2a8a48' : '#cc2828';
+  const deltaStr = `${delta >= 0 ? '+' : ''}${Math.floor(delta).toLocaleString()}`;
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
+        <span style={{ color: '#8090a8', fontSize: '0.65rem', fontFamily: 'Verdana, Arial, sans-serif', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+        <span style={{ color: deltaColor, fontSize: '0.65rem', fontFamily: 'Verdana, Arial, sans-serif' }}>{deltaStr}</span>
+      </div>
+      <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+        <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+        <circle cx={(values.length - 1) / (values.length - 1) * W} cy={H - 4 - ((last - min) / range) * (H - 8)} r="3" fill={color} />
+      </svg>
+    </div>
+  );
+}
+
+function ResourceHistoryChart({ provinceId }) {
+  const [snapshots, setSnapshots] = useState([]);
+  const [period, setPeriod] = useState('24h');
+  const [loadingSnaps, setLoadingSnaps] = useState(true);
+
+  useEffect(() => {
+    if (!provinceId) return;
+    setLoadingSnaps(true);
+    api.get(`/province/me/snapshots?period=${period}`)
+      .then(({ data }) => setSnapshots(data || []))
+      .catch(() => setSnapshots([]))
+      .finally(() => setLoadingSnaps(false));
+  }, [provinceId, period]);
+
+  const metrics = [
+    { key: 'gold', label: 'Gold', color: '#c8a048' },
+    { key: 'land', label: 'Land (acres)', color: '#4ade80' },
+    { key: 'food', label: 'Food', color: '#22c55e' },
+    { key: 'mana', label: 'Mana', color: '#8830cc' },
+  ];
+
+  return (
+    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid #1e3050', borderRadius: '6px', padding: '14px 16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <span style={{ color: '#c8a048', fontFamily: 'Cinzel, Georgia, serif', fontSize: '0.85rem', fontWeight: '700' }}>
+          Resource History
+        </span>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {['24h', '7d'].map(p => (
+            <button key={p} onClick={() => setPeriod(p)} style={{
+              fontFamily: 'Verdana, Arial, sans-serif', fontSize: '0.65rem', padding: '2px 8px',
+              background: period === p ? 'rgba(200,160,72,0.15)' : 'transparent',
+              border: `1px solid ${period === p ? '#c8a048' : '#243650'}`,
+              color: period === p ? '#c8a048' : '#8090a8', cursor: 'pointer', borderRadius: '3px',
+            }}>{p}</button>
+          ))}
+        </div>
+      </div>
+      {loadingSnaps ? (
+        <div style={{ color: '#485868', fontSize: '0.7rem', textAlign: 'center', padding: '20px 0', fontFamily: 'Verdana, Arial, sans-serif' }}>Loading...</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '16px' }}>
+          {metrics.map(m => (
+            <Sparkline key={m.key} snapshots={snapshots} metric={m.key} color={m.color} label={m.label} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Dashboard({ province, loading, refresh }) {
   const [exploreLoading, setExploreLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -299,6 +387,9 @@ export default function Dashboard({ province, loading, refresh }) {
           <span><span className="text-gray-300">+{formatNumber(rates.industry_per_hour)}</span> <span className="text-realm-text-dim">industry</span></span>
         </div>
       )}
+
+      {/* Resource History Chart */}
+      <ResourceHistoryChart provinceId={province.id} />
 
       {/* Action Points — improved */}
       <div className="realm-panel">

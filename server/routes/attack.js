@@ -8,6 +8,7 @@ const { calculateAndStoreNetworth } = require('../services/networthCalc');
 const { checkAndReturnTroops } = require('../services/troopReturn');
 const { getBuildingLevels } = require('../services/resourceEngine');
 const { awardGems, checkLandMilestone } = require('../services/gemEngine');
+const { checkAchievements, incrementStat } = require('../services/achievementEngine');
 
 const router = express.Router();
 
@@ -451,6 +452,21 @@ router.post('/', async (req, res) => {
         }
       } else if (result.outcome === 'loss') {
         await awardGems(parseInt(target_id), 2, 'Defended attack');
+      }
+    } catch (_) { /* non-critical */ }
+
+    // Award achievements + update stats (non-critical)
+    try {
+      const goldStolen = result.resourcesStolen?.gold || 0;
+      if (result.outcome === 'win') {
+        await incrementStat(attacker.id, 'attacks_won');
+        if (result.landGained > 0) await incrementStat(attacker.id, 'land_conquered', result.landGained);
+        if (goldStolen > 0) await incrementStat(attacker.id, 'gold_plundered', goldStolen);
+        await checkAchievements(attacker.id, 'attack_won');
+      } else {
+        await incrementStat(attacker.id, 'attacks_lost');
+        await incrementStat(parseInt(target_id), 'attacks_defended');
+        await checkAchievements(parseInt(target_id), 'attack_defended');
       }
     } catch (_) { /* non-critical */ }
 

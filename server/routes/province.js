@@ -8,6 +8,7 @@ const { calculateAndStoreNetworth } = require('../services/networthCalc');
 const { checkAndReturnTroops } = require('../services/troopReturn');
 const raceConfig = require('../config/raceConfig');
 const { awardGems, checkLandMilestone } = require('../services/gemEngine');
+const { checkAchievements, incrementStat } = require('../services/achievementEngine');
 
 const router = express.Router();
 
@@ -267,6 +268,7 @@ router.post('/explore', async (req, res) => {
 
   // Check land milestones for gems
   try { await checkLandMilestone(province.id, province.land + adjustedLand); } catch (_) {}
+  try { await checkAchievements(province.id, 'explore'); } catch (_) {}
 
   res.json({ message: `Explored ${adjustedLand} acres`, land_gained: adjustedLand });
 });
@@ -301,6 +303,9 @@ router.post('/build', async (req, res) => {
           `INSERT INTO notifications (province_id, type, title, message, metadata) VALUES ($1, 'building_complete', $2, $3, $4)`,
           [province.id, `${bName} upgrade complete`, `Your ${bName} has been upgraded to Level ${building.level + 1}.`, JSON.stringify({ building_type, level: building.level + 1 })]
         );
+        // Stats + achievements for building upgrade
+        await incrementStat(province.id, 'buildings_upgraded');
+        await checkAchievements(province.id, 'building_upgraded', { level: building.level + 1 });
       } catch (_) {}
     } else {
       return res.status(400).json({ error: 'Building is already being upgraded', completes_at: building.upgrade_completes_at });
@@ -475,6 +480,12 @@ router.post('/train', async (req, res) => {
     [quantity, completesAt, province.id, troop_type_id]
   );
 
+  // Track stats + achievements (non-critical)
+  try {
+    await incrementStat(province.id, 'troops_trained', quantity);
+    await checkAchievements(province.id, 'troops_trained');
+  } catch (_) {}
+
   res.json({
     message: `Training ${quantity}x ${troopType.name}`,
     completes_at: completesAt,
@@ -547,6 +558,9 @@ router.post('/research', async (req, res) => {
           `INSERT INTO notifications (province_id, type, title, message, metadata) VALUES ($1, 'research_complete', $2, $3, $4)`,
           [province.id, `Research complete: ${r.tech_name}`, `Your scholars have mastered ${r.tech_name}. +5 gems awarded.`, JSON.stringify({ tech_name: r.tech_name })]
         );
+        // Stats + achievements for research
+        await incrementStat(province.id, 'research_completed');
+        await checkAchievements(province.id, 'research_complete');
       } catch (_) {}
     }
   }
@@ -712,6 +726,24 @@ router.get('/me/attacks', async (req, res) => {
     res.json({ attacks: attacksResult.rows, troopTypes });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load attacks' });
+  }
+});
+
+// GET /api/province/me/snapshots?period=24h|7d — resource history for chart
+router.get('/me/snapshots', async (req, res) => {
+  if (!req.province) return res.status(404).json({ error: 'No province found' });
+  const period = req.query.period === '7d' ? '7 days' : '24 hours';
+  try {
+    const { rows } = await pool.query(
+      `SELECT gold, food, mana, land, industry_points, recorded_at
+       FROM resource_snapshots
+       WHERE province_id = $1 AND recorded_at > NOW() - INTERVAL '${period}'
+       ORDER BY recorded_at ASC`,
+      [req.province.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load snapshots' });
   }
 });
 

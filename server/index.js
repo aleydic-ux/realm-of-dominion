@@ -24,6 +24,7 @@ const botAdminRoutes = require('./routes/bots');
 const gemRoutes = require('./routes/gems');
 const notificationRoutes = require('./routes/notifications');
 const userRoutes = require('./routes/user');
+const achievementRoutes = require('./routes/achievements');
 const initSocket = require('./socket/chat');
 
 const app = express();
@@ -84,6 +85,7 @@ app.use('/api/bots', botAdminRoutes);
 app.use('/api/gems', gemRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/achievements', achievementRoutes);
 
 // Diagnostic endpoint (temporary) — shows DB state for debugging
 app.get('/api/debug/state', async (req, res) => {
@@ -287,6 +289,31 @@ cron.schedule('0 * * * *', async () => {
     await tickBots();
   } catch (err) {
     console.error('[cron] Bot tick failed:', err.message);
+  }
+});
+
+// Resource history snapshot — runs every hour, stores current resources for all player provinces
+cron.schedule('5 * * * *', async () => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, gold, food, mana, land, industry_points, population
+       FROM provinces WHERE is_bot = false OR is_bot IS NULL`
+    );
+    if (!rows.length) return;
+    const values = rows.map((p, i) => {
+      const base = i * 7;
+      return `($${base + 1},$${base + 2},$${base + 3},$${base + 4},$${base + 5},$${base + 6},$${base + 7})`;
+    }).join(',');
+    const params = rows.flatMap(p => [p.id, p.gold || 0, p.food || 0, p.mana || 0, p.land || 0, p.industry_points || 0, p.population || 0]);
+    await pool.query(
+      `INSERT INTO resource_snapshots (province_id,gold,food,mana,land,industry_points,population) VALUES ${values}`,
+      params
+    );
+    // Prune snapshots older than 8 days
+    await pool.query(`DELETE FROM resource_snapshots WHERE recorded_at < NOW() - INTERVAL '8 days'`);
+    console.log(`[cron] Resource snapshot saved for ${rows.length} provinces`);
+  } catch (err) {
+    console.error('[cron] Resource snapshot failed:', err.message);
   }
 });
 

@@ -17,6 +17,7 @@ const navLinks = [
   { path: '/gems', label: 'Gems' },
   { path: '/leaderboard', label: 'Ranks' },
   { path: '/world', label: 'World' },
+  { path: '/achievements', label: 'Feats' },
 ];
 
 export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, onNotificationOpen }) {
