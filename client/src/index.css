@@ -170,4 +170,26 @@
     min-height: 36px;
     font-size: 14px !important;
   }
+
+  /* Tab rows: horizontal scroll instead of overflow */
+  .flex.gap-1.border-b {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
+  }
+
+  /* Mail detail pane: stack on mobile */
+  .grid[style*="gridTemplateColumns"]:not(.resource-stats-row) {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* HowToPlay modal: use more screen height */
+  .fixed.inset-0.z-50 > div[class*="max-h"] {
+    max-height: 95dvh !important;
+    margin: 4px;
+    width: calc(100% - 8px);
+  }
+
+  /* Reduce large headings on mobile */
+  h1.text-2xl { font-size: 1.2rem !important; }
 }

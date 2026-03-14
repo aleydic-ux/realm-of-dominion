@@ -18,9 +18,10 @@ const navLinks = [
   { path: '/leaderboard', label: 'Ranks' },
   { path: '/world', label: 'World' },
   { path: '/achievements', label: 'Feats' },
+  { path: '/mail', label: 'Mail' },
 ];
 
-export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, onNotificationOpen }) {
+export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, mailUnreadCount = 0, onNotificationOpen }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Global keyboard shortcut: '?' opens help (when not in a text input)
@@ -90,52 +91,73 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, onNotifi
         style={{background:'linear-gradient(to bottom, #162038, #0e1828)', borderBottom:'2px solid #c8a048'}}
       >
         <div className="nav-desktop" style={{display:'flex', overflowX:'auto'}}>
-          {navLinks.map(({ path, label }) => (
-            <NavLink
-              key={path}
-              to={path}
-              style={({ isActive }) => ({
-                fontFamily: 'Verdana, Arial, sans-serif',
-                fontSize: '0.68rem',
-                fontWeight: isActive ? 'bold' : 'normal',
-                padding: '6px 14px',
-                whiteSpace: 'nowrap',
-                borderRight: '1px solid #1e3050',
-                color: isActive ? '#c8a048' : '#8090a8',
-                background: isActive ? 'linear-gradient(to bottom, #1e3050, #162040)' : 'transparent',
-                borderBottom: isActive ? '2px solid #c8a048' : '2px solid transparent',
-                textDecoration: 'none',
-                display: 'inline-block',
-                transition: 'all 0.1s',
-                marginBottom: '-2px',
-              })}
-            >
-              {label}
-            </NavLink>
-          ))}
+          {navLinks.map(({ path, label }) => {
+            const badge = label === 'Mail' && mailUnreadCount > 0 ? mailUnreadCount : null;
+            return (
+              <NavLink
+                key={path}
+                to={path}
+                style={({ isActive }) => ({
+                  fontFamily: 'Verdana, Arial, sans-serif',
+                  fontSize: '0.68rem',
+                  fontWeight: isActive ? 'bold' : 'normal',
+                  padding: '6px 14px',
+                  whiteSpace: 'nowrap',
+                  borderRight: '1px solid #1e3050',
+                  color: isActive ? '#c8a048' : '#8090a8',
+                  background: isActive ? 'linear-gradient(to bottom, #1e3050, #162040)' : 'transparent',
+                  borderBottom: isActive ? '2px solid #c8a048' : '2px solid transparent',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  transition: 'all 0.1s',
+                  marginBottom: '-2px',
+                })}
+              >
+                {label}
+                {badge && (
+                  <span style={{background:'#c83030', color:'#fff', fontSize:'0.6rem', borderRadius:'999px', padding:'0 4px', lineHeight:'1.4', fontWeight:'bold', minWidth:'14px', textAlign:'center'}}>
+                    {badge > 9 ? '9+' : badge}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
         </div>
 
         {mobileOpen && (
           <div className="nav-mobile" style={{display:'flex', flexDirection:'column', borderTop:'1px solid #1e3050'}}>
-            {navLinks.map(({ path, label }) => (
-              <NavLink
-                key={path}
-                to={path}
-                onClick={() => setMobileOpen(false)}
-                style={({ isActive }) => ({
-                  fontFamily: 'Verdana, Arial, sans-serif',
-                  fontSize: '0.8rem',
-                  fontWeight: isActive ? 'bold' : 'normal',
-                  padding: '10px 16px',
-                  borderBottom: '1px solid #1e3050',
-                  color: isActive ? '#c8a048' : '#8090a8',
-                  background: isActive ? 'rgba(30,48,80,0.6)' : 'transparent',
-                  textDecoration: 'none',
-                })}
-              >
-                {label}
-              </NavLink>
-            ))}
+            {navLinks.map(({ path, label }) => {
+              const badge = label === 'Mail' && mailUnreadCount > 0 ? mailUnreadCount : null;
+              return (
+                <NavLink
+                  key={path}
+                  to={path}
+                  onClick={() => setMobileOpen(false)}
+                  style={({ isActive }) => ({
+                    fontFamily: 'Verdana, Arial, sans-serif',
+                    fontSize: '0.8rem',
+                    fontWeight: isActive ? 'bold' : 'normal',
+                    padding: '10px 16px',
+                    borderBottom: '1px solid #1e3050',
+                    color: isActive ? '#c8a048' : '#8090a8',
+                    background: isActive ? 'rgba(30,48,80,0.6)' : 'transparent',
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  })}
+                >
+                  {label}
+                  {badge && (
+                    <span style={{background:'#c83030', color:'#fff', fontSize:'0.65rem', borderRadius:'999px', padding:'1px 6px', fontWeight:'bold'}}>
+                      {badge > 9 ? '9+' : badge}
+                    </span>
+                  )}
+                </NavLink>
+              );
+            })}
           </div>
         )}
       </nav>

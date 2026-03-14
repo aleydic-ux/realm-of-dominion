@@ -12,6 +12,7 @@ export function useProvince() {
   const [error, setError] = useState(null);
   const [slowLoad, setSlowLoad] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [mailUnreadCount, setMailUnreadCount] = useState(0);
   const [raidAlert, setRaidAlert] = useState(null);
   const initialLoadDone = useRef(false);
 
@@ -27,11 +28,15 @@ export function useProvince() {
       setError(null);
       setSlowLoad(false);
       initialLoadDone.current = true;
-      // Fetch unread notification count
+      // Fetch unread counts
       try {
-        const countRes = await api.get('/notifications/unread-count');
-        setUnreadCount(countRes.data.count || 0);
-      } catch { /* ignore — table may not exist yet */ }
+        const [notifRes, mailRes] = await Promise.all([
+          api.get('/notifications/unread-count'),
+          api.get('/mail/unread-count'),
+        ]);
+        setUnreadCount(notifRes.data.count || 0);
+        setMailUnreadCount(mailRes.data.count || 0);
+      } catch { /* ignore — tables may not exist yet */ }
     } catch (err) {
       const status = err.response?.status;
       const msg = err.response?.data?.error || 'Failed to load province';
@@ -124,10 +129,14 @@ export function useProvince() {
   const dismissRaidAlert = useCallback(() => setRaidAlert(null), []);
   const refreshUnread = useCallback(async () => {
     try {
-      const { data } = await api.get('/notifications/unread-count');
-      setUnreadCount(data.count || 0);
+      const [notifRes, mailRes] = await Promise.all([
+        api.get('/notifications/unread-count'),
+        api.get('/mail/unread-count'),
+      ]);
+      setUnreadCount(notifRes.data.count || 0);
+      setMailUnreadCount(mailRes.data.count || 0);
     } catch { /* ignore */ }
   }, []);
 
-  return { province, buildings, troops, research, alliance, loading, error, slowLoad, refresh, unreadCount, raidAlert, dismissRaidAlert, refreshUnread };
+  return { province, buildings, troops, research, alliance, loading, error, slowLoad, refresh, unreadCount, mailUnreadCount, raidAlert, dismissRaidAlert, refreshUnread };
 }

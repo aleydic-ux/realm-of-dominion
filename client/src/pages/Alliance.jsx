@@ -115,13 +115,17 @@ function MembersTab({ allianceData, allianceId, myRank, myProvinceId, onRefresh,
         <tbody>
           {allianceData.members.map(m => {
             const isSelf = m.id === myProvinceId;
+            const isMuted = m.chat_muted_until && new Date(m.chat_muted_until) > new Date();
             return (
               <tr key={m.id}>
                 <td className="text-realm-text">{m.name}</td>
                 <td className={`race-${m.race}`}>{RACE_ICONS[m.race]} {m.race}</td>
                 <td>{formatNumber(m.land)}</td>
                 <td className="text-realm-gold">{formatNumber(m.networth)}</td>
-                <td className="text-realm-text-dim capitalize">{m.rank}</td>
+                <td className="text-realm-text-dim capitalize">
+                  {m.rank}
+                  {isMuted && <span className="ml-1 text-xs text-orange-400" title="Chat muted">🔇</span>}
+                </td>
                 {isOfficer && (
                   <td>
                     {!isSelf && m.rank !== 'leader' && (
@@ -148,6 +152,11 @@ function MembersTab({ allianceData, allianceId, myRank, myProvinceId, onRefresh,
                               act('kick', { target_province_id: m.id });
                           }} className="realm-btn-red text-xs px-2 py-0.5">Kick</button>
                         )}
+                        {isOfficer && (
+                          isMuted
+                            ? <button onClick={() => act('mute', { target_province_id: m.id, hours: 0 })} className="realm-btn-outline text-xs px-2 py-0.5 border-green-700 text-green-400">Unmute</button>
+                            : <button onClick={() => act('mute', { target_province_id: m.id, hours: 1 })} className="realm-btn-outline text-xs px-2 py-0.5">Mute 1h</button>
+                        )}
                       </div>
                     )}
                   </td>
@@ -161,16 +170,28 @@ function MembersTab({ allianceData, allianceId, myRank, myProvinceId, onRefresh,
   );
 }
 
-function ChatTab({ allianceId, messages, setMessages }) {
+function ChatTab({ allianceId, messages, setMessages, myRank, myProvinceId }) {
   const [chatInput, setChatInput] = useState('');
+  const [sendErr, setSendErr] = useState('');
   const chatEndRef = useRef(null);
+  const isOfficer = ['leader', 'officer'].includes(myRank);
 
   async function handleSend(e) {
     e.preventDefault();
     if (!chatInput.trim()) return;
+    setSendErr('');
     try {
       await api.post(`/alliances/${allianceId}/chat`, { body: chatInput });
       setChatInput('');
+    } catch (err) {
+      setSendErr(err.response?.data?.error || 'Failed to send');
+    }
+  }
+
+  async function deleteMsg(msgId) {
+    try {
+      await api.delete(`/alliances/${allianceId}/chat/${msgId}`);
+      setMessages(prev => prev.filter(m => m.id !== msgId));
     } catch {}
   }
 
@@ -178,13 +199,25 @@ function ChatTab({ allianceId, messages, setMessages }) {
     <div className="realm-panel flex flex-col" style={{ minHeight: '280px', maxHeight: '60vh' }}>
       <div className="flex-1 overflow-y-auto space-y-2 mb-3 pr-1">
         {messages.map((m, i) => (
-          <div key={m.id || i} className="text-sm">
-            <span className={`race-${m.sender_race} font-medium`}>{m.sender_name}: </span>
-            <span className="text-realm-text">{m.body}</span>
+          <div key={m.id || i} className="text-sm flex items-start gap-2 group">
+            <div className="flex-1">
+              <span className={`race-${m.sender_race} font-medium`}>{m.sender_name}: </span>
+              <span className="text-realm-text">{m.body}</span>
+            </div>
+            {isOfficer && m.id && (
+              <button
+                onClick={() => deleteMsg(m.id)}
+                className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-300 text-xs shrink-0 transition-opacity"
+                title="Delete message"
+              >
+                ✕
+              </button>
+            )}
           </div>
         ))}
         <div ref={chatEndRef} />
       </div>
+      {sendErr && <div className="text-red-400 text-xs mb-1">{sendErr}</div>}
       <form onSubmit={handleSend} className="flex gap-2">
         <input className="realm-input flex-1 text-sm" placeholder="Send message..."
           value={chatInput} onChange={e => setChatInput(e.target.value)} />
@@ -500,7 +533,7 @@ export default function Alliance({ province }) {
       )}
 
       {activeTab === 'chat' && (
-        <ChatTab allianceId={alliance.id} messages={messages} setMessages={setMessages} />
+        <ChatTab allianceId={alliance.id} messages={messages} setMessages={setMessages} myRank={alliance.rank} myProvinceId={province?.id} />
       )}
 
       {activeTab === 'buffs' && allianceData?.alliance && (

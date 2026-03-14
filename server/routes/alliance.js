@@ -63,7 +63,7 @@ router.get('/:id', async (req, res) => {
     if (!alliance) return res.status(404).json({ error: 'Alliance not found' });
 
     const { rows: members } = await pool.query(
-      `SELECT am.rank, am.joined_at, p.id, p.name, p.race, p.land, p.networth
+      `SELECT am.rank, am.joined_at, am.chat_muted_until, p.id, p.name, p.race, p.land, p.networth
        FROM alliance_members am
        JOIN provinces p ON p.id = am.province_id
        WHERE am.alliance_id = $1 ORDER BY am.rank, p.networth DESC`, [req.params.id]
@@ -297,10 +297,10 @@ router.get('/:id/chat', async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT m.id, m.body, m.sent_at, p.name as sender_name, p.race as sender_race
+      `SELECT m.id, m.body, m.sent_at, p.name as sender_name, p.race as sender_race, p.id as sender_province_id
        FROM messages m
        JOIN provinces p ON p.id = m.sender_province_id
-       WHERE m.alliance_id = $1
+       WHERE m.alliance_id = $1 AND m.deleted = false
        ORDER BY m.sent_at DESC LIMIT 50`, [req.params.id]
     );
     res.json(rows.reverse());
@@ -316,10 +316,15 @@ router.post('/:id/chat', async (req, res) => {
   if (!body || !body.trim()) return res.status(400).json({ error: 'Message body required' });
 
   const { rows: myMembership } = await pool.query(
-    `SELECT rank FROM alliance_members WHERE alliance_id = $1 AND province_id = $2`,
+    `SELECT rank, chat_muted_until FROM alliance_members WHERE alliance_id = $1 AND province_id = $2`,
     [req.params.id, req.province.id]
   );
   if (!myMembership.length) return res.status(403).json({ error: 'Not a member of this alliance' });
+
+  // Check mute status
+  if (myMembership[0].chat_muted_until && new Date(myMembership[0].chat_muted_until) > new Date()) {
+    return res.status(403).json({ error: 'You are muted in this alliance chat' });
+  }
 
   try {
     const { rows: [msg] } = await pool.query(
@@ -345,6 +350,48 @@ router.post('/:id/chat', async (req, res) => {
   }
 });
 
+// DELETE /api/alliances/:id/chat/:msgId — officer/leader soft-deletes a message
+router.delete('/:id/chat/:msgId', async (req, res) => {
+  if (!req.province) return res.status(404).json({ error: 'No province found' });
+  const { rows: [me] } = await pool.query(
+    'SELECT rank FROM alliance_members WHERE alliance_id = $1 AND province_id = $2',
+    [req.params.id, req.province.id]
+  );
+  if (!me || !['leader', 'officer'].includes(me.rank)) {
+    return res.status(403).json({ error: 'Only officers can delete messages' });
+  }
+  try {
+    await pool.query('UPDATE messages SET deleted = true WHERE id = $1 AND alliance_id = $2', [parseInt(req.params.msgId), parseInt(req.params.id)]);
+    res.json({ message: 'Message deleted' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete message' });
+  }
+});
+
+// POST /api/alliances/:id/mute — officer/leader mutes a member (hours=0 = unmute)
+router.post('/:id/mute', async (req, res) => {
+  if (!req.province) return res.status(404).json({ error: 'No province found' });
+  const allianceId = parseInt(req.params.id);
+  const { target_province_id, hours = 1 } = req.body;
+  if (!target_province_id) return res.status(400).json({ error: 'target_province_id required' });
+  const { rows: [me] } = await pool.query(
+    'SELECT rank FROM alliance_members WHERE alliance_id = $1 AND province_id = $2',
+    [allianceId, req.province.id]
+  );
+  if (!me || !['leader', 'officer'].includes(me.rank)) {
+    return res.status(403).json({ error: 'Only officers can mute members' });
+  }
+  try {
+    const muteUntil = hours > 0 ? new Date(Date.now() + hours * 3600000) : null;
+    await pool.query(
+      'UPDATE alliance_members SET chat_muted_until = $1 WHERE alliance_id = $2 AND province_id = $3',
+      [muteUntil, allianceId, parseInt(target_province_id)]
+    );
+    res.json({ message: hours > 0 ? `Muted for ${hours}h` : 'Unmuted' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to mute member' });
+  }
+});
 
 // ─── Alliance buff definitions ────────────────────────────────────────────────
 const ALLIANCE_BUFFS = {

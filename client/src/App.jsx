@@ -26,9 +26,10 @@ const Spells = lazy(() => import('./pages/Spells'));
 const Crafting = lazy(() => import('./pages/Crafting'));
 const Gems = lazy(() => import('./pages/Gems'));
 const Achievements = lazy(() => import('./pages/Achievements'));
+const Mail = lazy(() => import('./pages/Mail'));
 
 function ProtectedLayout({ onLogout }) {
-  const { province, buildings, troops, research, alliance, loading, error, slowLoad, refresh, unreadCount, raidAlert, dismissRaidAlert, refreshUnread } = useProvince();
+  const { province, buildings, troops, research, alliance, loading, error, slowLoad, refresh, unreadCount, mailUnreadCount, raidAlert, dismissRaidAlert, refreshUnread } = useProvince();
   const [seasonBanner, setSeasonBanner] = useState(null);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -74,7 +75,7 @@ function ProtectedLayout({ onLogout }) {
       <HowToPlay isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
       <RaidToast alert={raidAlert} onDismiss={dismissRaidAlert} />
       <div className="sticky top-0 z-20">
-        <NavBar onLogout={onLogout} onOpenHelp={() => setHelpOpen(true)} unreadCount={unreadCount} onNotificationOpen={refreshUnread} />
+        <NavBar onLogout={onLogout} onOpenHelp={() => setHelpOpen(true)} unreadCount={unreadCount} mailUnreadCount={mailUnreadCount} onNotificationOpen={refreshUnread} />
         <ResourceBar province={province} />
       </div>
       <main id="main-content" className="flex-1 p-4 max-w-7xl mx-auto w-full">
@@ -109,6 +110,7 @@ function ProtectedLayout({ onLogout }) {
             <Route path="/gems" element={<Gems province={province} />} />
             <Route path="/world" element={<WorldFeed province={province} />} />
             <Route path="/achievements" element={<Achievements />} />
+            <Route path="/mail" element={<Mail province={province} onRead={refreshUnread} />} />
             <Route path="/settings" element={<Settings onLogout={onLogout} />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

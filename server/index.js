@@ -25,6 +25,7 @@ const gemRoutes = require('./routes/gems');
 const notificationRoutes = require('./routes/notifications');
 const userRoutes = require('./routes/user');
 const achievementRoutes = require('./routes/achievements');
+const mailRoutes = require('./routes/mail');
 const initSocket = require('./socket/chat');
 
 const app = express();
@@ -86,6 +87,7 @@ app.use('/api/gems', gemRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/achievements', achievementRoutes);
+app.use('/api/mail', mailRoutes);
 
 // Diagnostic endpoint (temporary) — shows DB state for debugging
 app.get('/api/debug/state', async (req, res) => {
