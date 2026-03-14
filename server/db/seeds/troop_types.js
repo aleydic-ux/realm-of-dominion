@@ -48,7 +48,7 @@ async function seed() {
       const result = await client.query(
         `INSERT INTO troop_types (race, name, tier, offense_power, defense_power, gold_cost, food_upkeep, training_time_hours, special_ability, requires_building)
          SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
-         WHERE NOT EXISTS (SELECT 1 FROM troop_types WHERE race = $1 AND name = $2)`,
+         WHERE NOT EXISTS (SELECT 1 FROM troop_types WHERE race = $1::varchar AND name = $2::varchar)`,
         [t.race, t.name, t.tier, t.offense, t.defense, t.gold, t.food, t.hours, t.special, t.requires]
       );
       if (result.rowCount > 0) inserted++;
