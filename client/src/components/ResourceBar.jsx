@@ -23,7 +23,17 @@ export default function ResourceBar({ province }) {
       <div className="province-name-bar" style={{padding:'4px 14px', borderBottom:'1px solid #1e3050', display:'flex', alignItems:'center', justifyContent:'center', gap:'10px', flexWrap:'wrap', background:'rgba(255,255,255,0.02)'}}>
         <span style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8a048', fontSize:'0.95rem', fontWeight:'700', letterSpacing:'0.08em'}}>
           {province.name}
+          {province.active_title && (
+            <span style={{fontFamily:'Verdana, Arial, sans-serif', color:'#8090a8', fontSize:'0.65rem', fontWeight:'normal', marginLeft:'8px', letterSpacing:'0.04em'}}>
+              {province.active_title}
+            </span>
+          )}
         </span>
+        {province.province_motto && (
+          <span style={{fontFamily:'Georgia, serif', color:'#485868', fontSize:'0.65rem', fontStyle:'italic', letterSpacing:'0.03em'}}>
+            "{province.province_motto}"
+          </span>
+        )}
         <Tooltip content={RACE_TOOLTIPS[province.race]} width={200}>
           <span className={`race-${province.race}`} style={{fontSize:'0.6rem', fontWeight:'bold', border:'1px solid currentColor', padding:'1px 6px', fontFamily:'Verdana, Arial, sans-serif', letterSpacing:'0.06em', cursor:'help'}}>
             {province.race.toUpperCase()}

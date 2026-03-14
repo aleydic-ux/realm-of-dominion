@@ -34,7 +34,8 @@ router.get('/me', async (req, res) => {
     step = 'displayQueries';
     const [provinceRes, buildingsRes, troopsRes, researchRes, allianceRes] = await Promise.all([
       pool.query(
-        `SELECT p.*, u.username, a.name as age_name, a.ends_at as age_ends_at, a.starts_at as age_started_at
+        `SELECT p.*, u.username, u.province_motto, u.active_title,
+                a.name as age_name, a.ends_at as age_ends_at, a.starts_at as age_started_at
          FROM provinces p
          JOIN users u ON u.id = p.user_id
          JOIN ages a ON a.id = p.age_id
@@ -293,6 +294,14 @@ router.post('/build', async (req, res) => {
         [province.id, building_type]
       );
       building = { ...building, is_upgrading: false, upgrade_completes_at: null };
+      // Send completion notification
+      try {
+        const bName = building_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        await pool.query(
+          `INSERT INTO notifications (province_id, type, title, message, metadata) VALUES ($1, 'building_complete', $2, $3, $4)`,
+          [province.id, `${bName} upgrade complete`, `Your ${bName} has been upgraded to Level ${building.level + 1}.`, JSON.stringify({ building_type, level: building.level + 1 })]
+        );
+      } catch (_) {}
     } else {
       return res.status(400).json({ error: 'Building is already being upgraded', completes_at: building.upgrade_completes_at });
     }
@@ -518,7 +527,10 @@ router.post('/research', async (req, res) => {
 
   // Flush any completed research first (JS date comparison to avoid timezone issues)
   const { rows: completedResearch } = await pool.query(
-    `SELECT id, completes_at FROM province_research WHERE province_id = $1 AND status = 'in_progress'`,
+    `SELECT pr.id, pr.completes_at, tt.name as tech_name
+     FROM province_research pr
+     JOIN tech_tree tt ON tt.id = pr.tech_id
+     WHERE pr.province_id = $1 AND pr.status = 'in_progress'`,
     [province.id]
   );
   for (const r of completedResearch) {
@@ -529,6 +541,13 @@ router.post('/research', async (req, res) => {
       );
       // Award gems for completing research
       try { await awardGems(province.id, 5, 'Research completed'); } catch (_) {}
+      // Send notification
+      try {
+        await pool.query(
+          `INSERT INTO notifications (province_id, type, title, message, metadata) VALUES ($1, 'research_complete', $2, $3, $4)`,
+          [province.id, `Research complete: ${r.tech_name}`, `Your scholars have mastered ${r.tech_name}. +5 gems awarded.`, JSON.stringify({ tech_name: r.tech_name })]
+        );
+      } catch (_) {}
     }
   }
 
@@ -669,18 +688,28 @@ router.get('/me/research', async (req, res) => {
 router.get('/me/attacks', async (req, res) => {
   if (!req.province) return res.status(404).json({ error: 'No province found' });
   try {
-    const { rows } = await pool.query(
-      `SELECT a.*,
-              ap.name as attacker_name, ap.race as attacker_race,
-              dp.name as defender_name, dp.race as defender_race
-       FROM attacks a
-       JOIN provinces ap ON ap.id = a.attacker_province_id
-       JOIN provinces dp ON dp.id = a.defender_province_id
-       WHERE a.attacker_province_id = $1 OR a.defender_province_id = $1
-       ORDER BY a.attacked_at DESC LIMIT 50`,
-      [req.province.id]
-    );
-    res.json(rows);
+    const [attacksResult, troopTypesResult] = await Promise.all([
+      pool.query(
+        `SELECT a.*,
+                ap.name as attacker_name, ap.race as attacker_race,
+                dp.name as defender_name, dp.race as defender_race
+         FROM attacks a
+         JOIN provinces ap ON ap.id = a.attacker_province_id
+         JOIN provinces dp ON dp.id = a.defender_province_id
+         WHERE a.attacker_province_id = $1 OR a.defender_province_id = $1
+         ORDER BY a.attacked_at DESC LIMIT 50`,
+        [req.province.id]
+      ),
+      pool.query('SELECT id, name, tier, race FROM troop_types'),
+    ]);
+
+    // Build id → { name, tier } map for the frontend
+    const troopTypes = {};
+    for (const tt of troopTypesResult.rows) {
+      troopTypes[tt.id] = { name: tt.name, tier: tt.tier, race: tt.race };
+    }
+
+    res.json({ attacks: attacksResult.rows, troopTypes });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load attacks' });
   }

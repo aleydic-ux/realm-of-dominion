@@ -19,7 +19,7 @@ function PowerBar({ attackerPower, defenderPower }) {
   );
 }
 
-function TroopLossSection({ title, losses, color }) {
+function TroopLossSection({ title, losses, color, troopTypes = {} }) {
   if (!losses || typeof losses !== 'object') return null;
   const entries = Object.entries(losses).filter(([, v]) => v > 0);
   if (!entries.length) return null;
@@ -28,14 +28,18 @@ function TroopLossSection({ title, losses, color }) {
     <div>
       <div style={{ color: '#8090a8', fontSize: '0.7rem', marginBottom: '4px' }}>{title}</div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-        {entries.map(([id, count]) => (
-          <span key={id} style={{
-            background: 'rgba(255,255,255,0.05)', border: '1px solid #1e3050',
-            borderRadius: '4px', padding: '2px 8px', fontSize: '0.7rem', color,
-          }}>
-            -{formatNumber(count)} (type #{id})
-          </span>
-        ))}
+        {entries.map(([id, count]) => {
+          const tt = troopTypes[id] || troopTypes[parseInt(id)];
+          const label = tt ? tt.name : `Type #${id}`;
+          return (
+            <span key={id} style={{
+              background: 'rgba(255,255,255,0.05)', border: '1px solid #1e3050',
+              borderRadius: '4px', padding: '2px 8px', fontSize: '0.7rem', color,
+            }}>
+              -{formatNumber(count)} {label}
+            </span>
+          );
+        })}
       </div>
       <div style={{ fontSize: '0.65rem', color: '#485868', marginTop: '2px' }}>
         Total: {formatNumber(total)} troops lost
@@ -44,7 +48,7 @@ function TroopLossSection({ title, losses, color }) {
   );
 }
 
-function DetailPanel({ selected, province, onClose }) {
+function DetailPanel({ selected, province, onClose, troopTypes = {} }) {
   if (!selected) return null;
 
   const isSent = selected.attacker_province_id === province?.id;
@@ -190,11 +194,13 @@ function DetailPanel({ selected, province, onClose }) {
             title={isSent ? 'Your losses (attacker)' : `${selected.attacker_name}'s losses`}
             losses={selected.attacker_losses}
             color="#ef4444"
+            troopTypes={troopTypes}
           />
           <TroopLossSection
             title={!isSent ? 'Your losses (defender)' : `${selected.defender_name}'s losses`}
             losses={selected.defender_losses}
             color="#f97316"
+            troopTypes={troopTypes}
           />
           {(!selected.attacker_losses || !Object.values(selected.attacker_losses).some(v => v > 0)) &&
            (!selected.defender_losses || !Object.values(selected.defender_losses).some(v => v > 0)) && (
@@ -208,14 +214,18 @@ function DetailPanel({ selected, province, onClose }) {
         <div style={{ borderTop: '1px solid #1e3050', paddingTop: '8px' }}>
           <div style={{ color: '#8090a8', fontSize: '0.7rem', marginBottom: '4px' }}>Troops deployed by attacker</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {Object.entries(selected.troops_deployed).map(([id, count]) => (
-              <span key={id} style={{
-                background: 'rgba(255,255,255,0.05)', border: '1px solid #1e3050',
-                borderRadius: '4px', padding: '2px 8px', fontSize: '0.7rem', color: '#c8d8e8',
-              }}>
-                {formatNumber(count)} (type #{id})
-              </span>
-            ))}
+            {Object.entries(selected.troops_deployed).map(([id, count]) => {
+              const tt = troopTypes[id] || troopTypes[parseInt(id)];
+              const label = tt ? tt.name : `Type #${id}`;
+              return (
+                <span key={id} style={{
+                  background: 'rgba(255,255,255,0.05)', border: '1px solid #1e3050',
+                  borderRadius: '4px', padding: '2px 8px', fontSize: '0.7rem', color: '#c8d8e8',
+                }}>
+                  {formatNumber(count)} {label}
+                </span>
+              );
+            })}
           </div>
         </div>
       )}
@@ -232,6 +242,7 @@ function DetailPanel({ selected, province, onClose }) {
 
 export default function Reports({ province }) {
   const [attacks, setAttacks] = useState([]);
+  const [troopTypes, setTroopTypes] = useState({});
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -247,7 +258,10 @@ export default function Reports({ province }) {
     async function load() {
       try {
         const { data } = await api.get('/province/me/attacks');
-        if (!cancelled) setAttacks(data);
+        if (!cancelled) {
+          setAttacks(data.attacks || data);
+          setTroopTypes(data.troopTypes || {});
+        }
       } catch {
         if (!cancelled) setLoadError(true);
       }
@@ -329,7 +343,7 @@ export default function Reports({ province }) {
         </div>
 
         {/* Detail panel */}
-        <DetailPanel selected={selected} province={province} onClose={() => setSelected(null)} />
+        <DetailPanel selected={selected} province={province} onClose={() => setSelected(null)} troopTypes={troopTypes} />
       </div>
     </div>
   );

@@ -158,11 +158,31 @@ router.post('/delete-account', authenticate, async (req, res) => {
   }
 });
 
+// PATCH /api/user/appearance — save province motto
+router.patch('/appearance', authenticate, async (req, res) => {
+  const { provinceMotto } = req.body;
+  if (provinceMotto !== undefined) {
+    if (typeof provinceMotto !== 'string' || provinceMotto.length > 80) {
+      return res.status(422).json({ error: 'Motto must be 80 characters or fewer.' });
+    }
+  }
+  try {
+    await pool.query(
+      'UPDATE users SET province_motto = $1, updated_at = NOW() WHERE id = $2',
+      [provinceMotto?.trim() || null, req.user.id]
+    );
+    res.json({ message: 'Appearance updated.' });
+  } catch (err) {
+    console.error('Appearance update error:', err);
+    res.status(500).json({ error: 'Failed to update appearance.' });
+  }
+});
+
 // GET /api/user/me — fetch current user settings data
 router.get('/me', authenticate, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT username, email, display_name, display_name_changed_at FROM users WHERE id = $1',
+      'SELECT username, email, display_name, display_name_changed_at, province_motto, active_title FROM users WHERE id = $1',
       [req.user.id]
     );
     if (!rows.length) return res.status(401).json({ error: 'User not found.' });

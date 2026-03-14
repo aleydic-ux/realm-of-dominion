@@ -294,6 +294,51 @@ function DeleteAccountSection({ onLogout }) {
   );
 }
 
+// ─── Appearance (Province Motto) ───────────────────────────────────────────
+function AppearanceSection({ user }) {
+  const [motto, setMotto] = useState(user?.province_motto || '');
+  const [status, setStatus] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setStatus({});
+    setLoading(true);
+    try {
+      await api.patch('/user/appearance', { provinceMotto: motto });
+      setStatus({ success: 'Motto updated. It will appear below your province name.' });
+    } catch (err) {
+      setStatus({ error: err.response?.data?.error || 'Failed to save motto.' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Section title="Appearance">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <div>
+          <label style={{ color: '#8090a8', fontSize: '0.8rem', display: 'block', marginBottom: '6px' }}>Province Motto</label>
+          <input
+            className="realm-input"
+            value={motto}
+            onChange={e => setMotto(e.target.value)}
+            maxLength={80}
+            placeholder="e.g. Blood and glory, or leave blank"
+          />
+          <p style={{ color: '#485868', fontSize: '0.75rem', marginTop: '4px' }}>
+            {motto.length}/80 characters. Shown beneath your province name in the header.
+          </p>
+        </div>
+        <button className="realm-btn-gold" style={{ alignSelf: 'flex-start', padding: '6px 18px' }} disabled={loading}>
+          {loading ? 'Saving...' : 'Save Motto'}
+        </button>
+        <StatusMsg {...status} />
+      </form>
+    </Section>
+  );
+}
+
 // ─── Main Settings Page ────────────────────────────────────────────────────
 export default function Settings({ onLogout }) {
   const [user, setUser] = useState(null);
@@ -347,6 +392,7 @@ export default function Settings({ onLogout }) {
         <p style={{ color: '#8090a8', fontSize: '0.85rem' }}>Loading...</p>
       ) : (
         <div className="flex flex-col gap-4">
+          <AppearanceSection user={user} />
           <DisplayNameSection user={user} />
           <ChangeEmailSection user={user} />
           <ChangePasswordSection />
