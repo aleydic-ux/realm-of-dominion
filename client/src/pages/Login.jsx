@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import api from '../utils/api';
 
 export default function Login({ onLogin }) {
+  const location = useLocation();
+  const successMessage = location.state?.successMessage || '';
   const [form, setForm] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,6 +48,11 @@ export default function Login({ onLogin }) {
         <form onSubmit={handleSubmit} className="realm-panel flex flex-col gap-5" style={{ padding: '2rem' }}>
           <h2 className="text-realm-gold font-display text-center" style={{ fontSize: '1.6rem', letterSpacing: '0.1em' }}>Login</h2>
 
+          {successMessage && (
+            <div className="bg-green-900/30 border border-green-700 text-green-300 px-3 py-2 rounded text-sm">
+              {successMessage}
+            </div>
+          )}
           {error && (
             <div className="bg-red-900/30 border border-red-700 text-red-300 px-3 py-2 rounded text-sm">
               {error}
@@ -82,6 +89,9 @@ export default function Login({ onLogin }) {
           <p className="text-realm-text-dim text-sm text-center">
             No kingdom?{' '}
             <Link to="/register" className="text-realm-gold hover:underline">Register</Link>
+          </p>
+          <p className="text-realm-text-dim text-sm text-center">
+            <Link to="/forgot-password" className="text-realm-text-muted hover:text-realm-gold hover:underline">Forgot password?</Link>
           </p>
         </form>
       </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
 
 const navLinks = [
@@ -52,6 +52,16 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, onNotifi
             {mobileOpen ? '✕' : '☰'}
           </button>
           <NotificationBell unreadCount={unreadCount} onOpen={onNotificationOpen} />
+          {/* Settings link */}
+          <Link
+            to="/settings"
+            title="Settings"
+            style={{ color: '#8090a8', fontSize: '0.75rem', border: '1px solid #243650', padding: '2px 8px', textDecoration: 'none', display: 'inline-block' }}
+            onMouseOver={e => { e.currentTarget.style.color = '#c8a048'; e.currentTarget.style.borderColor = '#c8a048'; }}
+            onMouseOut={e => { e.currentTarget.style.color = '#8090a8'; e.currentTarget.style.borderColor = '#243650'; }}
+          >
+            ⚙
+          </Link>
           {/* How to Play button */}
           <button
             onClick={onOpenHelp}

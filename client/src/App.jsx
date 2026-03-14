@@ -8,6 +8,9 @@ import HowToPlay from './help/HowToPlay';
 
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const Settings = lazy(() => import('./pages/Settings'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Military = lazy(() => import('./pages/Military'));
 const Buildings = lazy(() => import('./pages/Buildings'));
@@ -104,6 +107,7 @@ function ProtectedLayout({ onLogout }) {
             <Route path="/crafting" element={<Crafting province={province} buildings={buildings} refresh={refresh} />} />
             <Route path="/gems" element={<Gems province={province} />} />
             <Route path="/world" element={<WorldFeed province={province} />} />
+            <Route path="/settings" element={<Settings onLogout={onLogout} />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Suspense>
@@ -134,6 +138,8 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
           <Route path="/register" element={<Register onLogin={handleLogin} />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
