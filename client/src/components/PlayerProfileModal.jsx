@@ -126,8 +126,6 @@ export default function PlayerProfileModal({ provinceId, myProvinceId, onClose }
                   { label: 'Networth', value: formatNumber(p.networth), color: '#c8a048' },
                   { label: 'Land', value: `${formatNumber(p.land)} ac`, color: '#c8d8e8' },
                   { label: 'Morale', value: `${p.morale}%`, color: p.morale >= 80 ? '#22c55e' : p.morale >= 50 ? '#eab308' : '#ef4444' },
-                  { label: 'Troops Home', value: formatNumber(data.troops_home), color: '#b0c0d0' },
-                  { label: 'Deployed', value: formatNumber(data.troops_deployed), color: '#f97316' },
                 ].map(s => (
                   <div key={s.label} style={{ background: '#111828', border: '1px solid #1e3050', padding: '6px 8px' }}>
                     <div style={{ fontSize: '0.6rem', color: '#485868', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>{s.label}</div>
