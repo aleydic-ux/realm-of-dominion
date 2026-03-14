@@ -717,10 +717,19 @@ router.get('/me/attacks', async (req, res) => {
       pool.query('SELECT id, name, tier, race FROM troop_types'),
     ]);
 
-    // Build id → { name, tier } map for the frontend
+    // Build id → { name, tier } map for the frontend, seeded from current troop_types table
     const troopTypes = {};
     for (const tt of troopTypesResult.rows) {
       troopTypes[tt.id] = { name: tt.name, tier: tt.tier, race: tt.race };
+    }
+    // Merge per-attack name snapshots so historical records show correct names
+    // even if troop_type IDs were re-seeded or changed
+    for (const row of attacksResult.rows) {
+      if (row.troop_name_map && typeof row.troop_name_map === 'object') {
+        for (const [id, name] of Object.entries(row.troop_name_map)) {
+          if (!troopTypes[id]) troopTypes[id] = { name, tier: null, race: null };
+        }
+      }
     }
 
     res.json({ attacks: attacksResult.rows, troopTypes });

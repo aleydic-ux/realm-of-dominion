@@ -9,11 +9,27 @@ function timeAgo(dateStr) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+const EVENT_FILTERS = [
+  { id: 'all',    label: 'All' },
+  { id: 'battle', label: 'Battles' },
+  { id: 'season', label: 'Season' },
+  { id: 'other',  label: 'Other' },
+];
+
+function matchesFilter(msg, filter) {
+  if (filter === 'all') return true;
+  if (filter === 'battle') return msg.startsWith('[WAR]');
+  if (filter === 'season') return msg.startsWith('[SEASON');
+  // 'other' = everything not battle/season
+  return !msg.startsWith('[WAR]') && !msg.startsWith('[SEASON');
+}
+
 export default function WorldFeed({ province }) {
   const [feed, setFeed] = useState([]);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [eventFilter, setEventFilter] = useState('all');
   const bottomRef = useRef(null);
   const prevLengthRef = useRef(0);
 
@@ -56,7 +72,8 @@ export default function WorldFeed({ province }) {
     }
   }
 
-  const events = feed.filter(f => f.type === 'event');
+  const allEvents = feed.filter(f => f.type === 'event');
+  const events = allEvents.filter(f => matchesFilter(f.message, eventFilter));
   const chats = feed.filter(f => f.type === 'chat');
 
   return (
@@ -67,15 +84,35 @@ export default function WorldFeed({ province }) {
 
         {/* Recent Battles */}
         <div className="realm-panel" style={{display:'flex', flexDirection:'column', gap:'0'}}>
-          <div className="realm-section-header" style={{margin:'-12px -12px 10px -12px'}}>
-            Recent Battles
+          <div className="realm-section-header" style={{margin:'-12px -12px 0 -12px'}}>
+            Recent Events
           </div>
-          <div style={{overflowY:'auto', maxHeight:'500px'}}>
+          <div style={{display:'flex', gap:'4px', padding:'6px 0 2px'}}>
+            {EVENT_FILTERS.map(f => (
+              <button
+                key={f.id}
+                onClick={() => setEventFilter(f.id)}
+                style={{
+                  padding: '2px 10px',
+                  fontSize: '0.65rem',
+                  fontWeight: 'bold',
+                  border: '1px solid',
+                  borderColor: eventFilter === f.id ? '#c8a048' : '#243650',
+                  background: eventFilter === f.id ? 'rgba(200,160,72,0.15)' : 'transparent',
+                  color: eventFilter === f.id ? '#c8a048' : '#8090a8',
+                  cursor: 'pointer',
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div style={{overflowY:'auto', maxHeight:'460px'}}>
             {events.length === 0 && (
               <div className="py-6 text-center space-y-1">
                 <div className="text-2xl">🏰</div>
                 <p className="text-realm-text-muted text-xs font-medium">The realm is quiet...</p>
-                <p className="text-realm-text-dim text-xs">No battles recorded yet. Be the first to make history.</p>
+                <p className="text-realm-text-dim text-xs">{eventFilter === 'all' ? 'No events recorded yet.' : `No ${EVENT_FILTERS.find(f=>f.id===eventFilter)?.label} events yet.`}</p>
               </div>
             )}
             {[...events].reverse().map(entry => (

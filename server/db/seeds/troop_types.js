@@ -43,20 +43,21 @@ const troops = [
 async function seed() {
   const client = await pool.connect();
   try {
-    const existing = await client.query('SELECT COUNT(*) FROM troop_types');
-    if (parseInt(existing.rows[0].count) > 0) {
-      console.log('troop_types already seeded, skipping.');
-      return;
-    }
-
+    let inserted = 0;
     for (const t of troops) {
-      await client.query(
+      const result = await client.query(
         `INSERT INTO troop_types (race, name, tier, offense_power, defense_power, gold_cost, food_upkeep, training_time_hours, special_ability, requires_building)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+         SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
+         WHERE NOT EXISTS (SELECT 1 FROM troop_types WHERE race = $1 AND name = $2)`,
         [t.race, t.name, t.tier, t.offense, t.defense, t.gold, t.food, t.hours, t.special, t.requires]
       );
+      if (result.rowCount > 0) inserted++;
     }
-    console.log(`Seeded ${troops.length} troop types.`);
+    if (inserted > 0) {
+      console.log(`Seeded ${inserted} missing troop types.`);
+    } else {
+      console.log('All troop types already present, nothing to seed.');
+    }
   } finally {
     client.release();
     await pool.end();

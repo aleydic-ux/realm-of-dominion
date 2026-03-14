@@ -327,17 +327,24 @@ router.post('/', async (req, res) => {
       [attacker.id]
     );
 
+    // Build a name snapshot so Reports can show names even if troop_types IDs change
+    const nameMap = {};
+    for (const tt of [...attackerTroopTypes, ...defenderTroopTypes]) {
+      nameMap[tt.id] = tt.name;
+    }
+
     const { rows: [attackRecord] } = await client.query(
       `INSERT INTO attacks (attacker_province_id, defender_province_id, attack_type,
         attacker_power, defender_power, outcome, land_gained, resources_stolen,
-        troops_deployed, attacker_losses, defender_losses, troops_return_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+        troops_deployed, attacker_losses, defender_losses, troops_return_at, troop_name_map)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
       [
         attacker.id, target_id, attack_type,
         result.attackerPower, result.defenderPower, result.outcome,
         result.landGained, JSON.stringify(result.resourcesStolen),
         JSON.stringify(troopsDeployed), JSON.stringify(result.attackerLosses),
         JSON.stringify(result.defenderLosses), result.troopsReturnAt,
+        JSON.stringify(nameMap),
       ]
     );
 
