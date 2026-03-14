@@ -237,6 +237,33 @@ const TAB_CONTENT = [
     <div className="space-y-4 text-sm">
       {[
         {
+          version: 'v0.8',
+          date: 'Mar 13, 2026',
+          title: 'Full Alliance System',
+          changes: [
+            'Leave alliance (leaders with no officers will disband)',
+            'Rank management — leaders can promote members to officer, demote officers, or transfer leadership',
+            'Alliance buffs — purchase Gold Rush, War Drums, Iron Pact, or Scholar\'s Call from the alliance bank to boost all members',
+            'NAP system — propose a 48-hour Non-Aggression Pact with another alliance',
+            'Peace declaration — end all active wars in one action',
+            'War scoring — alliances earn win/loss records from battles between allied provinces',
+            'Alliance leaderboard now shows bank gold and war W/L record',
+          ],
+        },
+        {
+          version: 'v0.7',
+          date: 'Mar 13, 2026',
+          title: 'Achievements & Province Stats',
+          changes: [
+            'Achievement system with 18 achievements across Combat, Growth, Research, Military, and Buildings categories',
+            'Province stats tracking — attacks won/lost, land conquered, gold plundered, troops trained, and more',
+            'Progress bars on locked achievements so you know how close you are',
+            'Achievement unlock notifications delivered in real-time',
+            'Resource history sparkline chart on the Dashboard (24h and 7-day views)',
+            'New Feats page accessible from the nav bar',
+          ],
+        },
+        {
           version: 'v0.6',
           date: 'Mar 10, 2026',
           title: 'Raid Notifications & Combat Reports',
