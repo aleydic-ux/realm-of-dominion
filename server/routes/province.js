@@ -213,18 +213,43 @@ router.get('/:id', async (req, res) => {
   try {
     const { rows: [province] } = await pool.query(
       `SELECT p.id, p.name, p.race, p.land, p.networth, p.morale,
-              p.protection_ends_at, p.is_in_war, u.username
+              p.protection_ends_at, p.is_in_war, p.is_bot, u.username,
+              a.name as alliance_name, am.rank as alliance_rank
        FROM provinces p
        JOIN users u ON u.id = p.user_id
+       LEFT JOIN alliance_members am ON am.province_id = p.id
+       LEFT JOIN alliances a ON a.id = am.alliance_id
        WHERE p.id = $1`, [id]
     );
     if (!province) return res.status(404).json({ error: 'Province not found' });
 
-    const { rows: buildings } = await pool.query(
-      'SELECT building_type, level FROM province_buildings WHERE province_id = $1', [id]
-    );
+    const [buildingsRes, troopsRes, statsRes, battlesRes] = await Promise.all([
+      pool.query('SELECT building_type, level FROM province_buildings WHERE province_id = $1', [id]),
+      pool.query('SELECT SUM(count_home) as home, SUM(count_deployed) as deployed FROM province_troops WHERE province_id = $1', [id]),
+      pool.query(`SELECT
+        COUNT(CASE WHEN attacker_province_id = $1 AND outcome = 'win'  THEN 1 END)::int as attacks_won,
+        COUNT(CASE WHEN attacker_province_id = $1 AND outcome != 'win' THEN 1 END)::int as attacks_lost,
+        COUNT(CASE WHEN defender_province_id  = $1 AND outcome != 'win' THEN 1 END)::int as defenses_won,
+        COUNT(CASE WHEN defender_province_id  = $1 AND outcome = 'win'  THEN 1 END)::int as defenses_lost
+        FROM attacks WHERE attacker_province_id = $1 OR defender_province_id = $1`, [id]),
+      pool.query(`SELECT a.outcome, a.attack_type, a.attacked_at, a.land_gained,
+        ap.name as attacker_name, ap.id as attacker_id,
+        dp.name as defender_name, dp.id as defender_id
+        FROM attacks a
+        JOIN provinces ap ON ap.id = a.attacker_province_id
+        JOIN provinces dp ON dp.id = a.defender_province_id
+        WHERE a.attacker_province_id = $1 OR a.defender_province_id = $1
+        ORDER BY a.attacked_at DESC LIMIT 5`, [id]),
+    ]);
 
-    res.json({ province, buildings });
+    res.json({
+      province,
+      buildings: buildingsRes.rows,
+      troops_home: parseInt(troopsRes.rows[0]?.home || 0),
+      troops_deployed: parseInt(troopsRes.rows[0]?.deployed || 0),
+      battle_stats: statsRes.rows[0],
+      recent_battles: battlesRes.rows,
+    });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load province' });
   }

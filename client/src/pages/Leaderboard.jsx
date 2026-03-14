@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { formatNumber } from '../utils/formatters';
 import ProtectionBadge from '../components/ProtectionBadge';
+import PlayerProfileModal from '../components/PlayerProfileModal';
 
 export default function Leaderboard({ province }) {
   const [data, setData] = useState(null);
   const [hof, setHof] = useState(null);
   const [tab, setTab] = useState('overall');
   const [loading, setLoading] = useState(true);
+  const [profileId, setProfileId] = useState(null);
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => { document.title = 'Leaderboard — Realm of Dominion'; }, []);
@@ -45,6 +47,7 @@ export default function Leaderboard({ province }) {
 
   return (
     <div className="space-y-4">
+      {profileId && <PlayerProfileModal provinceId={profileId} myProvinceId={province?.id} onClose={() => setProfileId(null)} />}
       <h1 className="text-2xl font-display text-realm-gold">Rankings</h1>
 
       <div className="flex gap-1 border-b border-realm-border pb-2 flex-wrap">
@@ -67,7 +70,9 @@ export default function Leaderboard({ province }) {
                 <tr key={p.id} style={p.id === province?.id ? { background: 'rgba(200,160,72,0.08)', outline: '1px solid rgba(200,160,72,0.2)' } : undefined}>
                   <td className="text-realm-gold font-bold">{i === 0 ? '🏆 1' : i + 1}</td>
                   <td className="text-realm-text">
-                    {p.name}
+                    <button onClick={() => setProfileId(p.id)} style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', cursor: 'pointer', textAlign: 'left' }} className="hover:text-realm-gold">
+                      {p.name}
+                    </button>
                     {p.id === province?.id && (
                       <span style={{ marginLeft: '6px', fontSize: '10px', color: 'rgb(200,160,72)', background: 'rgba(200,160,72,0.15)', border: '1px solid rgba(200,160,72,0.4)', padding: '1px 5px', borderRadius: '3px' }}>you</span>
                     )}
@@ -97,7 +102,7 @@ export default function Leaderboard({ province }) {
               {data.military.map((p, i) => (
                 <tr key={p.id}>
                   <td className="text-red-400 font-bold">{i === 0 ? '🏆 1' : i + 1}</td>
-                  <td className="text-realm-text">{p.name}</td>
+                  <td className="text-realm-text"><button onClick={() => setProfileId(p.id)} style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', cursor: 'pointer' }} className="hover:text-realm-gold">{p.name}</button></td>
                   <td>{p.is_bot ? (
                     <span style={{ fontSize: '10px', padding: '1px 5px', background: 'rgba(72,88,104,0.3)', border: '1px solid rgba(72,88,104,0.5)', color: 'rgb(72,88,104)', borderRadius: '3px', letterSpacing: '0.05em' }}>BOT</span>
                   ) : <span className="text-realm-text-muted">{p.username}</span>}</td>
@@ -118,7 +123,7 @@ export default function Leaderboard({ province }) {
               {data.economic.map((p, i) => (
                 <tr key={p.id}>
                   <td className="text-yellow-400 font-bold">{i === 0 ? '🏆 1' : i + 1}</td>
-                  <td className="text-realm-text">{p.name}</td>
+                  <td className="text-realm-text"><button onClick={() => setProfileId(p.id)} style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', cursor: 'pointer' }} className="hover:text-realm-gold">{p.name}</button></td>
                   <td>{p.is_bot ? (
                     <span style={{ fontSize: '10px', padding: '1px 5px', background: 'rgba(72,88,104,0.3)', border: '1px solid rgba(72,88,104,0.5)', color: 'rgb(72,88,104)', borderRadius: '3px', letterSpacing: '0.05em' }}>BOT</span>
                   ) : <span className="text-realm-text-muted">{p.username}</span>}</td>

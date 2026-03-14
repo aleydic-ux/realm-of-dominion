@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../utils/api';
+import PlayerProfileModal from '../components/PlayerProfileModal';
 
 function timeAgo(dateStr) {
   const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
@@ -30,6 +31,7 @@ export default function WorldFeed({ province }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [eventFilter, setEventFilter] = useState('all');
+  const [profileId, setProfileId] = useState(null);
   const bottomRef = useRef(null);
   const prevLengthRef = useRef(0);
 
@@ -78,6 +80,7 @@ export default function WorldFeed({ province }) {
 
   return (
     <div className="space-y-4">
+      {profileId && <PlayerProfileModal provinceId={profileId} myProvinceId={province?.id} onClose={() => setProfileId(null)} />}
       <h1 className="text-2xl font-display text-realm-gold">World Feed</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -150,7 +153,7 @@ export default function WorldFeed({ province }) {
             {chats.map(entry => (
               <div key={entry.id} style={{padding:'5px 6px', background:'#111828', borderLeft:'2px solid #243650'}}>
                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:'2px'}}>
-                  <span style={{fontSize:'0.7rem', fontWeight:'bold', color:'#c8a048'}}>{entry.author_name}</span>
+                  <button onClick={() => entry.province_id && setProfileId(entry.province_id)} style={{ background:'none', border:'none', padding:0, fontSize:'0.7rem', fontWeight:'bold', color:'#c8a048', cursor: entry.province_id ? 'pointer' : 'default' }}>{entry.author_name}</button>
                   <span style={{fontSize:'0.6rem', color:'#485868'}}>{timeAgo(entry.created_at)}</span>
                 </div>
                 <div style={{fontSize:'0.75rem', color:'#c8d8e8'}}>{entry.message}</div>
