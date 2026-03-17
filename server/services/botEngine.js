@@ -209,15 +209,26 @@ async function spawnSingleBot(ageId, personality) {
 
 async function respawnWipedBots() {
   try {
-    // A bot is "wiped" if it has 0 land or no troops home AND hasn't acted in 24h
+    // Wiped: land <= 10 and inactive for 12h
     const { rows: wiped } = await pool.query(
       `SELECT p.id, p.bot_personality, p.age_id FROM provinces p
        JOIN ages a ON a.id = p.age_id AND a.is_active = true
        WHERE p.is_bot = true AND p.land <= 10
-         AND (p.bot_last_action_at IS NULL OR p.bot_last_action_at < NOW() - INTERVAL '24 hours')`
+         AND (p.bot_last_action_at IS NULL OR p.bot_last_action_at < NOW() - INTERVAL '12 hours')`
     );
 
-    for (const bot of wiped) {
+    // Stuck: haven't acted at all or inactive for 48h+ (regardless of land)
+    const { rows: stuck } = await pool.query(
+      `SELECT p.id, p.bot_personality, p.age_id FROM provinces p
+       JOIN ages a ON a.id = p.age_id AND a.is_active = true
+       WHERE p.is_bot = true
+         AND (p.bot_last_action_at IS NULL OR p.bot_last_action_at < NOW() - INTERVAL '48 hours')
+         AND p.id NOT IN (SELECT id FROM provinces WHERE land <= 10)`
+    );
+
+    const toRespawn = [...wiped, ...stuck];
+
+    for (const bot of toRespawn) {
       await pool.query(
         `UPDATE provinces SET
            land = 100, gold = 5000, food = 2000, mana = 500,
@@ -244,7 +255,7 @@ async function respawnWipedBots() {
            )`,
         [bot.id]
       );
-      console.log(`[bot] Respawned wiped bot id=${bot.id}`);
+      console.log(`[bot] Respawned ${stuck.includes(bot) ? 'stuck' : 'wiped'} bot id=${bot.id}`);
     }
   } catch (err) {
     console.error('[bot] Respawn check failed:', err.message);

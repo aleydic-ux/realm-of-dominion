@@ -86,11 +86,11 @@ export default function NotificationBell({ unreadCount, onOpen }) {
 
       {open && (
         <div style={{
-          position: 'absolute', top: '100%', right: 0, marginTop: '4px',
-          width: '340px', maxHeight: '420px', overflowY: 'auto',
+          position: 'fixed', top: 'auto', right: '8px', marginTop: '4px',
+          width: '340px', maxWidth: 'calc(100vw - 16px)', maxHeight: '70vh', overflowY: 'auto',
           background: '#0e1828', border: '1px solid #1e3050',
           borderRadius: '6px', boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
-          zIndex: 100,
+          zIndex: 200,
         }}>
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',

@@ -110,7 +110,7 @@ async function checkAndEndSeason(io) {
       [age.id]
     );
 
-    const protectionEndsAt = new Date(startsAt.getTime() + 72 * 3600000);
+    const protectionEndsAt = new Date(startsAt.getTime() + 24 * 3600000);
 
     for (const op of oldProvinces) {
       // Insert fresh province
