@@ -103,10 +103,11 @@ async function checkAndEndSeason(io) {
     );
 
     // 5. Create fresh provinces for all users (carry over same race & name)
+    // Exclude bots — they are spawned fresh below via spawnBots
     const { rows: oldProvinces } = await client.query(
       `SELECT p.id as old_id, p.user_id, p.name, p.race
        FROM provinces p
-       WHERE p.age_id = $1`,
+       WHERE p.age_id = $1 AND p.is_bot = false AND p.user_id IS NOT NULL`,
       [age.id]
     );
 
