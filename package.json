@@ -8,7 +8,7 @@
     "server:dev": "nodemon server/index.js",
     "client:dev": "cd client && npm run dev",
     "start": "node server/db/migrate.js && node server/index.js",
-    "build": "cd client && npm ci && npm run build",
+    "build": "npm install",
     "db:migrate": "node server/db/migrate.js",
     "db:seed": "node server/db/seeds/troop_types.js && node server/db/seeds/tech_tree.js",
     "db:seed:age": "node server/db/seeds/age.js",
