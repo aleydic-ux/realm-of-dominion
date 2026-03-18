@@ -43,6 +43,10 @@ export const RACE_ICONS = {
   undead: '☠️',
   elf: '🌿',
   dwarf: '⚒️',
+  serpathi: '🐍',
+  ironveil: '⚙️',
+  ashborn: '🔥',
+  tidewarden: '🌊',
 };
 
 export const RESOURCE_ICONS = {
@@ -58,6 +62,10 @@ export const RACE_LABELS = {
   undead: 'Undead',
   elf: 'Elf',
   dwarf: 'Dwarf',
+  serpathi: 'Serpathi',
+  ironveil: 'Ironveil',
+  ashborn: 'Ashborn',
+  tidewarden: 'Tidewarden',
 };
 
 export function formatRelativeDate(isoString) {

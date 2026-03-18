@@ -38,6 +38,34 @@ const troops = [
   { race: 'dwarf', tier: 3, name: 'Runic Warrior',  offense: 7,  defense: 7,  gold: 100,  food: 1, hours: 1/3600, special: 'Gets +3 ATK/DEF per level of Runic Forge', requires: null },
   { race: 'dwarf', tier: 4, name: 'Ironclad',       offense: 9,  defense: 5,  gold: 650,  food: 2, hours: 1/3600, special: 'Destroys enemy wall effectiveness by 20% on win', requires: 'war_hall:3' },
   { race: 'dwarf', tier: 5, name: 'Siege Engineer', offense: 13, defense: 2,  gold: 1100, food: 2, hours: 1/3600, special: '+50% effectiveness vs fortified provinces', requires: 'war_hall:5' },
+
+  // Serpathi Troops (spy/subterfuge)
+  { race: 'serpathi', tier: 1, name: 'Shadow Lurker',   offense: 2,  defense: 3,  gold: 1,    food: 1, hours: 1/3600, special: null, requires: null },
+  { race: 'serpathi', tier: 2, name: 'Venom Striker',   offense: 5,  defense: 3,  gold: 15,   food: 1, hours: 1/3600, special: null, requires: null },
+  { race: 'serpathi', tier: 3, name: 'Thornblade',      offense: 8,  defense: 5,  gold: 100,  food: 1, hours: 1/3600, special: 'Evades 15% of counterattack casualties', requires: null },
+  { race: 'serpathi', tier: 4, name: 'Cobra Assassin',  offense: 7,  defense: 7,  gold: 600,  food: 2, hours: 1/3600, special: 'Drains enemy morale -3', requires: 'war_hall:3' },
+  { race: 'serpathi', tier: 5, name: 'Serpent Hydra',   offense: 16, defense: 5,  gold: 1200, food: 2, hours: 1/3600, special: 'Ignores 20% of wall bonus', requires: 'war_hall:5' },
+
+  // Ironveil Troops (industrial)
+  { race: 'ironveil', tier: 1, name: 'Gear Grunt',        offense: 3,  defense: 3,  gold: 1,    food: 1, hours: 1/3600, special: null, requires: null },
+  { race: 'ironveil', tier: 2, name: 'Steam Trooper',     offense: 5,  defense: 5,  gold: 15,   food: 1, hours: 1/3600, special: null, requires: null },
+  { race: 'ironveil', tier: 3, name: 'Clockwork Knight',  offense: 7,  defense: 7,  gold: 100,  food: 1, hours: 1/3600, special: null, requires: null },
+  { race: 'ironveil', tier: 4, name: 'Siege Automaton',   offense: 9,  defense: 4,  gold: 650,  food: 2, hours: 1/3600, special: null, requires: 'war_hall:3' },
+  { race: 'ironveil', tier: 5, name: 'War Colossus',      offense: 13, defense: 7,  gold: 1100, food: 2, hours: 1/3600, special: 'Destroys 15% watchtower effectiveness on win', requires: 'war_hall:5' },
+
+  // Ashborn Troops (rage/raid)
+  { race: 'ashborn', tier: 1, name: 'Ashwalker',     offense: 4,  defense: 2,  gold: 1,    food: 1, hours: 1/3600, special: null, requires: null },
+  { race: 'ashborn', tier: 2, name: 'Ember Raider',  offense: 6,  defense: 2,  gold: 15,   food: 1, hours: 1/3600, special: '+10% raid loot', requires: null },
+  { race: 'ashborn', tier: 3, name: 'Flame Warden',  offense: 5,  defense: 6,  gold: 100,  food: 1, hours: 1/3600, special: 'Drains enemy morale -3 on win', requires: null },
+  { race: 'ashborn', tier: 4, name: 'Cinderborn',    offense: 9,  defense: 3,  gold: 650,  food: 2, hours: 1/3600, special: null, requires: 'war_hall:3' },
+  { race: 'ashborn', tier: 5, name: 'Infernal Drake',offense: 15, defense: 4,  gold: 1100, food: 2, hours: 1/3600, special: 'Burns 15% enemy food on win', requires: 'war_hall:5' },
+
+  // Tidewarden Troops (economy/diplomacy)
+  { race: 'tidewarden', tier: 1, name: 'Tide Watcher',    offense: 1,  defense: 4,  gold: 1,    food: 1, hours: 1/3600, special: null, requires: null },
+  { race: 'tidewarden', tier: 2, name: 'Current Dancer',  offense: 4,  defense: 5,  gold: 15,   food: 1, hours: 1/3600, special: '2x army return speed', requires: null },
+  { race: 'tidewarden', tier: 3, name: 'Deep Raider',     offense: 8,  defense: 4,  gold: 100,  food: 1, hours: 1/3600, special: '+10% gold from raids', requires: null },
+  { race: 'tidewarden', tier: 4, name: 'Leviathan Guard', offense: 0,  defense: 18, gold: 700,  food: 2, hours: 1/3600, special: 'Defense only; cannot attack', requires: 'war_hall:3' },
+  { race: 'tidewarden', tier: 5, name: 'Kraken Lord',     offense: 16, defense: 8,  gold: 1200, food: 2, hours: 1/3600, special: null, requires: 'war_hall:5' },
 ];
 
 async function seed() {

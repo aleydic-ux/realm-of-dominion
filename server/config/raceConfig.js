@@ -83,6 +83,76 @@ const raceConfig = {
     landResourceYieldMultiplier: 1.00,
     specialRules: ['tunnel_rat_bypasses_walls', 'runic_warrior_forge_bonus'],
   },
+
+  // ─── New Races ─────────────────────────────────────────────────────────────
+
+  serpathi: {
+    goldIncomeMultiplier: 1.00,
+    foodProductionMultiplier: 1.00,
+    troopAttackMultiplier: 1.00,
+    trainingSpeedMultiplier: 1.00,
+    researchSpeedMultiplier: 1.00,
+    manaRegenMultiplier: 1.10,        // +10% mana for spy operations
+    buildingCostMultiplier: 1.00,
+    marketplaceSaleBonus: 0.00,
+    marketplaceBlocked: false,
+    siegeDamageReduction: 0.00,
+    troopFoodUpkeepMultiplier: 1.00,
+    armyReturnSpeedMultiplier: 0.85,  // 15% faster army return
+    landResourceYieldMultiplier: 1.00,
+    specialRules: ['scout_resistance', 'defensive_troop_recovery'],
+  },
+
+  ironveil: {
+    goldIncomeMultiplier: 1.00,
+    foodProductionMultiplier: 1.00,
+    troopAttackMultiplier: 1.15,      // +15% offensive attack power
+    trainingSpeedMultiplier: 1.00,
+    researchSpeedMultiplier: 1.00,
+    manaRegenMultiplier: 1.00,
+    buildingCostMultiplier: 0.90,     // -10% build cost
+    marketplaceSaleBonus: 0.00,
+    marketplaceBlocked: false,
+    siegeDamageReduction: 0.00,
+    troopFoodUpkeepMultiplier: 1.00,
+    armyReturnSpeedMultiplier: 1.00,
+    landResourceYieldMultiplier: 1.00,
+    specialRules: ['crafting_bonus_charge'],
+  },
+
+  ashborn: {
+    goldIncomeMultiplier: 1.00,
+    foodProductionMultiplier: 1.00,
+    troopAttackMultiplier: 1.00,      // base neutral — fury stacks applied in combat
+    trainingSpeedMultiplier: 1.10,    // +10% training speed
+    researchSpeedMultiplier: 1.00,
+    manaRegenMultiplier: 1.00,
+    buildingCostMultiplier: 1.00,
+    marketplaceSaleBonus: 0.00,
+    marketplaceBlocked: false,
+    siegeDamageReduction: 0.00,
+    troopFoodUpkeepMultiplier: 1.00,
+    armyReturnSpeedMultiplier: 1.00,
+    landResourceYieldMultiplier: 1.00,
+    specialRules: ['ashborn_fury', 'scorched_earth', 'battle_hardened'],
+  },
+
+  tidewarden: {
+    goldIncomeMultiplier: 1.20,       // +20% gold production
+    foodProductionMultiplier: 1.20,   // +20% food production
+    troopAttackMultiplier: 1.00,
+    trainingSpeedMultiplier: 1.00,
+    researchSpeedMultiplier: 1.00,
+    manaRegenMultiplier: 1.10,
+    buildingCostMultiplier: 1.00,
+    marketplaceSaleBonus: 0.10,       // +10% marketplace proceeds
+    marketplaceBlocked: false,
+    siegeDamageReduction: 0.00,
+    troopFoodUpkeepMultiplier: 1.00,
+    armyReturnSpeedMultiplier: 1.00,
+    landResourceYieldMultiplier: 1.00,
+    specialRules: ['phantom_attack', 'retreat_penalty_for_attackers'],
+  },
 };
 
 module.exports = raceConfig;

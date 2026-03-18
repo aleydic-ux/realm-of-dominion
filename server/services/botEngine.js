@@ -28,8 +28,10 @@ const UNIVERSAL_BUILDINGS = [
 const RACE_BUILDINGS = {
   human: 'royal_bank', orc: 'warchief_pit', undead: 'crypt',
   elf: 'ancient_grove', dwarf: 'runic_forge',
+  serpathi: 'shadowveil_den', ironveil: 'artificers_foundry',
+  ashborn: 'ashfire_altar', tidewarden: 'tidal_basin',
 };
-const BOT_RACES = ['human', 'orc', 'undead', 'elf', 'dwarf'];
+const BOT_RACES = ['human', 'orc', 'undead', 'elf', 'dwarf', 'serpathi', 'ironveil', 'ashborn', 'tidewarden'];
 const MIN_WORLD_POPULATION = 12; // spawn more bots if total kingdoms < this
 
 const BOT_NAMES = [

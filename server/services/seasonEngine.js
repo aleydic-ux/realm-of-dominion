@@ -19,6 +19,10 @@ const RACE_BUILDINGS = {
   undead: 'crypt',
   elf: 'ancient_grove',
   dwarf: 'runic_forge',
+  serpathi: 'shadowveil_den',
+  ironveil: 'artificers_foundry',
+  ashborn: 'ashfire_altar',
+  tidewarden: 'tidal_basin',
 };
 
 let seasonEndInProgress = false;

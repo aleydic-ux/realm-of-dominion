@@ -237,6 +237,33 @@ const TAB_CONTENT = [
     <div className="space-y-4 text-sm">
       {[
         {
+          version: 'v0.9',
+          date: 'Mar 17, 2026',
+          title: 'Four New Races',
+          changes: [
+            'Serpathi — spy/subterfuge race: 15% faster army return, +10% mana regen, recover 15% of defensive troop losses, Thornblade evades 15% counterattack, Serpent Hydra ignores 20% of wall bonus, Cobra Assassin drains -3 morale',
+            'Ironveil — industrial race: +15% offensive attack, -10% build cost, Artificers Foundry boosts production, War Colossus destroys 15% watchtower effectiveness on win',
+            'Ashborn — rage/raid race: +25% raid loot, fury stacks (+3% power per attack streak, max 5), scorched earth burns 10% own resources on defense, Flame Warden drains -3 morale, Infernal Drake burns 15% enemy food, battle hardened (-15% defensive casualties after being attacked this season)',
+            'Tidewarden — economy/diplomacy race: +20% gold & food production, +10% marketplace bonus, phantom attack (once per season, no troop losses regardless of outcome), attackers suffer +10% extra casualties, Tidal Basin boosts gold, Current Dancer doubles return speed, Deep Raider +10% gold from raids',
+            '20 new troop types (5 per race) including defense-only Leviathan Guard',
+            'Four new race-specific buildings: Shadowveil Den, Artificers Foundry, Ashfire Altar, Tidal Basin',
+            'New province columns: ashborn_attack_streak, attacked_this_season, phantom_attack_used',
+            'Bot provinces now randomly assigned to all 9 races',
+          ],
+        },
+        {
+          version: 'v0.8.1',
+          date: 'Mar 17, 2026',
+          title: 'Balance & Bug Fixes',
+          changes: [
+            'Reduced troop food upkeep: T3 2→1, T4 3→2, T5 4→2 for all non-undead races',
+            'New season newbie protection reduced from 72h to 24h',
+            'Fixed zombie bot provinces appearing in leaderboard with 0 networth',
+            'Fixed notification bell clipping outside screen on mobile',
+            'Improved bot respawn logic — stuck bots (48h+ inactive) are now reset alongside wiped bots',
+          ],
+        },
+        {
           version: 'v0.8',
           date: 'Mar 13, 2026',
           title: 'Full Alliance System',

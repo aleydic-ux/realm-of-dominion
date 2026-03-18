@@ -173,6 +173,39 @@ router.post('/', async (req, res) => {
         .map(r => ({ modifier_type: 'multiplier', target: CRAFT_COMBAT_MAP[r.modifier_key], value: parseFloat(r.total) }));
     } catch (_) { /* active_effects table may not exist yet */ }
 
+    // Phantom attack validation (Tidewarden once-per-season ability)
+    const usePhantomAttack = req.body.use_phantom_attack === true;
+    if (usePhantomAttack) {
+      if (attacker.race !== 'tidewarden') {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Phantom attack is only available to Tidewarden' });
+      }
+      if (attacker.phantom_attack_used) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Phantom attack already used this season' });
+      }
+    }
+
+    // Ashborn scorched earth: burn 10% of own resources before loot is calculated
+    let defenderForCombat = { ...defender };
+    if (defender.race === 'ashborn') {
+      const burnGold = Math.floor(defender.gold * 0.10);
+      const burnFood = Math.floor(defender.food * 0.10);
+      const burnMana = Math.floor(defender.mana * 0.10);
+      if (burnGold > 0 || burnFood > 0 || burnMana > 0) {
+        await client.query(
+          `UPDATE provinces SET gold = GREATEST(0, gold - $1), food = GREATEST(0, food - $2), mana = GREATEST(0, mana - $3), updated_at = NOW() WHERE id = $4`,
+          [burnGold, burnFood, burnMana, target_id]
+        );
+        defenderForCombat = {
+          ...defender,
+          gold: Math.max(0, defender.gold - burnGold),
+          food: Math.max(0, defender.food - burnFood),
+          mana: Math.max(0, defender.mana - burnMana),
+        };
+      }
+    }
+
     // Check enemy morale bonus
     const isEnemy = relation.length && relation[0].status === 'enemy';
     const attackerMoraleBonus = isEnemy ? 10 : 0;
@@ -181,7 +214,7 @@ router.post('/', async (req, res) => {
     // Resolve combat
     const result = resolveAttack({
       attacker: attackerWithBonus,
-      defender,
+      defender: defenderForCombat,
       attackType: attack_type,
       troopsDeployed,
       attackerTroopTypes,
@@ -193,6 +226,13 @@ router.post('/', async (req, res) => {
       attackerSpellEffects: [...attackerSpellEffects, ...attackerCraftEffects],
       defenderSpellEffects: [...defenderSpellEffects, ...defenderCraftEffects],
     });
+
+    // Phantom attack: troops return regardless of outcome (no attacker losses)
+    if (usePhantomAttack) {
+      for (const key of Object.keys(result.attackerLosses)) {
+        result.attackerLosses[key] = 0;
+      }
+    }
 
     // Apply attacker losses (remove from home, add to deployed - losses)
     for (const [troopTypeIdStr, count] of Object.entries(troopsDeployed)) {
@@ -297,6 +337,25 @@ router.post('/', async (req, res) => {
           );
         }
 
+        // Infernal Drake: burns 15% of enemy food
+        if (effect.type === 'food_burn') {
+          const foodBurned = Math.floor(defender.food * effect.value);
+          await client.query(
+            `UPDATE provinces SET food = GREATEST(0, food - $1), updated_at = NOW() WHERE id = $2`,
+            [foodBurned, target_id]
+          );
+        }
+
+        // War Colossus: destroys 15% watchtower effectiveness (stored as a debuff flag)
+        if (effect.type === 'watchtower_debuff') {
+          await client.query(
+            `INSERT INTO active_effects (province_id, modifier_key, modifier_value, expires_at)
+             VALUES ($1, 'watchtower_debuff', $2, NOW() + INTERVAL '24 hours')
+             ON CONFLICT DO NOTHING`,
+            [parseInt(target_id), effect.value]
+          ).catch(() => {}); // graceful if table schema differs
+        }
+
         // Undead skeleton raise
         if (attacker.race === 'undead') {
           let raiseChance = 0.10; // base 10%
@@ -357,6 +416,45 @@ router.post('/', async (req, res) => {
     } catch (_) { /* active_effects may not exist yet */ }
 
     await client.query('COMMIT');
+
+    // ── Post-commit race state updates ──
+    try {
+      // Ashborn attacker: increment attack streak
+      if (attacker.race === 'ashborn') {
+        await pool.query(
+          `UPDATE provinces SET ashborn_attack_streak = ashborn_attack_streak + 1, updated_at = NOW() WHERE id = $1`,
+          [attacker.id]
+        );
+      }
+
+      // Mark defender as attacked this season (enables Ashborn battle_hardened)
+      await pool.query(
+        `UPDATE provinces SET attacked_this_season = TRUE, updated_at = NOW() WHERE id = $1`,
+        [parseInt(target_id)]
+      );
+
+      // Serpathi defender: recover 15% of troops lost in defense
+      if (defender.race === 'serpathi' && Object.keys(result.defenderLosses).length > 0) {
+        for (const [troopTypeIdStr, lost] of Object.entries(result.defenderLosses)) {
+          const recovered = Math.floor(lost * 0.15);
+          if (recovered > 0) {
+            await pool.query(
+              `UPDATE province_troops SET count_home = count_home + $1, updated_at = NOW()
+               WHERE province_id = $2 AND troop_type_id = $3`,
+              [recovered, parseInt(target_id), parseInt(troopTypeIdStr)]
+            );
+          }
+        }
+      }
+
+      // Phantom attack used: mark flag
+      if (usePhantomAttack) {
+        await pool.query(
+          `UPDATE provinces SET phantom_attack_used = TRUE, updated_at = NOW() WHERE id = $1`,
+          [attacker.id]
+        );
+      }
+    } catch (e) { console.error('Race state update error:', e.message); }
 
     // ── Notifications ──
     try {

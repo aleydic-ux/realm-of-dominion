@@ -29,6 +29,26 @@ const RACES = [
     bonuses: '-25% build cost, -25% siege damage taken',
     lore: 'Master builders. Impenetrable fortresses and runic weapons.',
   },
+  {
+    id: 'serpathi', label: 'Serpathi', icon: '🐍',
+    bonuses: 'Spy actions 20% cheaper, recover 15% of defensive troops, 25% enemy scout resistance, +10% mana regen',
+    lore: 'We do not conquer. We wait, and then we take.',
+  },
+  {
+    id: 'ironveil', label: 'Ironveil', icon: '⚙️',
+    bonuses: '+15% offensive attack, -10% build cost, crafting yields +1 charge',
+    lore: 'Every war is a resource problem. We solved it.',
+  },
+  {
+    id: 'ashborn', label: 'Ashborn', icon: '🔥',
+    bonuses: 'Raids deal +25% damage/loot, fury stacks per attack (+3% each, max 5), scorched earth on defense',
+    lore: 'We have already burned. What can you do to us?',
+  },
+  {
+    id: 'tidewarden', label: 'Tidewarden', icon: '🌊',
+    bonuses: '+20% gold & food, phantom attack once/season, +10% marketplace, attackers suffer extra losses',
+    lore: 'The tide comes in. The tide goes out. So does our mercy.',
+  },
 ];
 
 export default function Register({ onLogin }) {

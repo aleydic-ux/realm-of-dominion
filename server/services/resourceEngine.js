@@ -94,11 +94,15 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
     const ancientGroveLevel = buildings['ancient_grove'] || 0; // Elf only
     const royalBankLevel = buildings['royal_bank'] || 0; // Human only
     const arcaneSanctumLevel = buildings['arcane_sanctum'] || 0;
+    const tidalBasinLevel = buildings['tidal_basin'] || 0;         // Tidewarden only
+    const artificersFoundryLevel = buildings['artificers_foundry'] || 0; // Ironveil only
+    const shadowveilDenLevel = buildings['shadowveil_den'] || 0;   // Serpathi only
 
     // --- Gold ---
     let goldRate = province.land * BASE_GOLD_PER_LAND;
     goldRate *= 1 + (treasuryLevel * 0.04); // +4% per level passive income
     if (royalBankLevel > 0) goldRate *= 1 + (royalBankLevel * 0.15); // Human royal bank
+    if (tidalBasinLevel > 0) goldRate *= 1 + (tidalBasinLevel * 0.12); // Tidewarden tidal basin
     goldRate *= cfg.goldIncomeMultiplier;
     goldRate = applyTechModifiers(goldRate, 'gold_income', techEffects);
 
@@ -126,12 +130,14 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
     manaRate *= 1 + (templeLevel * 0.10); // +10% per temple level
     if (ancientGroveLevel > 0) manaRate *= 1 + (ancientGroveLevel * 0.15); // Elf grove
     if (arcaneSanctumLevel > 0) manaRate *= 1 + (arcaneSanctumLevel * 0.05); // +5% per sanctum level
+    if (shadowveilDenLevel > 0) manaRate *= 1 + (shadowveilDenLevel * 0.07); // Serpathi shadowveil den
     manaRate *= cfg.manaRegenMultiplier;
     manaRate = applyTechModifiers(manaRate, 'mana_regen', techEffects);
 
     // --- Production Points ---
     let productionRate = province.land * BASE_PRODUCTION_PER_LAND;
     productionRate *= 1 + (mineLevel * 0.08); // +8% per mine level
+    if (artificersFoundryLevel > 0) productionRate *= 1 + (artificersFoundryLevel * 0.10); // Ironveil foundry
     productionRate = applyTechModifiers(productionRate, 'industry_points', techEffects);
 
     // --- Active spell effects (buffs/debuffs affecting this province's resources) ---
@@ -210,6 +216,10 @@ const BUILDING_BASE_COSTS = {
   ancient_grove:     { gold: 550,  industry_points: 55 },
   runic_forge:       { gold: 650,  industry_points: 65 },
   arcane_sanctum:    { gold: 900,  industry_points: 90 },
+  shadowveil_den:    { gold: 600,  industry_points: 60 },
+  artificers_foundry:{ gold: 700,  industry_points: 70 },
+  ashfire_altar:     { gold: 650,  industry_points: 65 },
+  tidal_basin:       { gold: 600,  industry_points: 60 },
 };
 
 /**
