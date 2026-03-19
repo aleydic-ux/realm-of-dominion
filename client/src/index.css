@@ -5,38 +5,55 @@
 @layer base {
   html, body {
     @apply bg-realm-bg text-realm-text;
-    font-family: Verdana, Arial, sans-serif;
+    font-family: 'Inter', Verdana, Arial, sans-serif;
     font-size: 14px;
     min-height: 100vh;
-    background-image: linear-gradient(180deg, #0a1020 0%, #0d1428 100%);
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(200, 160, 72, 0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(48, 112, 192, 0.03) 0%, transparent 50%),
+      linear-gradient(180deg, #0a1020 0%, #0d1428 100%);
   }
 
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: #111828; }
-  ::-webkit-scrollbar-thumb { background: #243650; }
+  ::-webkit-scrollbar-thumb { background: #243650; border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: #3a5880; }
 
-  h1, h2, h3, h4 { font-family: 'Cinzel', Georgia, serif; @apply text-realm-gold; }
-  a { @apply text-realm-blue-light hover:text-realm-gold; text-decoration: none; }
+  h1, h2, h3, h4 {
+    font-family: 'Cinzel', Georgia, serif;
+    @apply text-realm-gold;
+    text-shadow: 0 0 8px rgba(200, 160, 72, 0.2);
+  }
+
+  a { @apply text-realm-blue-light hover:text-realm-gold; text-decoration: none; transition: color 0.2s ease; }
   a:hover { text-decoration: underline; }
+
+  /* Focus-visible for accessibility */
+  *:focus-visible {
+    outline: 2px solid rgba(200, 160, 72, 0.6);
+    outline-offset: 2px;
+  }
 }
 
 @layer components {
   .realm-panel {
     @apply bg-realm-panel border border-realm-border p-3;
+    border-radius: 6px;
     border-top: 2px solid #3a5878;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.4);
-    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 8px rgba(0,0,0,0.4);
+    transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.15s ease;
   }
   .realm-panel:hover {
-    box-shadow: 0 0 0 1px rgba(200, 160, 72, 0.25), 0 4px 16px rgba(0,0,0,0.4);
+    box-shadow: 0 0 12px rgba(200, 160, 72, 0.15), 0 4px 16px rgba(0,0,0,0.4);
     border-top-color: rgba(200, 160, 72, 0.6);
   }
 
   .realm-btn {
-    @apply px-3 py-1 border transition-colors duration-100 text-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed;
-    font-family: Verdana, Arial, sans-serif;
-    font-weight: bold;
+    @apply px-3 py-1 border transition-all duration-150 text-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed;
+    font-family: 'Inter', Verdana, Arial, sans-serif;
+    font-weight: 600;
+    border-radius: 4px;
+    letter-spacing: 0.02em;
   }
 
   .realm-btn-gold {
@@ -45,9 +62,16 @@
     border-color: #6a4810;
     color: #fff8e0;
     text-shadow: 1px 1px 1px rgba(0,0,0,0.6);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
   }
   .realm-btn-gold:hover:not(:disabled) {
     background: linear-gradient(to bottom, #e8c050, #a07828);
+    box-shadow: 0 0 12px rgba(200, 160, 72, 0.4), 0 2px 6px rgba(0,0,0,0.3);
+    transform: translateY(-1px);
+  }
+  .realm-btn-gold:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.4);
   }
 
   .realm-btn-red {
@@ -56,34 +80,58 @@
     border-color: #601010;
     color: #ffe0e0;
     text-shadow: 1px 1px 1px rgba(0,0,0,0.6);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
   }
   .realm-btn-red:hover:not(:disabled) {
     background: linear-gradient(to bottom, #d84040, #a02020);
+    box-shadow: 0 0 12px rgba(204, 40, 40, 0.35), 0 2px 6px rgba(0,0,0,0.3);
+    transform: translateY(-1px);
+  }
+  .realm-btn-red:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.4);
   }
 
   .realm-btn-outline {
-    @apply realm-btn bg-realm-surface border-realm-border text-realm-text-muted hover:border-realm-blue-light hover:text-realm-text;
+    @apply realm-btn bg-realm-surface border-realm-border text-realm-text-muted;
+    transition: all 0.2s ease;
+  }
+  .realm-btn-outline:hover:not(:disabled) {
+    border-color: rgba(200, 160, 72, 0.5);
+    color: #c8d8e8;
+    background: rgba(200, 160, 72, 0.06);
+    box-shadow: 0 0 8px rgba(200, 160, 72, 0.1);
   }
 
   .realm-input {
     @apply bg-realm-surface border border-realm-border text-realm-text px-2 py-1 w-full text-xs
-           focus:outline-none focus:border-realm-blue-light placeholder:text-realm-text-dim;
-    font-family: Verdana, Arial, sans-serif;
+           focus:outline-none placeholder:text-realm-text-dim;
+    font-family: 'Inter', Verdana, Arial, sans-serif;
+    border-radius: 4px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .realm-input:focus {
+    border-color: rgba(200, 160, 72, 0.5);
+    box-shadow: 0 0 8px rgba(200, 160, 72, 0.12);
   }
 
   .realm-table {
     @apply w-full text-xs border-collapse border border-realm-border;
+    border-radius: 6px;
+    overflow: hidden;
   }
   .realm-table th {
     @apply text-left py-1.5 px-3 border border-realm-border text-xs font-bold;
     background: linear-gradient(to bottom, #1e3050, #162440);
     color: #c8d8e8;
     border-bottom: 1px solid #3a5878;
+    letter-spacing: 0.03em;
   }
   .realm-table td {
     @apply py-1.5 px-3 border-b border-realm-border;
     color: #b0c0d0;
     background: #162030;
+    transition: background 0.15s ease, color 0.15s ease;
   }
   .realm-table tr:nth-child(even) td {
     background: #111828;
@@ -95,7 +143,9 @@
 
   .realm-badge {
     @apply text-xs px-2 py-0.5 border font-bold;
-    font-family: Verdana, Arial, sans-serif;
+    font-family: 'Inter', Verdana, Arial, sans-serif;
+    border-radius: 3px;
+    letter-spacing: 0.03em;
   }
 
   .resource-bar {
@@ -108,24 +158,60 @@
     margin: 0.75rem 0;
   }
 
-  /* Section header bar — like Utopia's colored section headers */
+  /* Section header bar */
   .realm-section-header {
     @apply px-3 py-1.5 text-xs font-bold uppercase tracking-wider;
     background: linear-gradient(to right, #1e3050, #162440);
     border-left: 3px solid #c8a048;
     border-bottom: 1px solid #3a5878;
+    border-radius: 4px 4px 0 0;
     color: #c8d8e8;
     font-family: 'Cinzel', Georgia, serif;
     letter-spacing: 0.08em;
   }
 }
 
-/* Race color accents */
+/* Race color accents — original */
 .race-human { color: #4080c0; }
 .race-orc { color: #408040; }
 .race-undead { color: #9040c0; }
 .race-elf { color: #40c080; }
 .race-dwarf { color: #c0a040; }
+
+/* Race color accents — new races */
+.race-serpathi { color: #50b860; }
+.race-ironveil { color: #a0a8b8; }
+.race-ashborn { color: #e85830; }
+.race-tidewarden { color: #40a0d0; }
+
+/* ── Animations ───────────────────────────────────────────────────── */
+@keyframes pulse-gold {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+/* Gold shimmer text effect for special headings */
+.text-shimmer {
+  background: linear-gradient(90deg, #c8a048 0%, #e8c870 25%, #c8a048 50%, #e8c870 75%, #c8a048 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
+}
 
 /* ── Mobile responsive ─────────────────────────────────────────────── */
 @media (max-width: 639px) {
@@ -192,4 +278,13 @@
 
   /* Reduce large headings on mobile */
   h1.text-2xl { font-size: 1.2rem !important; }
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -27,8 +27,15 @@ export default {
         },
       },
       fontFamily: {
-        mono: ['Verdana', 'Arial', 'sans-serif'],
+        mono: ['Inter', 'Verdana', 'Arial', 'sans-serif'],
         display: ['Cinzel', 'Georgia', 'serif'],
+      },
+      borderRadius: {
+        realm: '6px',
+      },
+      boxShadow: {
+        'realm-glow': '0 0 12px rgba(200, 160, 72, 0.15), 0 4px 16px rgba(0, 0, 0, 0.4)',
+        'realm-glow-strong': '0 0 20px rgba(200, 160, 72, 0.3), 0 4px 20px rgba(0, 0, 0, 0.5)',
       },
     },
   },

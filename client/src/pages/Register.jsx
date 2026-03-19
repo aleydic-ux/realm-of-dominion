@@ -100,8 +100,8 @@ export default function Register({ onLogin }) {
           <p className="text-realm-text-muted mt-3 uppercase tracking-widest" style={{ letterSpacing: '0.25em', fontSize: '0.8rem' }}>Forge your legend</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="realm-panel flex flex-col gap-5">
-          <h2 className="text-realm-gold text-xl font-display">Create Your Province</h2>
+        <form onSubmit={handleSubmit} className="realm-panel flex flex-col gap-5" style={{ backdropFilter: 'blur(8px)', background: 'rgba(22, 32, 48, 0.85)' }}>
+          <h2 className="text-realm-gold text-xl font-display" style={{ textShadow: '0 0 12px rgba(200,160,72,0.3)' }}>Create Your Province</h2>
 
           {error && (
             <div className="bg-red-900/30 border border-red-700 text-red-300 px-3 py-2 rounded text-sm">
@@ -140,11 +140,15 @@ export default function Register({ onLogin }) {
                   key={race.id}
                   type="button"
                   onClick={() => setForm({ ...form, race: race.id })}
-                  className={`text-left p-3 rounded border transition-all ${
+                  className={`text-left p-3 rounded border cursor-pointer ${
                     form.race === race.id
                       ? 'border-realm-gold bg-realm-gold-dark/20'
                       : 'border-realm-border bg-realm-surface hover:border-realm-gold/50'
                   }`}
+                  style={{
+                    transition: 'all 0.25s ease',
+                    boxShadow: form.race === race.id ? '0 0 12px rgba(200,160,72,0.2), inset 0 1px 0 rgba(200,160,72,0.1)' : 'none',
+                  }}
                 >
                   <div className="text-lg mb-1">{race.icon} <span className={`race-${race.id} font-bold`}>{race.label}</span></div>
                   <div className="text-realm-text-dim text-xs italic mb-1">{race.lore}</div>

@@ -45,8 +45,8 @@ export default function Login({ onLogin }) {
           <p className="text-realm-text-muted mt-3 text-base tracking-widest uppercase" style={{ letterSpacing: '0.25em', fontSize: '0.8rem' }}>Enter your kingdom</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="realm-panel flex flex-col gap-5" style={{ padding: '2rem' }}>
-          <h2 className="text-realm-gold font-display text-center" style={{ fontSize: '1.6rem', letterSpacing: '0.1em' }}>Login</h2>
+        <form onSubmit={handleSubmit} className="realm-panel flex flex-col gap-5" style={{ padding: '2rem', backdropFilter: 'blur(8px)', background: 'rgba(22, 32, 48, 0.85)' }}>
+          <h2 className="text-realm-gold font-display text-center" style={{ fontSize: '1.6rem', letterSpacing: '0.1em', textShadow: '0 0 12px rgba(200,160,72,0.3)' }}>Login</h2>
 
           {successMessage && (
             <div className="bg-green-900/30 border border-green-700 text-green-300 px-3 py-2 rounded text-sm">

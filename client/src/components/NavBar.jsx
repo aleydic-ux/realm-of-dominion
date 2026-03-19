@@ -39,7 +39,7 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, mailUnre
     <div>
       {/* Title bar */}
       <div style={{background:'linear-gradient(to bottom, #0a1428, #060e1c)', borderBottom:'1px solid #1e3050', padding:'6px 16px', display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-        <span style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8a048', fontSize:'1.25rem', letterSpacing:'0.12em', textShadow:'0 0 12px rgba(200,160,72,0.4), 1px 1px 2px #000'}}>
+        <span style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8a048', fontSize:'1.25rem', letterSpacing:'0.12em', textShadow:'0 0 16px rgba(200,160,72,0.5), 0 0 40px rgba(200,160,72,0.15), 1px 1px 2px #000'}}>
           Realm of Dominion
         </span>
         <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
@@ -48,7 +48,7 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, mailUnre
             onClick={() => setMobileOpen(o => !o)}
             aria-label="Toggle navigation"
             aria-expanded={mobileOpen}
-            style={{display:'none', fontFamily:'Verdana, Arial, sans-serif', color:'#8090a8', fontSize:'1rem', border:'1px solid #243650', padding:'2px 8px', background:'transparent', cursor:'pointer'}}
+            style={{display:'none', fontFamily:"'Inter', Verdana, Arial, sans-serif", color:'#8090a8', fontSize:'1rem', border:'1px solid #243650', padding:'2px 8px', background:'transparent', cursor:'pointer'}}
             className="sm-hamburger"
           >
             {mobileOpen ? '✕' : '☰'}
@@ -68,7 +68,7 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, mailUnre
           <button
             onClick={onOpenHelp}
             title="How to Play (press ?)"
-            style={{fontFamily:'Verdana, Arial, sans-serif', color:'#8090a8', fontSize:'0.75rem', border:'1px solid #243650', padding:'2px 8px', background:'transparent', cursor:'pointer', fontWeight:'bold'}}
+            style={{fontFamily:"'Inter', Verdana, Arial, sans-serif", color:'#8090a8', fontSize:'0.75rem', border:'1px solid #243650', padding:'2px 8px', background:'transparent', cursor:'pointer', fontWeight:'bold'}}
             onMouseOver={e => { e.target.style.color='#c8a048'; e.target.style.borderColor='#c8a048'; }}
             onMouseOut={e => { e.target.style.color='#8090a8'; e.target.style.borderColor='#243650'; }}
           >
@@ -76,7 +76,7 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, mailUnre
           </button>
           <button
             onClick={onLogout}
-            style={{fontFamily:'Verdana, Arial, sans-serif', color:'#8090a8', fontSize:'0.68rem', border:'1px solid #243650', padding:'2px 10px', background:'transparent', cursor:'pointer'}}
+            style={{fontFamily:"'Inter', Verdana, Arial, sans-serif", color:'#8090a8', fontSize:'0.68rem', border:'1px solid #243650', padding:'2px 10px', background:'transparent', cursor:'pointer'}}
             onMouseOver={e => e.target.style.color='#c8d8e8'}
             onMouseOut={e => e.target.style.color='#8090a8'}
           >
@@ -98,9 +98,9 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, mailUnre
                 key={path}
                 to={path}
                 style={({ isActive }) => ({
-                  fontFamily: 'Verdana, Arial, sans-serif',
+                  fontFamily: "'Inter', Verdana, Arial, sans-serif",
                   fontSize: '0.68rem',
-                  fontWeight: isActive ? 'bold' : 'normal',
+                  fontWeight: isActive ? '600' : '400',
                   padding: '6px 14px',
                   whiteSpace: 'nowrap',
                   borderRight: '1px solid #1e3050',
@@ -111,8 +111,10 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, mailUnre
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
-                  transition: 'all 0.1s',
+                  transition: 'all 0.2s ease',
                   marginBottom: '-2px',
+                  letterSpacing: '0.03em',
+                  textShadow: isActive ? '0 0 8px rgba(200,160,72,0.3)' : 'none',
                 })}
               >
                 {label}
@@ -136,9 +138,9 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, mailUnre
                   to={path}
                   onClick={() => setMobileOpen(false)}
                   style={({ isActive }) => ({
-                    fontFamily: 'Verdana, Arial, sans-serif',
+                    fontFamily: "'Inter', Verdana, Arial, sans-serif",
                     fontSize: '0.8rem',
-                    fontWeight: isActive ? 'bold' : 'normal',
+                    fontWeight: isActive ? '600' : '400',
                     padding: '10px 16px',
                     borderBottom: '1px solid #1e3050',
                     color: isActive ? '#c8a048' : '#8090a8',
@@ -147,6 +149,8 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, mailUnre
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
+                    transition: 'all 0.2s ease',
+                    letterSpacing: '0.03em',
                   })}
                 >
                   {label}
