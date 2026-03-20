@@ -39,12 +39,7 @@ async function returnExpiredItems(client) {
 
 // GET /api/marketplace - List all active listings
 router.get('/', async (req, res) => {
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-    await returnExpiredItems(client);
-    await client.query('COMMIT');
-
     const { rows } = await pool.query(
       `SELECT ml.id, ml.resource_type, ml.item_key, ml.quantity, ml.price_per_unit,
               ml.expires_at, ml.created_at,
@@ -56,10 +51,7 @@ router.get('/', async (req, res) => {
     );
     res.json(rows);
   } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
     res.status(500).json({ error: 'Failed to load marketplace' });
-  } finally {
-    client.release();
   }
 });
 
@@ -340,4 +332,5 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+router.returnExpiredItems = returnExpiredItems;
 module.exports = router;

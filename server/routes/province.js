@@ -83,6 +83,8 @@ router.get('/me', async (req, res) => {
 // GET /api/province/list - All provinces in current age
 router.get('/list', async (req, res) => {
   try {
+    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const offset = parseInt(req.query.offset) || 0;
     const { rows } = await pool.query(
       `SELECT p.id, p.name, p.race, p.land, p.networth, p.morale,
               p.protection_ends_at, p.is_in_war, p.is_bot,
@@ -93,7 +95,9 @@ router.get('/list', async (req, res) => {
        JOIN ages ag ON ag.id = p.age_id AND ag.is_active = true
        LEFT JOIN alliance_members am ON am.province_id = p.id
        LEFT JOIN alliances a2 ON a2.id = am.alliance_id
-       ORDER BY p.networth DESC`
+       ORDER BY p.networth DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
     );
     res.json(rows);
   } catch (err) {

@@ -49,28 +49,25 @@ export default function RaidToast({ alert, onDismiss }) {
         {alert.attacker_race && (
           <span style={{ fontSize: '0.9rem' }}>{RACE_ICONS[alert.attacker_race]}</span>
         )}
-        <span style={{
+        <span className="font-display" style={{
           color: borderColor,
           fontSize: '0.82rem',
           fontWeight: 'bold',
-          fontFamily: 'Cinzel, Georgia, serif',
         }}>
           {alert.title}
         </span>
       </div>
-      <div style={{
+      <div className="font-mono" style={{
         color: '#c8d8e8',
         fontSize: '0.72rem',
-        fontFamily: 'Verdana, Arial, sans-serif',
         lineHeight: '1.4',
       }}>
         {alert.message}
       </div>
-      <div style={{
+      <div className="font-mono" style={{
         color: '#485868',
         fontSize: '0.6rem',
         marginTop: '6px',
-        fontFamily: 'Verdana, Arial, sans-serif',
       }}>
         Click to dismiss
       </div>

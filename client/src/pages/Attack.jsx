@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../utils/api';
-import { formatNumber, RACE_ICONS } from '../utils/formatters';
+import { formatNumber, RACE_ICONS, isProtected } from '../utils/formatters';
 
 const ATTACK_TYPES = [
   { id: 'raid', label: 'Raid', icon: '🥷', desc: 'Steal resources. No land gained. Low casualties.' },
@@ -21,7 +21,7 @@ export default function Attack({ province, troops = [], refresh }) {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
 
-  useEffect(() => { document.title = 'Attack — Realm of Dominion'; }, []);
+  usePageTitle('Attack');
 
   useEffect(() => {
     async function loadProvinces() {
@@ -56,7 +56,7 @@ export default function Attack({ province, troops = [], refresh }) {
       setDeployment({});
       refresh();
     } catch (err) {
-      setError(err.response?.data?.error || 'Attack failed');
+      setError(getApiError(err, 'Attack failed'));
     } finally {
       setLoading(false);
     }
@@ -134,7 +134,7 @@ export default function Attack({ province, troops = [], refresh }) {
                 <span className="text-realm-text">{p.name}</span>
                 <span className="text-realm-text-dim ml-2 text-xs">{p.username}</span>
                 <span className="float-right text-realm-text-dim text-xs">{formatNumber(p.land)} ac</span>
-                {p.protection_ends_at && new Date(p.protection_ends_at) > new Date() && (
+                {isProtected(p) && (
                   <span className="block mt-0.5 text-blue-400 text-xs font-semibold">🛡️ Under Protection</span>
                 )}
               </button>

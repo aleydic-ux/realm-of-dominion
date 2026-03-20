@@ -1,4 +1,4 @@
-import { formatNumber, formatTime, formatDateTime, formatRelativeDate, RACE_ICONS } from '../utils/formatters';
+import { formatNumber, formatTime, formatDateTime, formatRelativeDate, RACE_ICONS, isProtected } from '../utils/formatters';
 import ProtectionBadge from '../components/ProtectionBadge';
 import Tooltip from '../components/Tooltip';
 import api from '../utils/api';
@@ -54,7 +54,7 @@ function getCardStatus(label, province, rates) {
 function Sparkline({ snapshots, metric, color, label }) {
   if (!snapshots || snapshots.length < 2) {
     return (
-      <div style={{ color: '#485868', fontSize: '0.65rem', fontFamily: 'Verdana, Arial, sans-serif', textAlign: 'center', padding: '20px 0' }}>
+      <div className="font-mono" style={{ color: '#485868', fontSize: '0.65rem', textAlign: 'center', padding: '20px 0' }}>
         No history yet — check back in an hour.
       </div>
     );
@@ -76,8 +76,8 @@ function Sparkline({ snapshots, metric, color, label }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
-        <span style={{ color: '#8090a8', fontSize: '0.65rem', fontFamily: 'Verdana, Arial, sans-serif', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
-        <span style={{ color: deltaColor, fontSize: '0.65rem', fontFamily: 'Verdana, Arial, sans-serif' }}>{deltaStr}</span>
+        <span className="font-mono" style={{ color: '#8090a8', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+        <span className="font-mono" style={{ color: deltaColor, fontSize: '0.65rem' }}>{deltaStr}</span>
       </div>
       <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: 'block' }}>
         <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
@@ -111,13 +111,13 @@ function ResourceHistoryChart({ provinceId }) {
   return (
     <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid #1e3050', borderRadius: '6px', padding: '14px 16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <span style={{ color: '#c8a048', fontFamily: 'Cinzel, Georgia, serif', fontSize: '0.85rem', fontWeight: '700' }}>
+        <span className="font-display" style={{ color: '#c8a048', fontSize: '0.85rem', fontWeight: '700' }}>
           Resource History
         </span>
         <div style={{ display: 'flex', gap: '4px' }}>
           {['24h', '7d'].map(p => (
-            <button key={p} onClick={() => setPeriod(p)} style={{
-              fontFamily: 'Verdana, Arial, sans-serif', fontSize: '0.65rem', padding: '2px 8px',
+            <button key={p} onClick={() => setPeriod(p)} className="font-mono" style={{
+              fontSize: '0.65rem', padding: '2px 8px',
               background: period === p ? 'rgba(200,160,72,0.15)' : 'transparent',
               border: `1px solid ${period === p ? '#c8a048' : '#243650'}`,
               color: period === p ? '#c8a048' : '#8090a8', cursor: 'pointer', borderRadius: '3px',
@@ -126,7 +126,7 @@ function ResourceHistoryChart({ provinceId }) {
         </div>
       </div>
       {loadingSnaps ? (
-        <div style={{ color: '#485868', fontSize: '0.7rem', textAlign: 'center', padding: '20px 0', fontFamily: 'Verdana, Arial, sans-serif' }}>Loading...</div>
+        <div className="font-mono" style={{ color: '#485868', fontSize: '0.7rem', textAlign: 'center', padding: '20px 0' }}>Loading...</div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '16px' }}>
           {metrics.map(m => (
@@ -146,7 +146,7 @@ export default function Dashboard({ province, loading, refresh }) {
   const [dropLoading, setDropLoading] = useState(false);
   const apCountdown = useAPCountdown(province?.ap_last_regen, province?.action_points);
 
-  useEffect(() => { document.title = 'Province — Realm of Dominion'; }, []);
+  usePageTitle('Province');
 
   useEffect(() => {
     if (!province) return;
@@ -177,7 +177,7 @@ export default function Dashboard({ province, loading, refresh }) {
       setMessage(`Explored ${data.land_gained} acres of new territory!`);
       refresh();
     } catch (err) {
-      setMessage(err.response?.data?.error || 'Exploration failed');
+      setMessage(getApiError(err, 'Exploration failed'));
     } finally {
       setExploreLoading(false);
     }
@@ -191,13 +191,13 @@ export default function Dashboard({ province, loading, refresh }) {
       setDropConfirm(false);
       refresh();
     } catch (err) {
-      setMessage(err.response?.data?.error || 'Failed to drop protection');
+      setMessage(getApiError(err, 'Failed to drop protection'));
     } finally {
       setDropLoading(false);
     }
   }
 
-  const isProtected = province.protection_ends_at && new Date(province.protection_ends_at) > new Date();
+  const isUnderProtection = isProtected(province);
 
   const statCards = [
     { label: 'Land', icon: '🗺️', value: `${formatNumber(province.land)} acres`, color: 'text-amber-400' },
@@ -237,10 +237,10 @@ export default function Dashboard({ province, loading, refresh }) {
         {/* Overlay with improved gradient scrim */}
         <div style={{position:'absolute', inset:0, background:'linear-gradient(to top, rgba(6,14,28,0.85) 0%, rgba(6,14,28,0.15) 50%), linear-gradient(to right, rgba(6,14,28,0.7) 0%, transparent 40%, rgba(6,14,28,0.7) 100%)', display:'flex', alignItems:'flex-end', justifyContent:'space-between', padding:'12px 20px'}}>
           <div>
-            <div style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8a048', fontSize:'1.6rem', fontWeight:'700', textShadow:'2px 2px 4px #000, 0 0 12px rgba(200,160,72,0.5)', letterSpacing:'0.1em'}}>
+            <div className="font-display" style={{color:'#c8a048', fontSize:'1.6rem', fontWeight:'700', textShadow:'2px 2px 4px #000, 0 0 12px rgba(200,160,72,0.5)', letterSpacing:'0.1em'}}>
               {province.name}
             </div>
-            <div className={`race-${province.race}`} style={{fontFamily:'Cinzel, Georgia, serif', fontSize:'0.8rem', letterSpacing:'0.12em', textShadow:'1px 1px 2px #000'}}>
+            <div className={`race-${province.race} font-display`} style={{fontSize:'0.8rem', letterSpacing:'0.12em', textShadow:'1px 1px 2px #000'}}>
               {RACE_ICONS[province.race]} {province.race.toUpperCase()} PROVINCE
             </div>
           </div>
@@ -278,7 +278,7 @@ export default function Dashboard({ province, loading, refresh }) {
       )}
 
       {/* Protection Banner */}
-      {isProtected && (
+      {isUnderProtection && (
         <div style={{
           background: 'linear-gradient(135deg, rgba(37,99,235,0.15), rgba(37,99,235,0.05))',
           border: '1px solid rgba(59,130,246,0.4)',

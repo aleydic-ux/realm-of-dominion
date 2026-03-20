@@ -23,7 +23,7 @@ export default function Spells({ province, buildings }) {
 
   const sanctumLevel = buildings?.find(b => b.building_type === 'arcane_sanctum')?.level ?? 0;
 
-  useEffect(() => { document.title = 'Arcane Sanctum — Realm of Dominion'; }, []);
+  usePageTitle('Arcane Sanctum');
 
   useEffect(() => {
     let cancelled = false;
@@ -62,7 +62,7 @@ export default function Spells({ province, buildings }) {
       setCooldowns(prev => ({ ...prev, [spellKey]: res.data.cooldown_ends_at }));
       setResults(prev => ({ ...prev, [spellKey]: res.data }));
     } catch (err) {
-      setErrors(prev => ({ ...prev, [spellKey]: err.response?.data?.error || 'Cast failed' }));
+      setErrors(prev => ({ ...prev, [spellKey]: getApiError(err, 'Cast failed') }));
     }
     setCasting(null);
   }

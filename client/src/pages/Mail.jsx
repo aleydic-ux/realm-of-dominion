@@ -13,7 +13,7 @@ export default function Mail({ province, onRead }) {
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { document.title = 'Mail — Realm of Dominion'; }, []);
+  usePageTitle('Mail');
 
   useEffect(() => { loadAll(); }, []);
 
@@ -61,7 +61,7 @@ export default function Mail({ province, onRead }) {
       loadAll();
       setTimeout(() => setOk(''), 3000);
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to send');
+      setErr(getApiError(e, 'Failed to send'));
     }
   }
 

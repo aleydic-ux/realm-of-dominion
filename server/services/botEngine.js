@@ -139,20 +139,22 @@ async function spawnBots(client, ageId, protectionEndsAt) {
       );
 
       const buildingTypes = [...UNIVERSAL_BUILDINGS, RACE_BUILDINGS[race]].filter(Boolean);
-      for (const bt of buildingTypes) {
+      if (buildingTypes.length) {
+        const bValues = buildingTypes.map((_, i) => `($1, $${i + 2})`).join(', ');
         await client.query(
-          `INSERT INTO province_buildings (province_id, building_type) VALUES ($1, $2)`,
-          [newBot.id, bt]
+          `INSERT INTO province_buildings (province_id, building_type) VALUES ${bValues}`,
+          [newBot.id, ...buildingTypes]
         );
       }
 
       const { rows: troopTypes } = await client.query(
         `SELECT id FROM troop_types WHERE race = $1`, [race]
       );
-      for (const tt of troopTypes) {
+      if (troopTypes.length) {
+        const tValues = troopTypes.map((_, i) => `($1, $${i + 2})`).join(', ');
         await client.query(
-          `INSERT INTO province_troops (province_id, troop_type_id) VALUES ($1, $2)`,
-          [newBot.id, tt.id]
+          `INSERT INTO province_troops (province_id, troop_type_id) VALUES ${tValues}`,
+          [newBot.id, ...troopTypes.map(t => t.id)]
         );
       }
     }
@@ -321,7 +323,13 @@ async function tickBots() {
 async function tickSingleBot(bot) {
   await lazyResourceUpdate(bot.id);
 
-  const { rows: [province] } = await pool.query('SELECT * FROM provinces WHERE id = $1', [bot.id]);
+  // Single province fetch helper — re-used between mutation steps
+  const refreshProvince = async () => {
+    const { rows: [p] } = await pool.query('SELECT * FROM provinces WHERE id = $1', [bot.id]);
+    return p;
+  };
+
+  let province = await refreshProvince();
   if (!province) return;
 
   const personality = province.bot_personality || 'economic';
@@ -338,29 +346,33 @@ async function tickSingleBot(bot) {
   // 1. Explore — spend AP to gain land
   await botExplore(province, config);
 
+  // Re-fetch once after explore/build/train mutations (instead of 4 separate fetches)
+  province = await refreshProvince();
+  if (!province) return;
+
   // 2. Upgrade buildings
-  const { rows: [afterExplore] } = await pool.query('SELECT * FROM provinces WHERE id = $1', [province.id]);
-  if (afterExplore) await botUpgradeBuildings(afterExplore, config);
+  await botUpgradeBuildings(province, config);
 
   // 3. Train troops
-  const { rows: [afterBuild] } = await pool.query('SELECT * FROM provinces WHERE id = $1', [province.id]);
-  if (afterBuild) await botTrainTroops(afterBuild, config);
+  province = await refreshProvince();
+  if (!province) return;
+  await botTrainTroops(province, config);
 
   // 4. Attack
-  const { rows: [refreshed] } = await pool.query('SELECT * FROM provinces WHERE id = $1', [province.id]);
-  if (refreshed && refreshed.action_points >= 3 && personality !== 'passive') {
-    await botAttack(refreshed, personality, config);
+  province = await refreshProvince();
+  if (province && province.action_points >= 3 && personality !== 'passive') {
+    await botAttack(province, personality, config);
   }
 
   // 5. Craft
   await botCraftingTick(province);
 
   // 6. Marketplace — list surplus resources + buy bargains
-  const { rows: [afterCraft] } = await pool.query('SELECT * FROM provinces WHERE id = $1', [province.id]);
-  if (afterCraft) await botMarketplaceTick(afterCraft, personality);
+  province = await refreshProvince();
+  if (province) await botMarketplaceTick(province, personality);
 
   await updateLastAction(bot.id);
-  await calculateAndStoreNetworth(province.id);
+  await calculateAndStoreNetworth(bot.id);
 }
 
 // ─── Explore land ────────────────────────────────────────────────────────────

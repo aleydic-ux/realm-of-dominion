@@ -8,7 +8,7 @@ function ProgressBar({ current, max, color = '#c8a048' }) {
   const pct = Math.min(100, Math.floor((current / max) * 100));
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#485868', marginBottom: '3px', fontFamily: 'Verdana, Arial, sans-serif' }}>
+      <div className="font-mono" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#485868', marginBottom: '3px' }}>
         <span>{current.toLocaleString()} / {max.toLocaleString()}</span>
         <span>{pct}%</span>
       </div>
@@ -35,20 +35,20 @@ function AchievementCard({ ach }) {
       <div style={{ fontSize: '1.6rem', flexShrink: 0, lineHeight: 1 }}>{ach.icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '2px' }}>
-          <span style={{ color: unlocked ? '#c8a048' : '#c8d8e8', fontFamily: 'Cinzel, Georgia, serif', fontSize: '0.82rem', fontWeight: '700' }}>
+          <span className="font-display" style={{ color: unlocked ? '#c8a048' : '#c8d8e8', fontSize: '0.82rem', fontWeight: '700' }}>
             {ach.name}
           </span>
           {unlocked && (
-            <span style={{ color: '#2a8a48', fontSize: '0.6rem', fontFamily: 'Verdana, Arial, sans-serif', border: '1px solid #2a8a48', padding: '1px 5px', letterSpacing: '0.05em' }}>
+            <span className="font-mono" style={{ color: '#2a8a48', fontSize: '0.6rem', border: '1px solid #2a8a48', padding: '1px 5px', letterSpacing: '0.05em' }}>
               EARNED
             </span>
           )}
         </div>
-        <div style={{ color: '#8090a8', fontSize: '0.7rem', fontFamily: 'Verdana, Arial, sans-serif', lineHeight: '1.4' }}>
+        <div className="font-mono" style={{ color: '#8090a8', fontSize: '0.7rem', lineHeight: '1.4' }}>
           {ach.description}
         </div>
         {unlocked && ach.unlocked_at && (
-          <div style={{ color: '#485868', fontSize: '0.62rem', marginTop: '4px', fontFamily: 'Verdana, Arial, sans-serif' }}>
+          <div className="font-mono" style={{ color: '#485868', fontSize: '0.62rem', marginTop: '4px' }}>
             Earned {formatRelativeDate(ach.unlocked_at)}
           </div>
         )}
@@ -77,14 +77,14 @@ function StatsPanel({ stats }) {
   ];
   return (
     <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid #1e3050', borderRadius: '6px', padding: '14px 16px', marginBottom: '20px' }}>
-      <div style={{ color: '#c8a048', fontFamily: 'Cinzel, Georgia, serif', fontSize: '0.85rem', fontWeight: '700', marginBottom: '10px' }}>
+      <div className="font-display" style={{ color: '#c8a048', fontSize: '0.85rem', fontWeight: '700', marginBottom: '10px' }}>
         Province Statistics
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '8px' }}>
         {rows.map(({ label, value }) => (
           <div key={label}>
-            <div style={{ color: '#485868', fontSize: '0.6rem', fontFamily: 'Verdana, Arial, sans-serif', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
-            <div style={{ color: '#c8d8e8', fontSize: '0.85rem', fontWeight: 'bold', fontFamily: 'Verdana, Arial, sans-serif' }}>{value}</div>
+            <div className="font-mono" style={{ color: '#485868', fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
+            <div className="font-mono" style={{ color: '#c8d8e8', fontSize: '0.85rem', fontWeight: 'bold' }}>{value}</div>
           </div>
         ))}
       </div>
@@ -98,7 +98,7 @@ export default function Achievements() {
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('All');
 
-  useEffect(() => { document.title = 'Achievements — Realm of Dominion'; }, []);
+  usePageTitle('Achievements');
 
   useEffect(() => {
     api.get('/achievements')
@@ -121,10 +121,10 @@ export default function Achievements() {
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 4px' }}>
       {/* Header */}
       <div style={{ marginBottom: '16px' }}>
-        <h1 style={{ fontFamily: 'Cinzel, Georgia, serif', color: '#c8a048', fontSize: '1.3rem', fontWeight: '700', marginBottom: '2px' }}>
+        <h1 className="font-display" style={{ color: '#c8a048', fontSize: '1.3rem', fontWeight: '700', marginBottom: '2px' }}>
           Achievements
         </h1>
-        <p style={{ color: '#8090a8', fontSize: '0.72rem', fontFamily: 'Verdana, Arial, sans-serif' }}>
+        <p className="font-mono" style={{ color: '#8090a8', fontSize: '0.72rem' }}>
           {unlockedCount} of {achievements.length} earned ({overallPct}%)
         </p>
       </div>
@@ -149,8 +149,8 @@ export default function Achievements() {
           <button
             key={cat}
             onClick={() => setCategory(cat)}
+            className="font-mono"
             style={{
-              fontFamily: 'Verdana, Arial, sans-serif',
               fontSize: '0.7rem',
               padding: '4px 12px',
               background: category === cat ? 'rgba(200,160,72,0.12)' : 'transparent',

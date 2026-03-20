@@ -283,6 +283,19 @@ cron.schedule('*/5 * * * *', async () => {
   } catch (err) {
     console.error('[cron] Crafting tick failed:', err.message);
   }
+
+  // Return expired marketplace listings (moved from per-request to cron)
+  const mktClient = await pool.connect();
+  try {
+    await mktClient.query('BEGIN');
+    await marketplaceRoutes.returnExpiredItems(mktClient);
+    await mktClient.query('COMMIT');
+  } catch (e) {
+    await mktClient.query('ROLLBACK').catch(() => {});
+    console.error('[cron] Marketplace cleanup failed:', e.message);
+  } finally {
+    mktClient.release();
+  }
 });
 
 // Bot tick — runs every hour so bots stay active

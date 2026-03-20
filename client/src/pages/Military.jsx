@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import TroopTable from '../components/TroopTable';
-import { formatNumber, formatTime, formatDuration } from '../utils/formatters';
+import { formatNumber, formatTime, formatDuration, trainingTime } from '../utils/formatters';
 import api from '../utils/api';
 
 export default function Military({ province, troops = [], refresh }) {
@@ -10,7 +10,7 @@ export default function Military({ province, troops = [], refresh }) {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => { document.title = 'Military — Realm of Dominion'; }, []);
+  usePageTitle('Military');
 
   if (!province) return null;
 
@@ -29,7 +29,7 @@ export default function Military({ province, troops = [], refresh }) {
       setTrainQty(1);
       refresh();
     } catch (err) {
-      setError(err.response?.data?.error || 'Training failed');
+      setError(getApiError(err, 'Training failed'));
     } finally {
       setSubmitting(false);
     }
@@ -95,7 +95,7 @@ export default function Military({ province, troops = [], refresh }) {
             <div className="text-sm text-realm-text-muted space-y-1">
               <div>ATK: <span className="text-red-400">{trainModal.offense_power}</span> | DEF: <span className="text-blue-400">{trainModal.defense_power}</span></div>
               <div>Cost per unit: <span className="text-yellow-400">{formatNumber(trainModal.gold_cost)} gold</span></div>
-              <div>Training time: <span className="text-realm-text">{Math.pow(3, (trainModal.tier || 1) - 1)}s per troop</span></div>
+              <div>Training time: <span className="text-realm-text">{trainingTime(trainModal.tier)}s per troop</span></div>
               <div className="text-xs text-realm-text-dim">{trainModal.special_ability}</div>
             </div>
             <div>
@@ -109,7 +109,7 @@ export default function Military({ province, troops = [], refresh }) {
               />
               <div className="text-xs text-realm-text-dim mt-1">
                 Total cost: <span className="text-yellow-400">{formatNumber(trainQty * trainModal.gold_cost)} gold</span>
-                {' | '}Time: <span className="text-realm-text-muted">{formatDuration(trainQty * Math.pow(3, (trainModal.tier || 1) - 1) / 3600)}</span>
+                {' | '}Time: <span className="text-realm-text-muted">{formatDuration(trainQty * trainingTime(trainModal.tier) / 3600)}</span>
               </div>
             </div>
             {error && <div className="text-red-400 text-sm">{error}</div>}

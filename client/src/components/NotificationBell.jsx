@@ -57,8 +57,8 @@ export default function NotificationBell({ unreadCount, onOpen }) {
       <button
         onClick={toggle}
         title="Notifications"
+        className="font-mono"
         style={{
-          fontFamily: 'Verdana, Arial, sans-serif',
           color: unreadCount > 0 ? '#c8a048' : '#8090a8',
           fontSize: '0.85rem',
           border: '1px solid #243650',
@@ -96,13 +96,13 @@ export default function NotificationBell({ unreadCount, onOpen }) {
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             padding: '8px 12px', borderBottom: '1px solid #1e3050',
           }}>
-            <span style={{ color: '#c8a048', fontFamily: 'Cinzel, Georgia, serif', fontSize: '0.85rem' }}>
+            <span className="font-display" style={{ color: '#c8a048', fontSize: '0.85rem' }}>
               Notifications
             </span>
             {notifications.some(n => !n.is_read) && (
-              <button onClick={markAllRead} style={{
+              <button onClick={markAllRead} className="font-mono" style={{
                 color: '#8090a8', fontSize: '0.65rem', background: 'none', border: 'none',
-                cursor: 'pointer', fontFamily: 'Verdana, Arial, sans-serif',
+                cursor: 'pointer',
               }}>
                 Mark all read
               </button>
@@ -137,18 +137,17 @@ export default function NotificationBell({ unreadCount, onOpen }) {
                       <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#c8a048', flexShrink: 0 }} />
                     )}
                     {race && <span style={{ fontSize: '0.8rem' }}>{RACE_ICONS[race]}</span>}
-                    <span style={{
+                    <span className="font-mono" style={{
                       color: meta.outcome ? outcomeColor(meta.outcome) : '#c8d8e8',
                       fontSize: '0.78rem', fontWeight: 'bold',
-                      fontFamily: 'Verdana, Arial, sans-serif',
                     }}>
                       {n.title}
                     </span>
                   </div>
-                  <div style={{ color: '#8090a8', fontSize: '0.7rem', fontFamily: 'Verdana, Arial, sans-serif', lineHeight: '1.4' }}>
+                  <div className="font-mono" style={{ color: '#8090a8', fontSize: '0.7rem', lineHeight: '1.4' }}>
                     {n.message}
                   </div>
-                  <div style={{ color: '#485868', fontSize: '0.6rem', marginTop: '3px', fontFamily: 'Verdana, Arial, sans-serif' }}>
+                  <div className="font-mono" style={{ color: '#485868', fontSize: '0.6rem', marginTop: '3px' }}>
                     {formatRelativeDate(n.created_at)}
                   </div>
                 </div>

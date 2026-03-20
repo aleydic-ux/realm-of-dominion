@@ -16,6 +16,10 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
   const attackerCfg = raceConfig[attacker.race];
   const defenderCfg = raceConfig[defender.race];
 
+  // Build name→ID lookup map for O(1) access instead of repeated linear scans
+  const nameToId = new Map();
+  for (const t of attackerTroopTypes) nameToId.set(t.name, t.id);
+
   // 1. Calculate raw attacker power
   let attackerPower = 0;
   const deployedDetails = {};
@@ -27,12 +31,12 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
 
     // Defense-only troops cannot attack
     if (troopType.tier === 5 && troopType.offense_power === 0) continue;
-    if (troopType.name === 'Royal Guard' || troopType.name === 'Treant' || troopType.name === 'Leviathan Guard') continue;
+    if (troopType.defense_power > 0 && troopType.offense_power === 0) continue;
 
     let offense = troopType.offense_power;
 
     // Warchief bonus: +5% to all units in same army
-    const warchiefCount = troopsDeployed[getIdByName(attackerTroopTypes, 'Warchief')] || 0;
+    const warchiefCount = troopsDeployed[nameToId.get('Warchief')] || 0;
     if (warchiefCount > 0) offense *= 1.05;
 
     deployedDetails[troopTypeId] = { troopType, count };
@@ -83,13 +87,13 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
   const wallBonus = 1 + (effectiveWallLevel * 0.15);
 
   // Tunnel Rat bypasses walls
-  const tunnelRatCount = troopsDeployed[getIdByName(attackerTroopTypes, 'Tunnel Rat')] || 0;
+  const tunnelRatCount = troopsDeployed[nameToId.get('Tunnel Rat')] || 0;
   const totalDeployed = Object.values(troopsDeployed).reduce((a, b) => a + b, 0);
   const wallBypassRatio = totalDeployed > 0 ? Math.min(1, tunnelRatCount / totalDeployed) : 0;
   let effectiveWallBonus = wallBonus * (1 - wallBypassRatio) + 1 * wallBypassRatio;
 
   // Serpent Hydra: ignores 20% of wall bonus
-  const serpentHydraCount = troopsDeployed[getIdByName(attackerTroopTypes, 'Serpent Hydra')] || 0;
+  const serpentHydraCount = troopsDeployed[nameToId.get('Serpent Hydra')] || 0;
   if (serpentHydraCount > 0) {
     effectiveWallBonus = 1 + (effectiveWallBonus - 1) * 0.80;
   }
@@ -151,12 +155,12 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
     : attackerCasualtyRate;
 
   // Apply Blade Dancer: evade 15% of counterattack
-  const bladeDancerCount = troopsDeployed[getIdByName(attackerTroopTypes, 'Blade Dancer')] || 0;
+  const bladeDancerCount = troopsDeployed[nameToId.get('Blade Dancer')] || 0;
   const bladeDancerRatio = totalDeployed > 0 ? bladeDancerCount / totalDeployed : 0;
   let attackerCasualtyRateAdjusted = finalAttackerCasualtyRate * (1 - bladeDancerRatio * 0.15);
 
   // Thornblade (Serpathi T3): evade 15% of counterattack casualties
-  const thornbladeCount = troopsDeployed[getIdByName(attackerTroopTypes, 'Thornblade')] || 0;
+  const thornbladeCount = troopsDeployed[nameToId.get('Thornblade')] || 0;
   const thornbladeRatio = totalDeployed > 0 ? thornbladeCount / totalDeployed : 0;
   attackerCasualtyRateAdjusted *= (1 - thornbladeRatio * 0.15);
 
@@ -181,49 +185,49 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
   const specialEffects = [];
 
   // Siege Breaker: destroys one enemy building level on win
-  const siegeBreakerCount = troopsDeployed[getIdByName(attackerTroopTypes, 'Siege Breaker')] || 0;
+  const siegeBreakerCount = troopsDeployed[nameToId.get('Siege Breaker')] || 0;
   if (outcome === 'win' && siegeBreakerCount > 0) {
     specialEffects.push({ type: 'destroy_building', race: 'orc' });
   }
 
   // Ironclad: destroys enemy wall effectiveness by 20% on win
-  const ironcladCount = troopsDeployed[getIdByName(attackerTroopTypes, 'Ironclad')] || 0;
+  const ironcladCount = troopsDeployed[nameToId.get('Ironclad')] || 0;
   if (outcome === 'win' && ironcladCount > 0) {
     specialEffects.push({ type: 'wall_debuff', value: 0.20 });
   }
 
   // Death Knight: drains enemy morale -5 on successful attack
-  const deathKnightCount = troopsDeployed[getIdByName(attackerTroopTypes, 'Death Knight')] || 0;
+  const deathKnightCount = troopsDeployed[nameToId.get('Death Knight')] || 0;
   if (outcome === 'win' && deathKnightCount > 0) {
     specialEffects.push({ type: 'morale_drain', value: -5 });
   }
 
   // Lich: destroys 10% of enemy mana
-  const lichCount = troopsDeployed[getIdByName(attackerTroopTypes, 'Lich')] || 0;
+  const lichCount = troopsDeployed[nameToId.get('Lich')] || 0;
   if (lichCount > 0) {
     specialEffects.push({ type: 'mana_drain', value: 0.10 });
   }
 
   // Cobra Assassin (Serpathi T4): drains enemy morale -3
-  const cobraAssassinCount = troopsDeployed[getIdByName(attackerTroopTypes, 'Cobra Assassin')] || 0;
+  const cobraAssassinCount = troopsDeployed[nameToId.get('Cobra Assassin')] || 0;
   if (cobraAssassinCount > 0) {
     specialEffects.push({ type: 'morale_drain', value: -3 });
   }
 
   // Flame Warden (Ashborn T3): drains enemy morale -3 on win
-  const flameWardenCount = troopsDeployed[getIdByName(attackerTroopTypes, 'Flame Warden')] || 0;
+  const flameWardenCount = troopsDeployed[nameToId.get('Flame Warden')] || 0;
   if (outcome === 'win' && flameWardenCount > 0) {
     specialEffects.push({ type: 'morale_drain', value: -3 });
   }
 
   // Infernal Drake (Ashborn T5): burns 15% of enemy food on win
-  const infernalDrakeCount = troopsDeployed[getIdByName(attackerTroopTypes, 'Infernal Drake')] || 0;
+  const infernalDrakeCount = troopsDeployed[nameToId.get('Infernal Drake')] || 0;
   if (outcome === 'win' && infernalDrakeCount > 0) {
     specialEffects.push({ type: 'food_burn', value: 0.15 });
   }
 
   // War Colossus (Ironveil T5): destroys 15% watchtower effectiveness on win
-  const warColossusCount = troopsDeployed[getIdByName(attackerTroopTypes, 'War Colossus')] || 0;
+  const warColossusCount = troopsDeployed[nameToId.get('War Colossus')] || 0;
   if (outcome === 'win' && warColossusCount > 0) {
     specialEffects.push({ type: 'watchtower_debuff', value: 0.15 });
   }
@@ -267,7 +271,7 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
       const baseStealPct = 0.05 + Math.random() * 0.10;
       const scaledStealPct = baseStealPct * armyStrengthMult;
       // Human Knight bonus
-      const knightCount = troopsDeployed[getIdByName(attackerTroopTypes, 'Knight')] || 0;
+      const knightCount = troopsDeployed[nameToId.get('Knight')] || 0;
       const knightBonus = knightCount > 0 ? 0.10 : 0;
       let finalStealPct = scaledStealPct + knightBonus;
       // Ashborn: +25% raid loot
@@ -276,7 +280,7 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
       const effectiveStealPct = applyTechModifiers(finalStealPct, 'raid_resources', attackerTechs);
 
       // Deep Raider (Tidewarden T3): +10% gold from raids
-      const deepRaiderCount = troopsDeployed[getIdByName(attackerTroopTypes, 'Deep Raider')] || 0;
+      const deepRaiderCount = troopsDeployed[nameToId.get('Deep Raider')] || 0;
       const deepRaiderGoldBonus = deepRaiderCount > 0 ? 1.10 : 1.00;
 
       resourcesStolen = {
@@ -306,7 +310,7 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
   // 7. Calculate return time
   let returnHours = BASE_RETURN_HOURS * attackerCfg.armyReturnSpeedMultiplier;
   // Current Dancer (Tidewarden T2): 2x army return speed
-  const currentDancerCount = troopsDeployed[getIdByName(attackerTroopTypes, 'Current Dancer')] || 0;
+  const currentDancerCount = troopsDeployed[nameToId.get('Current Dancer')] || 0;
   if (currentDancerCount > 0) returnHours *= 0.5;
   const troopsReturnAt = new Date(Date.now() + returnHours * 3600000);
 

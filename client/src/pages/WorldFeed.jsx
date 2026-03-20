@@ -42,7 +42,7 @@ export default function WorldFeed({ province }) {
     } catch {}
   }
 
-  useEffect(() => { document.title = 'World — Realm of Dominion'; }, []);
+  usePageTitle('World');
 
   useEffect(() => {
     loadFeed();
@@ -68,7 +68,7 @@ export default function WorldFeed({ province }) {
       setMessage('');
       await loadFeed();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to send');
+      setError(getApiError(err, 'Failed to send'));
     } finally {
       setSending(false);
     }

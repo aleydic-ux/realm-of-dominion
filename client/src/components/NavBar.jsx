@@ -38,18 +38,23 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, mailUnre
   return (
     <div>
       {/* Title bar */}
-      <div style={{background:'linear-gradient(to bottom, #0a1428, #060e1c)', borderBottom:'1px solid #1e3050', padding:'6px 16px', display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-        <span style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8a048', fontSize:'1.25rem', letterSpacing:'0.12em', textShadow:'0 0 16px rgba(200,160,72,0.5), 0 0 40px rgba(200,160,72,0.15), 1px 1px 2px #000'}}>
+      <div
+        className="border-b border-realm-border py-1.5 px-4 flex items-center justify-between"
+        style={{ background: 'linear-gradient(to bottom, #0a1428, #060e1c)' }}
+      >
+        <span
+          className="font-display text-realm-gold text-xl tracking-widest"
+          style={{ textShadow: '0 0 16px rgba(200,160,72,0.5), 0 0 40px rgba(200,160,72,0.15), 1px 1px 2px #000' }}
+        >
           Realm of Dominion
         </span>
-        <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+        <div className="flex items-center gap-2">
           {/* Hamburger — visible only on small screens */}
           <button
             onClick={() => setMobileOpen(o => !o)}
             aria-label="Toggle navigation"
             aria-expanded={mobileOpen}
-            style={{display:'none', fontFamily:"'Inter', Verdana, Arial, sans-serif", color:'#8090a8', fontSize:'1rem', border:'1px solid #243650', padding:'2px 8px', background:'transparent', cursor:'pointer'}}
-            className="sm-hamburger"
+            className="sm-hamburger font-mono hidden text-realm-text-muted text-base border border-realm-border px-2 py-0.5 bg-transparent cursor-pointer"
           >
             {mobileOpen ? '✕' : '☰'}
           </button>
@@ -58,9 +63,7 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, mailUnre
           <Link
             to="/settings"
             title="Settings"
-            style={{ color: '#8090a8', fontSize: '0.75rem', border: '1px solid #243650', padding: '2px 8px', textDecoration: 'none', display: 'inline-block' }}
-            onMouseOver={e => { e.currentTarget.style.color = '#c8a048'; e.currentTarget.style.borderColor = '#c8a048'; }}
-            onMouseOut={e => { e.currentTarget.style.color = '#8090a8'; e.currentTarget.style.borderColor = '#243650'; }}
+            className="text-realm-text-muted text-xs border border-realm-border px-2 py-0.5 no-underline inline-block hover:text-realm-gold hover:border-realm-gold transition-colors duration-200"
           >
             ⚙
           </Link>
@@ -68,17 +71,14 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, mailUnre
           <button
             onClick={onOpenHelp}
             title="How to Play (press ?)"
-            style={{fontFamily:"'Inter', Verdana, Arial, sans-serif", color:'#8090a8', fontSize:'0.75rem', border:'1px solid #243650', padding:'2px 8px', background:'transparent', cursor:'pointer', fontWeight:'bold'}}
-            onMouseOver={e => { e.target.style.color='#c8a048'; e.target.style.borderColor='#c8a048'; }}
-            onMouseOut={e => { e.target.style.color='#8090a8'; e.target.style.borderColor='#243650'; }}
+            className="font-mono text-realm-text-muted text-xs border border-realm-border px-2 py-0.5 bg-transparent cursor-pointer font-bold hover:text-realm-gold hover:border-realm-gold transition-colors duration-200"
           >
             ?
           </button>
           <button
             onClick={onLogout}
-            style={{fontFamily:"'Inter', Verdana, Arial, sans-serif", color:'#8090a8', fontSize:'0.68rem', border:'1px solid #243650', padding:'2px 10px', background:'transparent', cursor:'pointer'}}
-            onMouseOver={e => e.target.style.color='#c8d8e8'}
-            onMouseOut={e => e.target.style.color='#8090a8'}
+            className="font-mono text-realm-text-muted border border-realm-border px-2.5 py-0.5 bg-transparent cursor-pointer hover:text-realm-text transition-colors duration-200"
+            style={{ fontSize: '0.68rem' }}
           >
             Logout
           </button>
@@ -88,38 +88,30 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, mailUnre
       {/* Nav tabs */}
       <nav
         aria-label="Main navigation"
-        style={{background:'linear-gradient(to bottom, #162038, #0e1828)', borderBottom:'2px solid #c8a048'}}
+        className="border-b-2 border-realm-gold"
+        style={{ background: 'linear-gradient(to bottom, #162038, #0e1828)' }}
       >
-        <div className="nav-desktop" style={{display:'flex', overflowX:'auto'}}>
+        <div className="nav-desktop flex overflow-x-auto">
           {navLinks.map(({ path, label }) => {
             const badge = label === 'Mail' && mailUnreadCount > 0 ? mailUnreadCount : null;
             return (
               <NavLink
                 key={path}
                 to={path}
+                className="font-mono whitespace-nowrap border-r border-realm-border no-underline inline-flex items-center gap-1 transition-all duration-200 -mb-0.5 tracking-wide"
                 style={({ isActive }) => ({
-                  fontFamily: "'Inter', Verdana, Arial, sans-serif",
                   fontSize: '0.68rem',
                   fontWeight: isActive ? '600' : '400',
                   padding: '6px 14px',
-                  whiteSpace: 'nowrap',
-                  borderRight: '1px solid #1e3050',
                   color: isActive ? '#c8a048' : '#8090a8',
                   background: isActive ? 'linear-gradient(to bottom, #1e3050, #162040)' : 'transparent',
                   borderBottom: isActive ? '2px solid #c8a048' : '2px solid transparent',
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  transition: 'all 0.2s ease',
-                  marginBottom: '-2px',
-                  letterSpacing: '0.03em',
                   textShadow: isActive ? '0 0 8px rgba(200,160,72,0.3)' : 'none',
                 })}
               >
                 {label}
                 {badge && (
-                  <span style={{background:'#c83030', color:'#fff', fontSize:'0.6rem', borderRadius:'999px', padding:'0 4px', lineHeight:'1.4', fontWeight:'bold', minWidth:'14px', textAlign:'center'}}>
+                  <span className="text-white font-bold rounded-full px-1 text-center" style={{ background: '#c83030', fontSize: '0.6rem', lineHeight: '1.4', minWidth: '14px' }}>
                     {badge > 9 ? '9+' : badge}
                   </span>
                 )}
@@ -129,7 +121,7 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, mailUnre
         </div>
 
         {mobileOpen && (
-          <div className="nav-mobile" style={{display:'flex', flexDirection:'column', borderTop:'1px solid #1e3050'}}>
+          <div className="nav-mobile flex flex-col border-t border-realm-border">
             {navLinks.map(({ path, label }) => {
               const badge = label === 'Mail' && mailUnreadCount > 0 ? mailUnreadCount : null;
               return (
@@ -137,25 +129,17 @@ export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, mailUnre
                   key={path}
                   to={path}
                   onClick={() => setMobileOpen(false)}
+                  className="font-mono text-sm no-underline flex items-center justify-between transition-all duration-200 tracking-wide border-b border-realm-border"
                   style={({ isActive }) => ({
-                    fontFamily: "'Inter', Verdana, Arial, sans-serif",
-                    fontSize: '0.8rem',
                     fontWeight: isActive ? '600' : '400',
                     padding: '10px 16px',
-                    borderBottom: '1px solid #1e3050',
                     color: isActive ? '#c8a048' : '#8090a8',
                     background: isActive ? 'rgba(30,48,80,0.6)' : 'transparent',
-                    textDecoration: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    transition: 'all 0.2s ease',
-                    letterSpacing: '0.03em',
                   })}
                 >
                   {label}
                   {badge && (
-                    <span style={{background:'#c83030', color:'#fff', fontSize:'0.65rem', borderRadius:'999px', padding:'1px 6px', fontWeight:'bold'}}>
+                    <span className="text-white font-bold rounded-full" style={{ background: '#c83030', fontSize: '0.65rem', padding: '1px 6px' }}>
                       {badge > 9 ? '9+' : badge}
                     </span>
                   )}

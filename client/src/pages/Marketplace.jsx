@@ -44,7 +44,7 @@ export default function Marketplace({ province, refresh }) {
     } catch {}
   }
 
-  useEffect(() => { document.title = 'Marketplace — Realm of Dominion'; }, []);
+  usePageTitle('Marketplace');
   useEffect(() => { loadListings(); loadInventory(); }, []);
 
   async function handleList(e) {
@@ -66,7 +66,7 @@ export default function Marketplace({ province, refresh }) {
       loadInventory();
       refresh();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create listing');
+      setError(getApiError(err, 'Failed to create listing'));
     } finally {
       setLoading(false);
     }
@@ -82,7 +82,7 @@ export default function Marketplace({ province, refresh }) {
       loadInventory();
       refresh();
     } catch (err) {
-      setError(err.response?.data?.error || 'Purchase failed');
+      setError(getApiError(err, 'Purchase failed'));
     }
   }
 

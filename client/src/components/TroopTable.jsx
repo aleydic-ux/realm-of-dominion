@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { formatNumber, formatDuration } from '../utils/formatters';
+import { formatNumber, formatDuration, trainingTime } from '../utils/formatters';
 
 export default function TroopTable({ troops, showDeploy = false, onDeploy, gold }) {
   const [qtys, setQtys] = useState({});
@@ -42,7 +42,7 @@ export default function TroopTable({ troops, showDeploy = false, onDeploy, gold 
             <td className="text-red-400">{t.offense_power}</td>
             <td className="text-blue-400">{t.defense_power}</td>
             <td className="text-yellow-400">{formatNumber(t.gold_cost)}g</td>
-            <td className="text-realm-text-muted">{Math.pow(3, (t.tier || 1) - 1)}s/troop</td>
+            <td className="text-realm-text-muted">{trainingTime(t.tier)}s/troop</td>
             <td className="text-realm-gold">{formatNumber(t.count_home)}</td>
             {showDeploy && (
               <td className="text-yellow-400">{formatNumber(t.count_training)}</td>

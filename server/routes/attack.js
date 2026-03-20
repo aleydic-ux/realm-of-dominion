@@ -10,6 +10,10 @@ const { getBuildingLevels } = require('../services/resourceEngine');
 const { awardGems, checkLandMilestone } = require('../services/gemEngine');
 const { checkAchievements, incrementStat } = require('../services/achievementEngine');
 
+function isProtected(province) {
+  return province.protection_ends_at && new Date(province.protection_ends_at) > new Date();
+}
+
 const router = express.Router();
 
 router.use(authenticate, apRegen);
@@ -47,7 +51,7 @@ router.post('/', async (req, res) => {
     }
 
     // Newbie protection check
-    if (defender.protection_ends_at && new Date(defender.protection_ends_at) > new Date()) {
+    if (isProtected(defender)) {
       await client.query('ROLLBACK');
       return res.status(403).json({ error: 'This province is under a new player shield', protection_ends_at: defender.protection_ends_at });
     }
@@ -73,20 +77,31 @@ router.post('/', async (req, res) => {
     }
 
     // Remove attacker's newbie shield if attacking (forced drop)
-    if (attacker.protection_ends_at && new Date(attacker.protection_ends_at) > new Date()) {
+    if (isProtected(attacker)) {
       await client.query(
         `UPDATE provinces SET protection_ends_at = NOW(), protection_dropped_at = NOW(), updated_at = NOW()
          WHERE id = $1`, [attacker.id]
       );
     }
 
-    // Load attacker troop types and validate deployment
-    const { rows: attackerTroopTypes } = await client.query(
-      'SELECT * FROM troop_types WHERE race = $1', [attacker.race]
-    );
-    const { rows: attackerTroops } = await client.query(
-      'SELECT * FROM province_troops WHERE province_id = $1', [attacker.id]
-    );
+    // Load all combat data in parallel
+    const [
+      { rows: attackerTroopTypes },
+      { rows: attackerTroops },
+      { rows: defenderTroops },
+      { rows: defenderTroopTypes },
+      defenderBuildings,
+      attackerTechs,
+      defenderTechs,
+    ] = await Promise.all([
+      client.query('SELECT * FROM troop_types WHERE race = $1', [attacker.race]),
+      client.query('SELECT * FROM province_troops WHERE province_id = $1', [attacker.id]),
+      client.query('SELECT * FROM province_troops WHERE province_id = $1', [target_id]),
+      client.query('SELECT * FROM troop_types WHERE race = $1', [defender.race]),
+      getBuildingLevels(parseInt(target_id)),
+      getProvinceTechEffects(attacker.id),
+      getProvinceTechEffects(parseInt(target_id)),
+    ]);
 
     // Validate troops
     const troopsDeployed = {};
@@ -107,19 +122,6 @@ router.post('/', async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Must deploy at least one troop' });
     }
-
-    // Load defender data
-    const { rows: defenderTroops } = await client.query(
-      'SELECT * FROM province_troops WHERE province_id = $1', [target_id]
-    );
-    const { rows: defenderTroopTypes } = await client.query(
-      'SELECT * FROM troop_types WHERE race = $1', [defender.race]
-    );
-    const defenderBuildings = await getBuildingLevels(parseInt(target_id));
-
-    // Load tech effects
-    const attackerTechs = await getProvinceTechEffects(attacker.id);
-    const defenderTechs = await getProvinceTechEffects(parseInt(target_id));
 
     // Load active spell buffs for combat (graceful fallback if table not yet migrated)
     let attackerSpellEffects = [], defenderSpellEffects = [];
@@ -542,38 +544,45 @@ router.post('/', async (req, res) => {
       );
     } catch (e) { /* non-critical */ }
 
-    // Recalculate networth for both
-    await calculateAndStoreNetworth(attacker.id);
-    await calculateAndStoreNetworth(parseInt(target_id));
-
-    // Award gems for combat
-    try {
-      if (result.outcome === 'win') {
-        await awardGems(attacker.id, 3, 'Won attack');
-        // Check land milestones after conquest
-        if (result.landGained > 0) {
-          const { rows: [updated] } = await pool.query('SELECT land FROM provinces WHERE id = $1', [attacker.id]);
-          if (updated) await checkLandMilestone(attacker.id, updated.land);
-        }
-      } else if (result.outcome === 'loss') {
-        await awardGems(parseInt(target_id), 2, 'Defended attack');
-      }
-    } catch (_) { /* non-critical */ }
-
-    // Award achievements + update stats (non-critical)
-    try {
-      const goldStolen = result.resourcesStolen?.gold || 0;
-      if (result.outcome === 'win') {
-        await incrementStat(attacker.id, 'attacks_won');
-        if (result.landGained > 0) await incrementStat(attacker.id, 'land_conquered', result.landGained);
-        if (goldStolen > 0) await incrementStat(attacker.id, 'gold_plundered', goldStolen);
-        await checkAchievements(attacker.id, 'attack_won');
-      } else {
-        await incrementStat(attacker.id, 'attacks_lost');
-        await incrementStat(parseInt(target_id), 'attacks_defended');
-        await checkAchievements(parseInt(target_id), 'attack_defended');
-      }
-    } catch (_) { /* non-critical */ }
+    // Recalculate networth, award gems, and update stats/achievements in parallel
+    await Promise.all([
+      calculateAndStoreNetworth(attacker.id),
+      calculateAndStoreNetworth(parseInt(target_id)),
+      // Award gems for combat
+      (async () => {
+        try {
+          if (result.outcome === 'win') {
+            await awardGems(attacker.id, 3, 'Won attack');
+            if (result.landGained > 0) {
+              const { rows: [updated] } = await pool.query('SELECT land FROM provinces WHERE id = $1', [attacker.id]);
+              if (updated) await checkLandMilestone(attacker.id, updated.land);
+            }
+          } else if (result.outcome === 'loss') {
+            await awardGems(parseInt(target_id), 2, 'Defended attack');
+          }
+        } catch (_) { /* non-critical */ }
+      })(),
+      // Award achievements + update stats
+      (async () => {
+        try {
+          const goldStolen = result.resourcesStolen?.gold || 0;
+          if (result.outcome === 'win') {
+            await Promise.all([
+              incrementStat(attacker.id, 'attacks_won'),
+              result.landGained > 0 ? incrementStat(attacker.id, 'land_conquered', result.landGained) : null,
+              goldStolen > 0 ? incrementStat(attacker.id, 'gold_plundered', goldStolen) : null,
+              checkAchievements(attacker.id, 'attack_won'),
+            ]);
+          } else {
+            await Promise.all([
+              incrementStat(attacker.id, 'attacks_lost'),
+              incrementStat(parseInt(target_id), 'attacks_defended'),
+              checkAchievements(parseInt(target_id), 'attack_defended'),
+            ]);
+          }
+        } catch (_) { /* non-critical */ }
+      })(),
+    ]);
 
     // Alliance war scoring — if both sides are in alliances at war, record win/loss
     try {

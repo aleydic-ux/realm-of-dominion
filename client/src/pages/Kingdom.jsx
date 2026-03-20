@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
-import { formatNumber, RACE_ICONS } from '../utils/formatters';
+import { formatNumber, RACE_ICONS, isProtected } from '../utils/formatters';
 import ProtectionBadge from '../components/ProtectionBadge';
 
 export default function Kingdom({ province }) {
@@ -10,7 +10,7 @@ export default function Kingdom({ province }) {
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => { document.title = 'Kingdom — Realm of Dominion'; }, []);
+  usePageTitle('Kingdom');
 
   useEffect(() => {
     async function load() {
@@ -71,7 +71,7 @@ export default function Kingdom({ province }) {
                   <td className="text-realm-gold">{formatNumber(p.networth)}</td>
                   <td className="text-realm-text-dim text-xs">{p.alliance_name || '—'}</td>
                   <td>
-                    {p.protection_ends_at && new Date(p.protection_ends_at) > new Date() && (
+                    {isProtected(p) && (
                       <span className="text-blue-400">🛡️</span>
                     )}
                     {p.is_in_war && <span className="text-red-400 ml-1">⚔️</span>}
@@ -106,7 +106,7 @@ export default function Kingdom({ province }) {
                   <span className="text-realm-text-dim text-xs w-5 shrink-0">{i + 1}</span>
                   <span className={`race-${p.race} text-sm`}>{RACE_ICONS[p.race]}</span>
                   <span className="text-realm-text font-medium text-sm truncate">{p.name}</span>
-                  {p.protection_ends_at && new Date(p.protection_ends_at) > new Date() && (
+                  {isProtected(p) && (
                     <span className="text-blue-400 text-xs shrink-0">🛡️</span>
                   )}
                 </div>

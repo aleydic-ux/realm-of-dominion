@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
-import { formatNumber } from '../utils/formatters';
+import { formatNumber, isProtected } from '../utils/formatters';
 import ProtectionBadge from '../components/ProtectionBadge';
 import PlayerProfileModal from '../components/PlayerProfileModal';
 
@@ -12,7 +12,7 @@ export default function Leaderboard({ province }) {
   const [profileId, setProfileId] = useState(null);
   const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => { document.title = 'Leaderboard — Realm of Dominion'; }, []);
+  usePageTitle('Leaderboard');
 
   useEffect(() => {
     let cancelled = false;
@@ -76,7 +76,7 @@ export default function Leaderboard({ province }) {
                     {p.id === province?.id && (
                       <span style={{ marginLeft: '6px', fontSize: '10px', color: 'rgb(200,160,72)', background: 'rgba(200,160,72,0.15)', border: '1px solid rgba(200,160,72,0.4)', padding: '1px 5px', borderRadius: '3px' }}>you</span>
                     )}
-                    {p.protection_ends_at && new Date(p.protection_ends_at) > new Date() && (
+                    {isProtected(p) && (
                       <span className="ml-2 inline-block"><ProtectionBadge protection_ends_at={p.protection_ends_at} /></span>
                     )}
                   </td>

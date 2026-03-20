@@ -52,7 +52,7 @@ export default function Crafting({ province, buildings }) {
 
   const towerLevel = buildings?.find(b => b.building_type === 'alchemist_tower')?.level ?? 0;
 
-  useEffect(() => { document.title = 'Alchemist Tower — Realm of Dominion'; }, []);
+  usePageTitle('Alchemist Tower');
 
   // Live countdown ticker
   useEffect(() => {
@@ -87,7 +87,7 @@ export default function Crafting({ province, buildings }) {
       setSuccess(successMsg);
       await load();
     } catch (err) {
-      setError(err.response?.data?.error || 'Action failed');
+      setError(getApiError(err, 'Action failed'));
     }
     setBusy(null);
   }, [load]);

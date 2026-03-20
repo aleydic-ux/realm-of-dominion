@@ -83,7 +83,7 @@ function DetailPanel({ selected, province, onClose, troopTypes = {} }) {
   return (
     <div className="realm-panel space-y-3">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h2 style={{ color: '#c8a048', fontFamily: 'Cinzel, Georgia, serif', fontSize: '1rem' }}>
+        <h2 className="font-display" style={{ color: '#c8a048', fontSize: '1rem' }}>
           Battle Report #{selected.id}
         </h2>
         <button onClick={onClose} style={{ color: '#485868', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
@@ -96,7 +96,7 @@ function DetailPanel({ selected, province, onClose, troopTypes = {} }) {
         border: `1px solid ${outcomeDisplayColor}40`,
         borderRadius: '6px',
       }}>
-        <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: outcomeDisplayColor, fontFamily: 'Cinzel, Georgia, serif', letterSpacing: '0.1em' }}>
+        <div className="font-display" style={{ fontSize: '1.1rem', fontWeight: 'bold', color: outcomeDisplayColor, letterSpacing: '0.1em' }}>
           {outcomeLabel}
         </div>
         <div style={{ fontSize: '0.7rem', color: '#8090a8', marginTop: '2px' }}>
@@ -186,7 +186,7 @@ function DetailPanel({ selected, province, onClose, troopTypes = {} }) {
 
       {/* Casualties */}
       <div style={{ borderTop: '1px solid #1e3050', paddingTop: '8px' }}>
-        <div style={{ color: '#c8a048', fontSize: '0.75rem', fontFamily: 'Cinzel, Georgia, serif', marginBottom: '6px' }}>
+        <div className="font-display" style={{ color: '#c8a048', fontSize: '0.75rem', marginBottom: '6px' }}>
           Casualties
         </div>
         <div className="space-y-2">
@@ -248,7 +248,7 @@ export default function Reports({ province }) {
   const [loadError, setLoadError] = useState(false);
   const [filter, setFilter] = useState('all');
 
-  useEffect(() => { document.title = 'Reports — Realm of Dominion'; }, []);
+  usePageTitle('Reports');
 
   useEffect(() => {
     let cancelled = false;

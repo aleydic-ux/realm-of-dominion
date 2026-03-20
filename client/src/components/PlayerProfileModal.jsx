@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
-import { formatNumber, RACE_ICONS } from '../utils/formatters';
+import { formatNumber, RACE_ICONS, isProtected } from '../utils/formatters';
 
 const RACE_COLORS = {
   human: '#4080c0', orc: '#408040', undead: '#9040c0', elf: '#40c080', dwarf: '#c0a040',
@@ -28,7 +28,7 @@ export default function PlayerProfileModal({ provinceId, myProvinceId, onClose }
         const { data: d } = await api.get(`/province/${provinceId}`);
         if (!cancelled) setData(d);
       } catch (err) {
-        if (!cancelled) setError(err.response?.data?.error || 'Failed to load profile');
+        if (!cancelled) setError(getApiError(err, 'Failed to load profile'));
       }
       if (!cancelled) setLoading(false);
     }
@@ -97,10 +97,10 @@ export default function PlayerProfileModal({ provinceId, myProvinceId, onClose }
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#c8d8e8', fontFamily: 'Cinzel, Georgia, serif' }}>{p.name}</span>
+                    <span className="font-display" style={{ fontSize: '1rem', fontWeight: 'bold', color: '#c8d8e8' }}>{p.name}</span>
                     {isOwn && <span style={{ fontSize: '0.6rem', padding: '1px 5px', background: 'rgba(200,160,72,0.15)', border: '1px solid rgba(200,160,72,0.4)', color: '#c8a048', borderRadius: '3px' }}>you</span>}
                     {p.is_bot && <span style={{ fontSize: '0.6rem', padding: '1px 5px', background: 'rgba(72,88,104,0.3)', border: '1px solid rgba(72,88,104,0.5)', color: '#485868', borderRadius: '3px' }}>BOT</span>}
-                    {p.protection_ends_at && new Date(p.protection_ends_at) > new Date() && (
+                    {isProtected(p) && (
                       <span style={{ fontSize: '0.6rem', padding: '1px 5px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e', borderRadius: '3px' }}>🛡 Protected</span>
                     )}
                   </div>

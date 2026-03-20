@@ -26,4 +26,8 @@ api.interceptors.response.use(
   }
 );
 
+export function getApiError(err, fallback = 'Something went wrong') {
+  return err?.response?.data?.error || fallback;
+}
+
 export default api;

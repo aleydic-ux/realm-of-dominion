@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../utils/api';
+import api, { getApiError } from '../utils/api';
 import { formatNumber } from '../utils/formatters';
+import AuthLayout from '../components/AuthLayout';
+import AlertBanner from '../components/AlertBanner';
 
 const RACES = [
   {
@@ -74,40 +76,18 @@ export default function Register({ onLogin }) {
         onLogin(data.token, data.user);
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed');
+      setError(getApiError(err, 'Registration failed'));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div
-      className="relative min-h-screen flex items-center justify-center p-4"
-      style={{
-        backgroundImage: "url('/MAIN PAGE BACKGROUND.png')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}
-    >
-      <div
-        className="absolute inset-0"
-        style={{ background: 'linear-gradient(to bottom, rgba(6,14,28,0.50) 0%, rgba(6,14,28,0.88) 100%)' }}
-      />
-      <div className="w-full max-w-2xl relative z-10">
-        <div className="text-center mb-8">
-          <h1 className="text-realm-gold font-display" style={{ fontSize: '3.2rem', letterSpacing: '0.12em', textShadow: '2px 2px 8px rgba(0,0,0,0.8), 0 0 20px rgba(200,160,72,0.4)' }}>Realm of Dominion</h1>
-          <p className="text-realm-text-muted mt-3 uppercase tracking-widest" style={{ letterSpacing: '0.25em', fontSize: '0.8rem' }}>Forge your legend</p>
-        </div>
-
+    <AuthLayout subtitle="Forge your legend" maxWidth="max-w-2xl">
         <form onSubmit={handleSubmit} className="realm-panel flex flex-col gap-5" style={{ backdropFilter: 'blur(8px)', background: 'rgba(22, 32, 48, 0.85)' }}>
           <h2 className="text-realm-gold text-xl font-display" style={{ textShadow: '0 0 12px rgba(200,160,72,0.3)' }}>Create Your Province</h2>
 
-          {error && (
-            <div className="bg-red-900/30 border border-red-700 text-red-300 px-3 py-2 rounded text-sm">
-              {error}
-            </div>
-          )}
+          <AlertBanner type="error" message={error} />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -172,9 +152,7 @@ export default function Register({ onLogin }) {
             <Link to="/login" className="text-realm-gold hover:underline">Login</Link>
           </p>
         </form>
-      </div>
 
-      {/* Late-Join Welcome Modal */}
       {lateJoin && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" style={{ backdropFilter: 'blur(4px)' }}>
           <div className="realm-panel w-full max-w-md space-y-4" style={{ borderTop: '2px solid rgb(200,160,72)' }}>
@@ -218,7 +196,7 @@ export default function Register({ onLogin }) {
           </div>
         </div>
       )}
-    </div>
+    </AuthLayout>
   );
 }
 

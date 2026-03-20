@@ -13,8 +13,8 @@ function Section({ title, children, danger }) {
       }}
     >
       <h3
+        className="font-display"
         style={{
-          fontFamily: 'Cinzel, Georgia, serif',
           color: danger ? '#f87171' : '#c8a048',
           fontSize: '1rem',
           letterSpacing: '0.08em',
@@ -48,7 +48,7 @@ function DisplayNameSection({ user }) {
       await api.patch('/user/profile', { displayName });
       setStatus({ success: 'Display name updated.' });
     } catch (err) {
-      setStatus({ error: err.response?.data?.error || 'Failed to update display name.' });
+      setStatus({ error: getApiError(err, 'Failed to update display name.') });
     } finally {
       setLoading(false);
     }
@@ -105,7 +105,7 @@ function ChangeEmailSection({ user }) {
       setStatus({ success: `A verification link has been sent to ${newEmail}. Your email will update once you click the link.` });
       setNewEmail('');
     } catch (err) {
-      setStatus({ error: err.response?.data?.error || 'Failed to send verification email.' });
+      setStatus({ error: getApiError(err, 'Failed to send verification email.') });
     } finally {
       setLoading(false);
     }
@@ -157,7 +157,7 @@ function ChangePasswordSection() {
       setStatus({ success: 'Password updated successfully.' });
       setForm({ currentPassword: '', newPassword: '', confirm: '' });
     } catch (err) {
-      setStatus({ error: err.response?.data?.error || 'Failed to update password.' });
+      setStatus({ error: getApiError(err, 'Failed to update password.') });
     } finally {
       setLoading(false);
     }
@@ -204,7 +204,7 @@ function DeleteAccountSection({ onLogout }) {
       await api.post('/user/delete-account', { confirmation: 'DELETE' });
       onLogout('Your account has been scheduled for deletion.');
     } catch (err) {
-      setStatus({ error: err.response?.data?.error || 'Failed to delete account.' });
+      setStatus({ error: getApiError(err, 'Failed to delete account.') });
       setLoading(false);
     }
   }
@@ -216,8 +216,8 @@ function DeleteAccountSection({ onLogout }) {
       </p>
       <button
         onClick={() => setModalOpen(true)}
+        className="font-mono"
         style={{
-          fontFamily: 'Verdana, Arial, sans-serif',
           fontSize: '0.8rem',
           color: '#fca5a5',
           border: '1px solid #991b1b',
@@ -241,7 +241,7 @@ function DeleteAccountSection({ onLogout }) {
             background: '#0e1828', border: '1px solid #991b1b',
             borderRadius: '8px', padding: '2rem', maxWidth: '420px', width: '90%',
           }}>
-            <h4 style={{ color: '#f87171', fontFamily: 'Cinzel, Georgia, serif', marginBottom: '12px' }}>
+            <h4 className="font-display" style={{ color: '#f87171', marginBottom: '12px' }}>
               Delete Account
             </h4>
             <p style={{ color: '#c8d8e8', fontSize: '0.85rem', marginBottom: '16px' }}>
@@ -258,8 +258,8 @@ function DeleteAccountSection({ onLogout }) {
               <button
                 onClick={handleDelete}
                 disabled={confirm !== 'DELETE' || loading}
+                className="font-mono"
                 style={{
-                  fontFamily: 'Verdana, Arial, sans-serif',
                   fontSize: '0.8rem',
                   color: confirm === 'DELETE' ? '#fff' : '#666',
                   background: confirm === 'DELETE' ? '#991b1b' : '#1e2838',
@@ -273,8 +273,8 @@ function DeleteAccountSection({ onLogout }) {
               </button>
               <button
                 onClick={() => { setModalOpen(false); setConfirm(''); }}
+                className="font-mono"
                 style={{
-                  fontFamily: 'Verdana, Arial, sans-serif',
                   fontSize: '0.8rem',
                   color: '#8090a8',
                   border: '1px solid #243650',
@@ -308,7 +308,7 @@ function AppearanceSection({ user }) {
       await api.patch('/user/appearance', { provinceMotto: motto });
       setStatus({ success: 'Motto updated. It will appear below your province name.' });
     } catch (err) {
-      setStatus({ error: err.response?.data?.error || 'Failed to save motto.' });
+      setStatus({ error: getApiError(err, 'Failed to save motto.') });
     } finally {
       setLoading(false);
     }
@@ -366,8 +366,8 @@ export default function Settings({ onLogout }) {
   return (
     <div style={{ maxWidth: '640px', margin: '0 auto', padding: '1rem 0' }}>
       <h2
+        className="font-display"
         style={{
-          fontFamily: 'Cinzel, Georgia, serif',
           color: '#c8a048',
           fontSize: '1.4rem',
           letterSpacing: '0.1em',

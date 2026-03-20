@@ -8,7 +8,7 @@ export default function Research({ province, research = [], refresh }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  useEffect(() => { document.title = 'Research — Realm of Dominion'; }, []);
+  usePageTitle('Research');
 
   useEffect(() => {
     async function loadTechs() {
@@ -31,7 +31,7 @@ export default function Research({ province, research = [], refresh }) {
       setMessage(data.message + (data.completes_at ? ` (${formatTime(data.completes_at)})` : ''));
       refresh();
     } catch (err) {
-      setError(err.response?.data?.error || 'Research failed');
+      setError(getApiError(err, 'Research failed'));
     }
   }
 

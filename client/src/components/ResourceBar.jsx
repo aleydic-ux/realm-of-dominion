@@ -1,4 +1,4 @@
-import { formatNumber, formatTime } from '../utils/formatters';
+import { formatNumber, formatTime, isProtected } from '../utils/formatters';
 import Tooltip from './Tooltip';
 import { RESOURCE_TOOLTIPS } from '../help/tooltips.jsx';
 
@@ -13,84 +13,98 @@ export default function ResourceBar({ province }) {
   const foodLow = province.food > 0 && province.food < 100;
   const foodStarving = province.food <= 0;
 
-  const cell = { padding: '3px 10px', borderRight: '1px solid #1e3050', textAlign: 'center' };
-  const lbl = { color: '#485868', fontSize: '0.6rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.06em' };
-  const val = { fontSize: '0.78rem', fontWeight: 'bold', color: '#c8d8e8' };
-
   return (
-    <div style={{background:'linear-gradient(to bottom, #111828, #0e1620)', borderBottom:'1px solid #243650', boxShadow:'0 2px 8px rgba(0,0,0,0.5)'}}>
+    <div
+      className="border-b border-realm-border"
+      style={{ background: 'linear-gradient(to bottom, #111828, #0e1620)', boxShadow: '0 2px 8px rgba(0,0,0,0.5)' }}
+    >
       {/* Province name bar */}
-      <div className="province-name-bar" style={{padding:'4px 14px', borderBottom:'1px solid #1e3050', display:'flex', alignItems:'center', justifyContent:'center', gap:'10px', flexWrap:'wrap', background:'rgba(255,255,255,0.02)'}}>
-        <span style={{fontFamily:'Cinzel, Georgia, serif', color:'#c8a048', fontSize:'0.95rem', fontWeight:'700', letterSpacing:'0.08em'}}>
+      <div className="province-name-bar py-1 px-3.5 border-b border-realm-border flex items-center justify-center gap-2.5 flex-wrap" style={{ background: 'rgba(255,255,255,0.02)' }}>
+        <span className="font-display text-realm-gold font-bold tracking-wider" style={{ fontSize: '0.95rem' }}>
           {province.name}
           {province.active_title && (
-            <span style={{fontFamily:'Verdana, Arial, sans-serif', color:'#8090a8', fontSize:'0.65rem', fontWeight:'normal', marginLeft:'8px', letterSpacing:'0.04em'}}>
+            <span className="font-mono text-realm-text-muted font-normal ml-2 tracking-wide" style={{ fontSize: '0.65rem' }}>
               {province.active_title}
             </span>
           )}
         </span>
         {province.province_motto && (
-          <span style={{fontFamily:'Georgia, serif', color:'#485868', fontSize:'0.65rem', fontStyle:'italic', letterSpacing:'0.03em'}}>
+          <span className="text-realm-text-dim italic tracking-wide" style={{ fontFamily: 'Georgia, serif', fontSize: '0.65rem' }}>
             "{province.province_motto}"
           </span>
         )}
         <Tooltip content={RACE_TOOLTIPS[province.race]} width={200}>
-          <span className={`race-${province.race}`} style={{fontSize:'0.6rem', fontWeight:'bold', border:'1px solid currentColor', padding:'1px 6px', fontFamily:'Verdana, Arial, sans-serif', letterSpacing:'0.06em', cursor:'help'}}>
+          <span className={`race-${province.race} font-mono font-bold border border-current cursor-help tracking-wider`} style={{ fontSize: '0.6rem', padding: '1px 6px' }}>
             {province.race.toUpperCase()}
           </span>
         </Tooltip>
-        {province.protection_ends_at && new Date(province.protection_ends_at) > new Date() && (
+        {isProtected(province) && (
           <Tooltip content="New player shield — you cannot be attacked until this expires." width={200}>
-            <span style={{fontSize:'0.6rem', color:'#3070c0', border:'1px solid #3070c0', padding:'1px 6px', letterSpacing:'0.05em', cursor:'help'}}>
+            <span className="text-realm-blue-light border border-realm-blue-light cursor-help tracking-wide" style={{ fontSize: '0.6rem', padding: '1px 6px' }}>
               SHIELD: {formatTime(province.protection_ends_at)}
             </span>
           </Tooltip>
         )}
         {foodStarving && (
-          <span style={{fontSize:'0.6rem', color:'#cc2828', border:'1px solid #cc2828', padding:'1px 6px', letterSpacing:'0.05em', animation:'pulse 1s infinite'}}>
+          <span className="text-realm-crimson-light border border-realm-crimson-light tracking-wide" style={{ fontSize: '0.6rem', padding: '1px 6px', animation: 'pulse 1s infinite' }}>
             ⚠️ TROOPS STARVING — morale dropping!
           </span>
         )}
       </div>
 
       {/* Stats row — all resources + AP on one centered line */}
-      <div className="resource-stats-row" style={{display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'center'}}>
+      <div className="resource-stats-row flex flex-wrap items-center justify-center">
         <Tooltip content={RESOURCE_TOOLTIPS.gold} width={240}>
-          <span style={cell}><span style={lbl}>Gold</span><span style={{...val, color:'#c8a048'}}>{formatNumber(province.gold)}</span></span>
+          <span className="py-0.5 px-2.5 border-r border-realm-border text-center">
+            <span className="text-realm-text-dim block uppercase tracking-wider" style={{ fontSize: '0.6rem' }}>Gold</span>
+            <span className="text-realm-gold font-bold" style={{ fontSize: '0.78rem' }}>{formatNumber(province.gold)}</span>
+          </span>
         </Tooltip>
 
         <Tooltip content={RESOURCE_TOOLTIPS.food} width={240}>
-          <span style={cell}>
-            <span style={lbl}>
-              Food{foodLow && !foodStarving && <span style={{color:'#c8a048', marginLeft:'3px'}}>⚠</span>}
-              {foodStarving && <span style={{color:'#cc2828', marginLeft:'3px'}}>⚠</span>}
+          <span className="py-0.5 px-2.5 border-r border-realm-border text-center">
+            <span className="text-realm-text-dim block uppercase tracking-wider" style={{ fontSize: '0.6rem' }}>
+              Food{foodLow && !foodStarving && <span className="text-realm-gold ml-0.5">⚠</span>}
+              {foodStarving && <span className="text-realm-crimson-light ml-0.5">⚠</span>}
             </span>
-            <span style={{...val, color: foodStarving ? '#cc2828' : foodLow ? '#c8a048' : '#2a8a48'}}>{formatNumber(province.food)}</span>
+            <span className="font-bold" style={{ fontSize: '0.78rem', color: foodStarving ? '#cc2828' : foodLow ? '#c8a048' : '#2a8a48' }}>{formatNumber(province.food)}</span>
           </span>
         </Tooltip>
 
         <Tooltip content={RESOURCE_TOOLTIPS.mana} width={240}>
-          <span style={cell}><span style={lbl}>Mana</span><span style={{...val, color:'#8830cc'}}>{formatNumber(province.mana)}</span></span>
+          <span className="py-0.5 px-2.5 border-r border-realm-border text-center">
+            <span className="text-realm-text-dim block uppercase tracking-wider" style={{ fontSize: '0.6rem' }}>Mana</span>
+            <span className="text-realm-purple-light font-bold" style={{ fontSize: '0.78rem' }}>{formatNumber(province.mana)}</span>
+          </span>
         </Tooltip>
 
         <Tooltip content={RESOURCE_TOOLTIPS.industry} width={240}>
-          <span style={cell}><span style={lbl}>Industry</span><span style={val}>{formatNumber(province.industry_points)}</span></span>
+          <span className="py-0.5 px-2.5 border-r border-realm-border text-center">
+            <span className="text-realm-text-dim block uppercase tracking-wider" style={{ fontSize: '0.6rem' }}>Industry</span>
+            <span className="text-realm-text font-bold" style={{ fontSize: '0.78rem' }}>{formatNumber(province.industry_points)}</span>
+          </span>
         </Tooltip>
 
         <Tooltip content={RESOURCE_TOOLTIPS.land} width={240}>
-          <span style={cell}><span style={lbl}>Land</span><span style={val}>{formatNumber(province.land)} ac</span></span>
+          <span className="py-0.5 px-2.5 border-r border-realm-border text-center">
+            <span className="text-realm-text-dim block uppercase tracking-wider" style={{ fontSize: '0.6rem' }}>Land</span>
+            <span className="text-realm-text font-bold" style={{ fontSize: '0.78rem' }}>{formatNumber(province.land)} ac</span>
+          </span>
         </Tooltip>
 
         <Tooltip content="Gems — earned through combat, research, and milestones. Spent on enhancements." width={220}>
-          <span style={cell}><span style={lbl}>Gems</span><span style={{...val, color:'#a78bfa'}}>{formatNumber(province.gems || 0)}💎</span></span>
+          <span className="py-0.5 px-2.5 border-r border-realm-border text-center">
+            <span className="text-realm-text-dim block uppercase tracking-wider" style={{ fontSize: '0.6rem' }}>Gems</span>
+            <span className="font-bold" style={{ fontSize: '0.78rem', color: '#a78bfa' }}>{formatNumber(province.gems || 0)}💎</span>
+          </span>
         </Tooltip>
 
         {/* AP — inline with other resources */}
         <Tooltip content={RESOURCE_TOOLTIPS.ap} width={240}>
-          <span style={{...cell, borderRight:'none', display:'flex', alignItems:'center', gap:'6px', cursor:'help'}}>
+          <span className="py-0.5 px-2.5 text-center flex items-center gap-1.5 cursor-help">
             <span>
-              <span style={lbl}>AP{apFull && <span style={{color:'#c8a048', marginLeft:'3px'}}>●</span>}</span>
-              <span style={{...val, color: apColor}}>{province.action_points}/{maxAp}</span>
+              <span className="text-realm-text-dim block uppercase tracking-wider" style={{ fontSize: '0.6rem' }}>AP{apFull && <span className="text-realm-gold ml-0.5">●</span>}</span>
+              <span className="font-bold" style={{ fontSize: '0.78rem', color: apColor }}>{province.action_points}/{maxAp}</span>
             </span>
             <div
               role="progressbar"
@@ -98,9 +112,10 @@ export default function ResourceBar({ province }) {
               aria-valuenow={province.action_points}
               aria-valuemin={0}
               aria-valuemax={maxAp}
-              style={{width:'50px', height:'6px', border:'1px solid #243650', background:'#0a1020', overflow:'hidden'}}
+              className="border border-realm-border bg-realm-bg overflow-hidden"
+              style={{ width: '50px', height: '6px' }}
             >
-              <div style={{width:`${apPct}%`, height:'100%', background: apColor, transition:'width 0.3s'}} />
+              <div className="h-full transition-[width] duration-300" style={{ width: `${apPct}%`, background: apColor }} />
             </div>
           </span>
         </Tooltip>
@@ -108,7 +123,7 @@ export default function ResourceBar({ province }) {
 
       {/* AP full warning */}
       {apFull && (
-        <div style={{background:'rgba(200,160,72,0.08)', borderTop:'1px solid rgba(200,160,72,0.2)', padding:'2px 14px', fontSize:'0.62rem', color:'#c8a048', textAlign:'center'}}>
+        <div className="text-realm-gold text-center px-3.5 py-0.5" style={{ background: 'rgba(200,160,72,0.08)', borderTop: '1px solid rgba(200,160,72,0.2)', fontSize: '0.62rem' }}>
           ⚡ AP full — regen paused until you spend some!
         </div>
       )}

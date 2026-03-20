@@ -28,7 +28,7 @@ function NoAllianceView({ province }) {
       setOk(`Alliance "${createName}" created!`);
       setTimeout(() => window.location.reload(), 800);
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to create alliance');
+      setErr(getApiError(e, 'Failed to create alliance'));
     }
   }
 
@@ -99,7 +99,7 @@ function MembersTab({ allianceData, allianceId, myRank, myProvinceId, onRefresh,
       setOk(data.message || 'Done');
       onRefresh();
     } catch (e) {
-      setErr(e.response?.data?.error || 'Action failed');
+      setErr(getApiError(e, 'Action failed'));
     }
   }
 
@@ -184,7 +184,7 @@ function ChatTab({ allianceId, messages, setMessages, myRank, myProvinceId }) {
       await api.post(`/alliances/${allianceId}/chat`, { body: chatInput });
       setChatInput('');
     } catch (err) {
-      setSendErr(err.response?.data?.error || 'Failed to send');
+      setSendErr(getApiError(err, 'Failed to send'));
     }
   }
 
@@ -249,7 +249,7 @@ function BuffsTab({ allianceId, bankGold, onRefresh, setOk, setErr }) {
       onRefresh();
       api.get(`/alliances/${allianceId}/buffs`).then(({ data }) => setBuffs(data.active || [])).catch(() => {});
     } catch (e) {
-      setErr(e.response?.data?.error || 'Purchase failed');
+      setErr(getApiError(e, 'Purchase failed'));
     }
   }
 
@@ -327,7 +327,7 @@ function ManageTab({ allianceId, allianceData, myRank, myProvinceId, onRefresh, 
       setOk(data.message || msg || 'Done');
       onRefresh();
     } catch (e) {
-      setErr(e.response?.data?.error || 'Action failed');
+      setErr(getApiError(e, 'Action failed'));
     }
   }
 
@@ -416,7 +416,7 @@ export default function Alliance({ province }) {
   const [ok, setOk] = useState('');
   const [err, setErr] = useState('');
 
-  useEffect(() => { document.title = 'Alliance — Realm of Dominion'; }, []);
+  usePageTitle('Alliance');
 
   useEffect(() => {
     if (alliance) {
@@ -491,7 +491,7 @@ export default function Alliance({ province }) {
               const amt = parseInt(prompt('Deposit amount:') || '0');
               if (amt > 0) {
                 try { await api.post(`/alliances/${alliance.id}/deposit`, { amount: amt }); refresh(); showOk('Deposited!'); }
-                catch (e) { showErr(e.response?.data?.error || 'Failed'); }
+                catch (e) { showErr(getApiError(e, 'Failed')); }
               }
             }} className="realm-btn-gold text-xs">Deposit</button>
             {isLeader && (
@@ -499,7 +499,7 @@ export default function Alliance({ province }) {
                 const amt = parseInt(prompt('Withdraw amount:') || '0');
                 if (amt > 0) {
                   try { await api.post(`/alliances/${alliance.id}/withdraw`, { amount: amt }); refresh(); showOk('Withdrawn!'); }
-                  catch (e) { showErr(e.response?.data?.error || 'Failed'); }
+                  catch (e) { showErr(getApiError(e, 'Failed')); }
                 }
               }} className="realm-btn-outline text-xs">Withdraw</button>
             )}

@@ -19,7 +19,7 @@ export default function Gems({ province }) {
   const [actionLoading, setActionLoading] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
 
-  useEffect(() => { document.title = 'Gems — Realm of Dominion'; }, []);
+  usePageTitle('Gems');
 
   useEffect(() => {
     if (!province) return;
@@ -51,7 +51,7 @@ export default function Gems({ province }) {
       setMessage(res.message);
       await loadData();
     } catch (err) {
-      setError(err.response?.data?.error || 'Unlock failed');
+      setError(getApiError(err, 'Unlock failed'));
     } finally {
       setActionLoading(null);
     }
@@ -66,7 +66,7 @@ export default function Gems({ province }) {
       setMessage(res.message);
       await loadData();
     } catch (err) {
-      setError(err.response?.data?.error || 'Activation failed');
+      setError(getApiError(err, 'Activation failed'));
     } finally {
       setActionLoading(null);
     }

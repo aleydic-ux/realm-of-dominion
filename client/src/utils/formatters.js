@@ -68,6 +68,15 @@ export const RACE_LABELS = {
   tidewarden: 'Tidewarden',
 };
 
+/** Seconds to train one troop of a given tier. Shared with server. */
+export function trainingTime(tier) {
+  return Math.pow(3, (tier || 1) - 1);
+}
+
+export function isProtected(province) {
+  return province.protection_ends_at && new Date(province.protection_ends_at) > new Date();
+}
+
 export function formatRelativeDate(isoString) {
   if (!isoString) return '—';
   const diff = new Date(isoString) - Date.now();

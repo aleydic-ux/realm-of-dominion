@@ -7,7 +7,7 @@ export default function Buildings({ province, buildings = [], refresh }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  useEffect(() => { document.title = 'Buildings — Realm of Dominion'; }, []);
+  usePageTitle('Buildings');
 
   if (!province) return null;
 
@@ -19,7 +19,7 @@ export default function Buildings({ province, buildings = [], refresh }) {
       setMessage(data.message + `. Cost: ${formatNumber(data.cost?.gold)} gold, ${formatNumber(data.cost?.industry_points)} IP`);
       refresh();
     } catch (err) {
-      setError(err.response?.data?.error || 'Build failed');
+      setError(getApiError(err, 'Build failed'));
     }
   }
 

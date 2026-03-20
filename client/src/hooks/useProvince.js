@@ -15,16 +15,23 @@ export function useProvince() {
   const [mailUnreadCount, setMailUnreadCount] = useState(0);
   const [raidAlert, setRaidAlert] = useState(null);
   const initialLoadDone = useRef(false);
+  const lastDataHash = useRef('');
 
   const refresh = useCallback(async () => {
     try {
       if (!initialLoadDone.current) setLoading(true);
       const { data } = await api.get('/province/me');
-      setProvince(data.province);
-      setBuildings(data.buildings || []);
-      setTroops(data.troops || []);
-      setResearch(data.research || []);
-      setAlliance(data.alliance || null);
+
+      // Change detection: only update state if data actually changed
+      const hash = JSON.stringify(data);
+      if (hash !== lastDataHash.current) {
+        lastDataHash.current = hash;
+        setProvince(data.province);
+        setBuildings(data.buildings || []);
+        setTroops(data.troops || []);
+        setResearch(data.research || []);
+        setAlliance(data.alliance || null);
+      }
       setError(null);
       setSlowLoad(false);
       initialLoadDone.current = true;
@@ -39,7 +46,7 @@ export function useProvince() {
       } catch { /* ignore — tables may not exist yet */ }
     } catch (err) {
       const status = err.response?.status;
-      const msg = err.response?.data?.error || 'Failed to load province';
+      const msg = getApiError(err, 'Failed to load province');
       // 404 = server is running but no province found — show immediately, no point retrying
       if (status === 404) {
         setError(msg);
