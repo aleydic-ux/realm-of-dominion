@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { formatNumber, formatTime } from '../utils/formatters';
-import api from '../utils/api';
+import api, { getApiError } from '../utils/api';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const TREE_ICONS = { military: '⚔️', economy: '💰', magic: '🔮', espionage: '🗡️' };
 const TREE_COLORS = {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { formatRelativeDate } from '../utils/formatters';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const CATEGORIES = ['All', 'Combat', 'Growth', 'Research', 'Military', 'Buildings'];
 

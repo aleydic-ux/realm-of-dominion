@@ -1,1 +1,0 @@
-import{j as r,h as t}from"./index-BEhUu7-4.js";function n({protection_ends_at:e}){return!e||!(new Date(e)>new Date)?null:r.jsxs("span",{className:"realm-badge bg-blue-900/40 border-blue-500 text-blue-300 text-xs",children:["🛡️ Shield ",t(e)]})}export{n as P};

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import BuildingCard from '../components/BuildingCard';
-import api from '../utils/api';
+import api, { getApiError } from '../utils/api';
 import { formatNumber } from '../utils/formatters';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function Buildings({ province, buildings = [], refresh }) {
   const [message, setMessage] = useState('');

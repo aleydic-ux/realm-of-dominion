@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { formatNumber, formatDateTime, RACE_ICONS } from '../utils/formatters';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 function PowerBar({ attackerPower, defenderPower }) {
   const total = attackerPower + defenderPower || 1;

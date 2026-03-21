@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import api from '../utils/api';
+import api, { getApiError } from '../utils/api';
 import { formatNumber, RESOURCE_ICONS } from '../utils/formatters';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const ITEM_NAMES = {
   minor_mana_potion: 'Minor Mana Potion',

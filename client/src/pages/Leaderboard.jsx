@@ -3,6 +3,7 @@ import api from '../utils/api';
 import { formatNumber, isProtected } from '../utils/formatters';
 import ProtectionBadge from '../components/ProtectionBadge';
 import PlayerProfileModal from '../components/PlayerProfileModal';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function Leaderboard({ province }) {
   const [data, setData] = useState(null);

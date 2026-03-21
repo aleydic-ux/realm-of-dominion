@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import api from '../utils/api';
+import api, { getApiError } from '../utils/api';
 import { formatNumber } from '../utils/formatters';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const EFFECT_TYPES = {
   combat_boost:    { label: 'Combat',   color: 'text-orange-400', border: 'border-orange-800/40', bg: 'bg-orange-900/10' },

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import TroopTable from '../components/TroopTable';
 import { formatNumber, formatTime, formatDuration, trainingTime } from '../utils/formatters';
-import api from '../utils/api';
+import api, { getApiError } from '../utils/api';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function Military({ province, troops = [], refresh }) {
   const [trainModal, setTrainModal] = useState(null);

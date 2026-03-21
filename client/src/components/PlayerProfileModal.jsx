@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../utils/api';
+import api, { getApiError } from '../utils/api';
 import { formatNumber, RACE_ICONS, isProtected } from '../utils/formatters';
 
 const RACE_COLORS = {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import api from '../utils/api';
+import api, { getApiError } from '../utils/api';
 import { formatNumber } from '../utils/formatters';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const CATEGORY_LABELS = { scout: 'Scouting Spells', buff: 'Buff Spells', attack: 'Attack Spells' };
 const CATEGORY_ICONS = { scout: '🔭', buff: '✨', attack: '⚡' };

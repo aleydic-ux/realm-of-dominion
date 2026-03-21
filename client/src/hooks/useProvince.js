@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import api from '../utils/api';
+import api, { getApiError } from '../utils/api';
 
 export function useProvince() {
   const [province, setProvince] = useState(null);

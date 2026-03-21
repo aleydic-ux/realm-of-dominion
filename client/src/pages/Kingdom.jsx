@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { formatNumber, RACE_ICONS, isProtected } from '../utils/formatters';
 import ProtectionBadge from '../components/ProtectionBadge';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function Kingdom({ province }) {
   const [provinces, setProvinces] = useState([]);

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import api from '../utils/api';
+import api, { getApiError } from '../utils/api';
 import { formatDateTime } from '../utils/formatters';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function Mail({ province, onRead }) {
   const [tab, setTab] = useState('inbox');

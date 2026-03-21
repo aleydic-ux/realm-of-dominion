@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import api from '../utils/api';
+import api, { getApiError } from '../utils/api';
 import PlayerProfileModal from '../components/PlayerProfileModal';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 function timeAgo(dateStr) {
   const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);

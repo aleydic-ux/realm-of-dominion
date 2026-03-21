@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import api from '../utils/api';
+import api, { getApiError } from '../utils/api';
 import { formatNumber, formatTime, formatDuration } from '../utils/formatters';
 import { RACE_LABELS } from '../utils/formatters';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function Research({ province, research = [], refresh }) {
   const [availableTechs, setAvailableTechs] = useState([]);

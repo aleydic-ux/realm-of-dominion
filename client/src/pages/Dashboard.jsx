@@ -1,8 +1,9 @@
 import { formatNumber, formatTime, formatDateTime, formatRelativeDate, RACE_ICONS, isProtected } from '../utils/formatters';
 import ProtectionBadge from '../components/ProtectionBadge';
 import Tooltip from '../components/Tooltip';
-import api from '../utils/api';
+import api, { getApiError } from '../utils/api';
 import { useState, useEffect } from 'react';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const AP_REGEN_MS = 30 * 60 * 1000; // 30 minutes per AP
 
