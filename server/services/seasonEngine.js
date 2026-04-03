@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 const { spawnBots } = require('./botEngine');
 
-const SEASON_LENGTH_DAYS = parseInt(process.env.SEASON_LENGTH_DAYS || '7');
+const SEASON_LENGTH_DAYS = parseInt(process.env.SEASON_LENGTH_DAYS || '11');
 
 const SEASON_NAMES = [
   'Age of Iron', 'Age of Steel', 'Age of Fire', 'Age of Shadows',
