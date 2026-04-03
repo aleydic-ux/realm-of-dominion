@@ -20,7 +20,7 @@ const QUERY_TIMEOUT_MS = 15000;
 
 const pool = new Pool({
   connectionString,
-  ssl: process.env.DATABASE_URL && process.env.NODE_ENV !== 'development' ? { rejectUnauthorized: false } : false,
+  ssl: process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost') ? { rejectUnauthorized: false } : false,
   // Pool sizing — Neon free tier limits concurrent connections; keep moderate
   max: 10,
   // Kill idle connections after 20s so Neon doesn't silently drop them
