@@ -1,6 +1,6 @@
 import { formatTime, formatNumber, formatDuration } from '../utils/formatters';
 
-const RACE_BUILD_MULTIPLIER = { human: 0.90, dwarf: 0.75, orc: 1.0, undead: 1.0, elf: 1.0 };
+const RACE_BUILD_MULTIPLIER = { human: 0.90, dwarf: 0.75, orc: 1.0, undead: 1.0, elf: 1.0, serpathi: 1.0, ironveil: 0.90, ashborn: 1.0, tidewarden: 1.0 };
 
 const BUILDING_BASE_COSTS = {
   farm:              { gold: 300,  pp: 30 },
@@ -19,6 +19,10 @@ const BUILDING_BASE_COSTS = {
   ancient_grove:     { gold: 550,  pp: 55 },
   runic_forge:       { gold: 650,  pp: 65 },
   arcane_sanctum:    { gold: 900,  pp: 90 },
+  shadowveil_den:    { gold: 600,  pp: 60 },
+  artificers_foundry:{ gold: 700,  pp: 70 },
+  ashfire_altar:     { gold: 650,  pp: 65 },
+  tidal_basin:       { gold: 600,  pp: 60 },
 };
 
 function calcUpgradeCost(currentLevel, race, buildingType) {
@@ -51,6 +55,10 @@ const BUILDING_LABELS = {
   ancient_grove: 'Ancient Grove',
   runic_forge: 'Runic Forge',
   arcane_sanctum: 'Arcane Sanctum',
+  shadowveil_den: 'Shadowveil Den',
+  artificers_foundry: 'Artificers Foundry',
+  ashfire_altar: 'Ashfire Altar',
+  tidal_basin: 'Tidal Basin',
 };
 
 const BUILDING_EFFECTS = {
@@ -70,6 +78,10 @@ const BUILDING_EFFECTS = {
   ancient_grove: '+15% mana regen, +10% land yield per level',
   runic_forge: '+3 ATK/DEF to Runic Warriors per level',
   arcane_sanctum: '+5% mana regen per level; unlocks spells at L1/L3/L5',
+  shadowveil_den: '+7% mana regen per level',
+  artificers_foundry: '+10% industry points per level',
+  ashfire_altar: 'Empowers Ashborn fury and scorched earth abilities',
+  tidal_basin: '+12% gold income per level',
 };
 
 export default function BuildingCard({ building, onBuild, gold, industry_points, race }) {

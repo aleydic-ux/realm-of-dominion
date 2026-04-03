@@ -19,6 +19,7 @@ const navLinks = [
   { path: '/world', label: 'World' },
   { path: '/achievements', label: 'Feats' },
   { path: '/mail', label: 'Mail' },
+  { path: '/espionage', label: 'Spies' },
 ];
 
 export default function NavBar({ onLogout, onOpenHelp, unreadCount = 0, mailUnreadCount = 0, onNotificationOpen }) {

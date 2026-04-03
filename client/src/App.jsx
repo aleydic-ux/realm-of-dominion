@@ -27,6 +27,7 @@ const Crafting = lazy(() => import('./pages/Crafting'));
 const Gems = lazy(() => import('./pages/Gems'));
 const Achievements = lazy(() => import('./pages/Achievements'));
 const Mail = lazy(() => import('./pages/Mail'));
+const Espionage = lazy(() => import('./pages/Espionage'));
 
 function ProtectedLayout({ onLogout }) {
   const { province, buildings, troops, research, alliance, loading, error, slowLoad, refresh, unreadCount, mailUnreadCount, raidAlert, dismissRaidAlert, refreshUnread } = useProvince();
@@ -111,6 +112,7 @@ function ProtectedLayout({ onLogout }) {
             <Route path="/world" element={<WorldFeed province={province} />} />
             <Route path="/achievements" element={<Achievements />} />
             <Route path="/mail" element={<Mail province={province} onRead={refreshUnread} />} />
+            <Route path="/espionage" element={<Espionage province={province} />} />
             <Route path="/settings" element={<Settings onLogout={onLogout} />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

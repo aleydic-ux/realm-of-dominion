@@ -131,10 +131,14 @@ router.get('/rates', async (req, res) => {
     const ancientGroveLevel = buildings['ancient_grove'] || 0;
     const royalBankLevel = buildings['royal_bank'] || 0;
     const arcaneSanctumLevel = buildings['arcane_sanctum'] || 0;
+    const tidalBasinLevel = buildings['tidal_basin'] || 0;
+    const artificersFoundryLevel = buildings['artificers_foundry'] || 0;
+    const shadowveilDenLevel = buildings['shadowveil_den'] || 0;
 
     let goldRate = province.land * BASE_GOLD_PER_LAND;
     goldRate *= 1 + (treasuryLevel * 0.04);
     if (royalBankLevel > 0) goldRate *= 1 + (royalBankLevel * 0.15);
+    if (tidalBasinLevel > 0) goldRate *= 1 + (tidalBasinLevel * 0.12);
     goldRate *= cfg.goldIncomeMultiplier;
     goldRate = applyTechModifiers(goldRate, 'gold_income', techEffects);
 
@@ -159,11 +163,13 @@ router.get('/rates', async (req, res) => {
     manaRate *= 1 + (templeLevel * 0.10);
     if (ancientGroveLevel > 0) manaRate *= 1 + (ancientGroveLevel * 0.15);
     if (arcaneSanctumLevel > 0) manaRate *= 1 + (arcaneSanctumLevel * 0.05);
+    if (shadowveilDenLevel > 0) manaRate *= 1 + (shadowveilDenLevel * 0.07);
     manaRate *= cfg.manaRegenMultiplier;
     manaRate = applyTechModifiers(manaRate, 'mana_regen', techEffects);
 
     let industryRate = province.land * BASE_PRODUCTION_PER_LAND;
     industryRate *= 1 + (mineLevel * 0.08);
+    if (artificersFoundryLevel > 0) industryRate *= 1 + (artificersFoundryLevel * 0.10);
     industryRate = applyTechModifiers(industryRate, 'industry_points', techEffects);
 
     // Apply spell effects
@@ -771,14 +777,14 @@ router.get('/me/attacks', async (req, res) => {
 // GET /api/province/me/snapshots?period=24h|7d — resource history for chart
 router.get('/me/snapshots', async (req, res) => {
   if (!req.province) return res.status(404).json({ error: 'No province found' });
-  const period = req.query.period === '7d' ? '7 days' : '24 hours';
+  const hours = req.query.period === '7d' ? 168 : 24;
   try {
     const { rows } = await pool.query(
       `SELECT gold, food, mana, land, industry_points, recorded_at
        FROM resource_snapshots
-       WHERE province_id = $1 AND recorded_at > NOW() - INTERVAL '${period}'
+       WHERE province_id = $1 AND recorded_at > NOW() - ($2 * INTERVAL '1 hour')
        ORDER BY recorded_at ASC`,
-      [req.province.id]
+      [req.province.id, hours]
     );
     res.json(rows);
   } catch (err) {
