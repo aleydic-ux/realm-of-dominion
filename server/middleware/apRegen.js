@@ -135,17 +135,22 @@ async function apRegen(req, res, next) {
     }
 
     const province = rows[0];
-    const minutesElapsed = (Date.now() - new Date(province.ap_last_regen).getTime()) / 60000;
-    const apGained = Math.floor(minutesElapsed / AP_REGEN_MINUTES);
 
-    if (apGained > 0) {
-      const newAP = Math.min(MAX_AP, province.action_points + apGained);
-      await pool.query(
-        'UPDATE provinces SET action_points = $1, ap_last_regen = NOW(), updated_at = NOW() WHERE id = $2',
-        [newAP, province.id]
-      );
-      province.action_points = newAP;
-      province.ap_last_regen = new Date();
+    // Regen computed and applied in one statement relative to the current row, so a
+    // concurrent AP spend can't be overwritten by a stale absolute value. The WHERE
+    // makes parallel requests grant each regen window only once.
+    const { rows: [regen] } = await pool.query(
+      `UPDATE provinces
+       SET action_points = LEAST($1, action_points
+             + FLOOR(EXTRACT(EPOCH FROM (NOW() - COALESCE(ap_last_regen, 'epoch'))) / 60 / $2)::int),
+           ap_last_regen = NOW(), updated_at = NOW()
+       WHERE id = $3 AND COALESCE(ap_last_regen, 'epoch') <= NOW() - make_interval(mins => $2)
+       RETURNING action_points, ap_last_regen`,
+      [MAX_AP, AP_REGEN_MINUTES, province.id]
+    );
+    if (regen) {
+      province.action_points = regen.action_points;
+      province.ap_last_regen = regen.ap_last_regen;
     }
 
     req.province = province;

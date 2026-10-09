@@ -13,8 +13,8 @@ const FOOD_PER_POPULATION_HOUR = 0.02;
 /**
  * Get building level map for a province.
  */
-async function getBuildingLevels(provinceId) {
-  const { rows } = await pool.query(
+async function getBuildingLevels(provinceId, db = pool) {
+  const { rows } = await db.query(
     'SELECT building_type, level FROM province_buildings WHERE province_id = $1',
     [provinceId]
   );
@@ -71,18 +71,21 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
 
   const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+    // Row lock serializes concurrent updates (cron tick vs dashboard load): the second
+    // caller waits, then reads the fresh last_resource_update instead of re-granting the window
     const { rows: [province] } = await client.query(
-      'SELECT * FROM provinces WHERE id = $1', [provinceId]
+      'SELECT * FROM provinces WHERE id = $1 FOR UPDATE', [provinceId]
     );
-    if (!province) return;
+    if (!province) { await client.query('ROLLBACK'); return; }
 
     const now = Date.now();
     const lastUpdate = new Date(province.last_resource_update).getTime();
     const hoursElapsed = (now - lastUpdate) / 3600000;
 
-    if (hoursElapsed <= 0) return;
+    if (hoursElapsed <= 0) { await client.query('ROLLBACK'); return; }
 
-    const buildings = await getBuildingLevels(provinceId);
+    const buildings = await getBuildingLevels(provinceId, client);
     const race = province.race;
     const cfg = raceConfig[race];
 
@@ -192,7 +195,10 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
       [goldGained, foodGained, manaGained, productionGained, provinceId]
     );
 
-
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
   } finally {
     client.release();
   }

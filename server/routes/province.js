@@ -1,5 +1,6 @@
 const express = require('express');
 const pool = require('../config/db');
+const withTransaction = require('../db/withTransaction');
 const authenticate = require('../middleware/auth');
 const apRegen = require('../middleware/apRegen');
 const { lazyResourceUpdate, calculateBuildingCost, getBuildingLevels } = require('../services/resourceEngine');
@@ -278,17 +279,19 @@ router.post('/explore', async (req, res) => {
   const cfg = raceConfig[province.race];
   const adjustedLand = Math.floor(landGained * cfg.landResourceYieldMultiplier);
 
-  await pool.query(
+  const { rows: [explored] } = await pool.query(
     `UPDATE provinces SET
       action_points = action_points - 1,
       land = land + $1,
       updated_at = NOW()
-     WHERE id = $2`,
+     WHERE id = $2 AND action_points >= 1
+     RETURNING land`,
     [adjustedLand, province.id]
   );
+  if (!explored) return res.status(400).json({ error: 'Not enough AP (need 1)' });
 
   // Drop newbie protection early if land > 500
-  if (province.land + adjustedLand > 500 && province.protection_ends_at) {
+  if (explored.land > 500 && province.protection_ends_at) {
     await pool.query(
       'UPDATE provinces SET protection_ends_at = NOW() WHERE id = $1', [province.id]
     );
@@ -297,7 +300,7 @@ router.post('/explore', async (req, res) => {
   await calculateAndStoreNetworth(province.id);
 
   // Check land milestones for gems
-  try { await checkLandMilestone(province.id, province.land + adjustedLand); } catch (_) {}
+  try { await checkLandMilestone(province.id, explored.land); } catch (_) {}
   try { await checkAchievements(province.id, 'explore'); } catch (_) {}
 
   res.json({ message: `Explored ${adjustedLand} acres`, land_gained: adjustedLand });
@@ -399,24 +402,32 @@ router.post('/build', async (req, res) => {
   const buildTimeHours = Math.max(10 / 3600, finalTimeHours * timeReduction);
   const completesAt = new Date(Date.now() + buildTimeHours * 3600000);
 
-  await pool.query(
-    `UPDATE provinces SET
-      gold = gold - $1,
-      industry_points = industry_points - $2,
-      updated_at = NOW()
-     WHERE id = $3`,
-    [finalGold, finalPP, province.id]
-  );
+  // Pay and claim the upgrade atomically; the level/is_upgrading predicate stops a
+  // parallel request from upgrading the same building twice (or past max level)
+  const buildFailure = await withTransaction(async (client) => {
+    const { rowCount: paid } = await client.query(
+      `UPDATE provinces SET
+        gold = gold - $1,
+        industry_points = industry_points - $2,
+        updated_at = NOW()
+       WHERE id = $3 AND gold >= $1 AND industry_points >= $2`,
+      [finalGold, finalPP, province.id]
+    );
+    if (!paid) return `Not enough gold or production points (need ${finalGold} gold, ${finalPP} PP)`;
 
-  await pool.query(
-    `UPDATE province_buildings SET
-      level = level + 1,
-      is_upgrading = true,
-      upgrade_completes_at = $1,
-      updated_at = NOW()
-     WHERE province_id = $2 AND building_type = $3`,
-    [completesAt, province.id, building_type]
-  );
+    const { rowCount: started } = await client.query(
+      `UPDATE province_buildings SET
+        level = level + 1,
+        is_upgrading = true,
+        upgrade_completes_at = $1,
+        updated_at = NOW()
+       WHERE province_id = $2 AND building_type = $3 AND level = $4 AND is_upgrading = false`,
+      [completesAt, province.id, building_type, building.level]
+    );
+    if (!started) return 'Building is already being upgraded';
+    return null;
+  });
+  if (buildFailure) return res.status(400).json({ error: buildFailure });
 
   await calculateAndStoreNetworth(province.id);
 
@@ -498,17 +509,24 @@ router.post('/train', async (req, res) => {
   const trainingHours = (quantity * secsPerTroop / 3600) / (barracksSpeedBonus * speedMultiplier);
   const completesAt = new Date(Date.now() + trainingHours * 3600000);
 
-  await pool.query(
-    `UPDATE provinces SET gold = gold - $1, updated_at = NOW() WHERE id = $2`,
-    [totalCost, province.id]
-  );
+  // Pay and claim the training slot atomically (one batch per troop type)
+  const trainFailure = await withTransaction(async (client) => {
+    const { rowCount: paid } = await client.query(
+      `UPDATE provinces SET gold = gold - $1, updated_at = NOW() WHERE id = $2 AND gold >= $1`,
+      [totalCost, province.id]
+    );
+    if (!paid) return `Not enough gold (need ${totalCost})`;
 
-  await pool.query(
-    `UPDATE province_troops
-     SET count_training = $1, training_completes_at = $2, updated_at = NOW()
-     WHERE province_id = $3 AND troop_type_id = $4`,
-    [quantity, completesAt, province.id, troop_type_id]
-  );
+    const { rowCount: started } = await client.query(
+      `UPDATE province_troops
+       SET count_training = $1, training_completes_at = $2, updated_at = NOW()
+       WHERE province_id = $3 AND troop_type_id = $4 AND count_training = 0`,
+      [quantity, completesAt, province.id, troop_type_id]
+    );
+    if (!started) return 'Already training this troop type. Wait for current batch to complete.';
+    return null;
+  });
+  if (trainFailure) return res.status(400).json({ error: trainFailure });
 
   // Track stats + achievements (non-critical)
   try {
@@ -632,18 +650,35 @@ router.post('/research', async (req, res) => {
   const researchHours = tech.research_hours / (libraryBonus * cfg.researchSpeedMultiplier);
   const completesAt = new Date(Date.now() + researchHours * 3600000);
 
-  await pool.query(
-    `UPDATE provinces SET action_points = action_points - 1, gold = gold - $1, updated_at = NOW()
-     WHERE id = $2`,
-    [goldCost, province.id]
-  );
+  const researchFailure = await withTransaction(async (client) => {
+    // The guarded UPDATE also locks the province row, serializing parallel research requests
+    const { rowCount: paid } = await client.query(
+      `UPDATE provinces SET action_points = action_points - 1, gold = gold - $1, updated_at = NOW()
+       WHERE id = $2 AND action_points >= 1 AND gold >= $1`,
+      [goldCost, province.id]
+    );
+    if (!paid) return `Not enough AP or gold (need 1 AP, ${goldCost} gold)`;
 
-  await pool.query(
-    `INSERT INTO province_research (province_id, tech_id, status, started_at, completes_at)
-     VALUES ($1, $2, 'in_progress', NOW(), $3)
-     ON CONFLICT (province_id, tech_id) DO UPDATE SET status = 'in_progress', started_at = NOW(), completes_at = $3`,
-    [province.id, tech_id, completesAt]
-  );
+    // Re-check under the lock: the checks above ran on a snapshot a parallel request may have changed
+    const { rows: [conflict] } = await client.query(
+      `SELECT status FROM province_research
+       WHERE province_id = $1 AND (status = 'in_progress' OR (tech_id = $2 AND status = 'complete'))
+       LIMIT 1`,
+      [province.id, tech_id]
+    );
+    if (conflict) {
+      return conflict.status === 'complete' ? 'Already researched' : 'Can only research one technology at a time';
+    }
+
+    await client.query(
+      `INSERT INTO province_research (province_id, tech_id, status, started_at, completes_at)
+       VALUES ($1, $2, 'in_progress', NOW(), $3)
+       ON CONFLICT (province_id, tech_id) DO UPDATE SET status = 'in_progress', started_at = NOW(), completes_at = $3`,
+      [province.id, tech_id, completesAt]
+    );
+    return null;
+  });
+  if (researchFailure) return res.status(400).json({ error: researchFailure });
 
   res.json({
     message: `Researching ${tech.name}`,
