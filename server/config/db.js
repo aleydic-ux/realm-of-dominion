@@ -1,8 +1,9 @@
 const { Pool, types } = require('pg');
 require('dotenv').config();
 
-// Parse TIMESTAMP WITHOUT TIME ZONE as UTC (OID 1114)
-// By default node-postgres interprets it in local system timezone, causing comparison bugs
+// Timestamp columns are TIMESTAMPTZ (migration 050), which node-postgres parses as
+// absolute instants. Any stray TIMESTAMP WITHOUT TIME ZONE value (OID 1114) is read
+// as UTC rather than the server's local zone, matching how 050 converted old data.
 types.setTypeParser(1114, (val) => new Date(val + 'Z'));
 
 // Clean up connection string:
