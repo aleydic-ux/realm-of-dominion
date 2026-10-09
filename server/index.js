@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+require('./middleware/asyncErrors'); // before any route is created
 const cors = require('cors');
 const compression = require('compression');
 const http = require('http');
@@ -122,6 +123,10 @@ app.get('*', (req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
+  // Response already started: let Express close the connection
+  if (res.headersSent) return next(err);
+  // Malformed input reaching a query (e.g. a non-numeric id) is the client's error
+  if (err.code === '22P02') return res.status(400).json({ error: 'Invalid input' });
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });
