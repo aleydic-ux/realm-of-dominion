@@ -42,8 +42,9 @@ router.get('/', async (req, res) => {
 // POST /api/spells/cast
 router.post('/cast', async (req, res) => {
   if (!req.province) return res.status(404).json({ error: 'No province found' });
-  const caster = req.province;
-  const { spell_key, target_province_id } = req.body;
+  let caster = req.province;
+  const { spell_key } = req.body;
+  const target_province_id = req.body.target_province_id ? parseInt(req.body.target_province_id) : null;
 
   const spell = SPELL_MAP[spell_key];
   if (!spell) return res.status(400).json({ error: 'Unknown spell' });
@@ -55,12 +56,39 @@ router.post('/cast', async (req, res) => {
     return res.status(400).json({ error: `Not enough AP (need ${spell.ap_cost})` });
   }
 
+  if (spell.targeted && !Number.isInteger(target_province_id)) {
+    return res.status(400).json({ error: 'target_province_id required for this spell' });
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
+    // Lock caster (and target) in id order: parallel casts serialize instead of racing the
+    // mana/AP/cooldown checks, and A-casts-on-B racing B-casts-on-A can't deadlock
+    const lockIds = spell.targeted ? [caster.id, target_province_id] : [caster.id];
+    const { rows: locked } = await client.query(
+      'SELECT * FROM provinces WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE',
+      [lockIds]
+    );
+    caster = locked.find(p => p.id === caster.id);
+
+    // Spend up front against the locked row; the snapshot checks above are only a fast path
+    const { rowCount: paid } = await client.query(
+      `UPDATE provinces SET
+         mana = mana - $1,
+         action_points = action_points - $2,
+         updated_at = NOW()
+       WHERE id = $3 AND mana >= $1 AND action_points >= $2`,
+      [spell.mana_cost, spell.ap_cost, caster.id]
+    );
+    if (!paid) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `Not enough mana or AP (need ${spell.mana_cost} mana, ${spell.ap_cost} AP)` });
+    }
+
     // Check Arcane Sanctum level
-    const buildings = await getBuildingLevels(caster.id);
+    const buildings = await getBuildingLevels(caster.id, client);
     const sanctumLevel = buildings['arcane_sanctum'] || 0;
     if (sanctumLevel < spell.requires_arcane_sanctum) {
       await client.query('ROLLBACK');
@@ -83,13 +111,7 @@ router.post('/cast', async (req, res) => {
     // Validate target for targeted spells
     let target = null;
     if (spell.targeted) {
-      if (!target_province_id) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ error: 'target_province_id required for this spell' });
-      }
-      const { rows: [tgt] } = await client.query(
-        'SELECT * FROM provinces WHERE id = $1', [target_province_id]
-      );
+      const tgt = locked.find(p => p.id === target_province_id);
       if (!tgt) {
         await client.query('ROLLBACK');
         return res.status(404).json({ error: 'Target province not found' });
@@ -109,16 +131,6 @@ router.post('/cast', async (req, res) => {
       }
       target = tgt;
     }
-
-    // Deduct mana and AP
-    await client.query(
-      `UPDATE provinces SET
-         mana = GREATEST(0, mana - $1),
-         action_points = action_points - $2,
-         updated_at = NOW()
-       WHERE id = $3`,
-      [spell.mana_cost, spell.ap_cost, caster.id]
-    );
 
     // Set cooldown
     const cooldownEndsAt = new Date(Date.now() + spell.cooldown_hours * 3600000);

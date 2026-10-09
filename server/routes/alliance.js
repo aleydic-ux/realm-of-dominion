@@ -2,8 +2,22 @@ const express = require('express');
 const pool = require('../config/db');
 const authenticate = require('../middleware/auth');
 const apRegen = require('../middleware/apRegen');
+const rateLimit = require('express-rate-limit');
 
 const router = express.Router();
+
+const CHAT_MAX_LENGTH = 2000;
+const CHAT_HISTORY_CAP = 200; // messages kept per alliance
+
+// Per-sender chat flood control (runs after apRegen, so req.province is set)
+const chatLimiter = rateLimit({
+  windowMs: 10 * 1000,
+  max: 5,
+  keyGenerator: (req) => `chat:${req.province?.id ?? req.user?.id}`,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'You are sending messages too fast. Slow down.' },
+});
 
 router.use(authenticate, apRegen);
 
@@ -310,10 +324,13 @@ router.get('/:id/chat', async (req, res) => {
 });
 
 // POST /api/alliances/:id/chat
-router.post('/:id/chat', async (req, res) => {
+router.post('/:id/chat', chatLimiter, async (req, res) => {
   if (!req.province) return res.status(404).json({ error: 'No province found' });
-  const { body } = req.body;
-  if (!body || !body.trim()) return res.status(400).json({ error: 'Message body required' });
+  const body = typeof req.body.body === 'string' ? req.body.body.trim() : '';
+  if (!body) return res.status(400).json({ error: 'Message body required' });
+  if (body.length > CHAT_MAX_LENGTH) {
+    return res.status(400).json({ error: `Message too long (max ${CHAT_MAX_LENGTH} characters)` });
+  }
 
   const { rows: myMembership } = await pool.query(
     `SELECT rank, chat_muted_until FROM alliance_members WHERE alliance_id = $1 AND province_id = $2`,
@@ -329,7 +346,17 @@ router.post('/:id/chat', async (req, res) => {
   try {
     const { rows: [msg] } = await pool.query(
       `INSERT INTO messages (alliance_id, sender_province_id, body) VALUES ($1, $2, $3) RETURNING id, sent_at`,
-      [req.params.id, req.province.id, body.trim().slice(0, 2000)]
+      [req.params.id, req.province.id, body]
+    );
+
+    // Keep only the newest CHAT_HISTORY_CAP messages per alliance
+    await pool.query(
+      `DELETE FROM messages WHERE alliance_id = $1 AND id < (
+         SELECT MIN(id) FROM (
+           SELECT id FROM messages WHERE alliance_id = $1 ORDER BY id DESC LIMIT $2
+         ) newest
+       )`,
+      [req.params.id, CHAT_HISTORY_CAP]
     );
 
     // Emit via Socket.io (handled in index.js via req.app.get('io'))
@@ -337,10 +364,11 @@ router.post('/:id/chat', async (req, res) => {
     if (io) {
       io.to(`alliance_${req.params.id}`).emit('chat_message', {
         id: msg.id,
-        body: body.trim(),
+        body,
         sent_at: msg.sent_at,
         sender_name: req.province.name,
         sender_race: req.province.race,
+        sender_province_id: req.province.id,
       });
     }
 

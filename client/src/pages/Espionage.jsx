@@ -45,15 +45,16 @@ export default function Espionage({ province }) {
     let cancelled = false;
     async function load() {
       try {
-        const [actRes, repRes, lbRes] = await Promise.all([
+        // Same target list as the Attack page: it carries race, land and protection
+        const [actRes, repRes, provRes] = await Promise.all([
           api.get('/spy/actions'),
           api.get('/spy/reports'),
-          api.get('/leaderboard'),
+          api.get('/province/list'),
         ]);
         if (!cancelled) {
           setActions(actRes.data);
           setReports(repRes.data);
-          setProvinces(lbRes.data.overall || []);
+          setProvinces(Array.isArray(provRes.data) ? provRes.data : []);
         }
       } catch {}
       if (!cancelled) setLoading(false);
@@ -81,10 +82,13 @@ export default function Espionage({ province }) {
     setExecuting(null);
   }
 
+  // Spies can only target player provinces (the server rejects bots)
   const filteredProvinces = provinces.filter(p =>
     p.id !== province?.id &&
+    !p.is_bot &&
     p.name.toLowerCase().includes(search.toLowerCase())
   );
+  const isProtected = (p) => p.protection_ends_at && new Date(p.protection_ends_at) > new Date();
 
   if (loading) return <div className="text-realm-text-muted text-sm p-4">Loading...</div>;
 
@@ -124,6 +128,9 @@ export default function Espionage({ province }) {
                 <span className="mr-1">{RACE_ICONS?.[p.race] ?? '⚔'}</span>
                 {p.name}
                 <span className="float-right text-realm-text-dim">{formatNumber(p.land)} ac</span>
+                {isProtected(p) && (
+                  <span className="block mt-0.5 text-blue-400 font-semibold">🛡️ Under Protection</span>
+                )}
               </button>
             ))}
           </div>

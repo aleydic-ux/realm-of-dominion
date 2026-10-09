@@ -133,7 +133,7 @@ export default function ResourceBar({ province }) {
 
 const RACE_TOOLTIPS = {
   human: 'Human — Economy focused. +20% gold income, -10% building costs, +20% trade proceeds. Unique: Royal Bank.',
-  orc: 'Orc — Aggression focused. +25% troop attack, +15% training speed. Berserkers double-attack but die defending. Unique: Warchief Pit.',
+  orc: 'Orc — Aggression focused. +25% troop attack, +15% training speed. Berserkers hit hard but die defending. Unique: Warchief Pit.',
   undead: 'Undead — Sustainability focused. Troops never consume food, 2× army return speed. Cannot use marketplace. Unique: Crypt.',
   elf: 'Elf — Magic focused. +30% mana regen, +15% land yield, +20% research speed. Unique: Ancient Grove, Archmage units.',
   dwarf: 'Dwarf — Defense focused. -25% building costs, -25% siege damage. Tunnel Rats bypass walls. Unique: Runic Forge.',

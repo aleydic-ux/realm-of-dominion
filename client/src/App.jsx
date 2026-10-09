@@ -1,10 +1,12 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import NavBar from './components/NavBar';
 import ResourceBar from './components/ResourceBar';
 import RaidToast from './components/RaidToast';
+import ErrorBoundary from './components/ErrorBoundary';
 import { useProvince } from './hooks/useProvince';
 import HowToPlay from './help/HowToPlay';
+import { setUnauthorizedHandler } from './utils/api';
 
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
@@ -33,6 +35,7 @@ function ProtectedLayout({ onLogout }) {
   const { province, buildings, troops, research, alliance, loading, error, slowLoad, refresh, unreadCount, mailUnreadCount, raidAlert, dismissRaidAlert, refreshUnread } = useProvince();
   const [seasonBanner, setSeasonBanner] = useState(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const location = useLocation();
 
   // Auto-show How to Play on first login
   useEffect(() => {
@@ -94,6 +97,7 @@ function ProtectedLayout({ onLogout }) {
             <button className="font-mono" onClick={onLogout} style={{fontSize:'0.75rem', color:'#8090a8', border:'1px solid #243650', padding:'6px 18px', background:'transparent', cursor:'pointer'}}>Logout & Re-login</button>
           </div>
         )}
+        <ErrorBoundary resetKey={location.pathname}>
         <Suspense fallback={<div className="text-realm-text-muted">Loading...</div>}>
           <Routes>
             <Route path="/dashboard" element={<Dashboard province={province} loading={loading} refresh={refresh} />} />
@@ -117,38 +121,51 @@ function ProtectedLayout({ onLogout }) {
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Suspense>
+        </ErrorBoundary>
       </main>
     </div>
   );
 }
 
 export default function App() {
+  const location = useLocation();
   const [authed, setAuthed] = useState(!!localStorage.getItem('token'));
+  const [logoutNotice, setLogoutNotice] = useState('');
 
   const handleLogin = useCallback((token, user) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
+    setLogoutNotice('');
     setAuthed(true);
   }, []);
 
-  const handleLogout = useCallback(() => {
+  // notice: optional message for the login page (NavBar passes a click event, so check the type)
+  const handleLogout = useCallback((notice) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('rod_tutorial_seen');
+    setLogoutNotice(typeof notice === 'string' ? notice : '');
     setAuthed(false);
   }, []);
 
+  useEffect(() => {
+    setUnauthorizedHandler(() => handleLogout('Your session has expired. Please log in again.'));
+    return () => setUnauthorizedHandler(null);
+  }, [handleLogout]);
+
   if (!authed) {
     return (
+      <ErrorBoundary resetKey={location.pathname}>
       <Suspense fallback={<div className="text-realm-text-muted">Loading...</div>}>
         <Routes>
-          <Route path="/login" element={<Login onLogin={handleLogin} />} />
+          <Route path="/login" element={<Login onLogin={handleLogin} notice={logoutNotice} />} />
           <Route path="/register" element={<Register onLogin={handleLogin} />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
+      </ErrorBoundary>
     );
   }
 

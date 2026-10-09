@@ -77,6 +77,17 @@ router.post('/unlock', async (req, res) => {
   try {
     await client.query('BEGIN');
 
+    // Spend first: the guarded UPDATE locks the province row, so the checks below
+    // can't be raced by a parallel request
+    const { rows: [paid] } = await client.query(
+      'UPDATE provinces SET gems = gems - $1, updated_at = NOW() WHERE id = $2 AND gems >= $1 RETURNING gems',
+      [enhancement.unlock_cost, provinceId]
+    );
+    if (!paid) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `Not enough gems (need ${enhancement.unlock_cost})` });
+    }
+
     // Check if already unlocked
     const { rows: existing } = await client.query(
       'SELECT id FROM gem_unlocks WHERE province_id = $1 AND enhancement_id = $2',
@@ -100,11 +111,7 @@ router.post('/unlock', async (req, res) => {
       }
     }
 
-    // Deduct gems + record
-    await client.query(
-      'UPDATE provinces SET gems = gems - $1, updated_at = NOW() WHERE id = $2',
-      [enhancement.unlock_cost, provinceId]
-    );
+    // Record
     await client.query(
       'INSERT INTO gem_transactions (province_id, amount, reason) VALUES ($1, $2, $3)',
       [provinceId, -enhancement.unlock_cost, `Unlock: ${enhancement.name}`]
@@ -115,7 +122,7 @@ router.post('/unlock', async (req, res) => {
     );
 
     await client.query('COMMIT');
-    res.json({ message: `Unlocked ${enhancement.name}`, gems: gems - enhancement.unlock_cost });
+    res.json({ message: `Unlocked ${enhancement.name}`, gems: paid.gems });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Gem unlock error:', err);
@@ -142,6 +149,17 @@ router.post('/use', async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // Spend first: the guarded UPDATE locks the province row, so the checks below
+    // can't be raced by a parallel request
+    const { rows: [paid] } = await client.query(
+      'UPDATE provinces SET gems = gems - $1, updated_at = NOW() WHERE id = $2 AND gems >= $1 RETURNING gems',
+      [enhancement.use_cost, provinceId]
+    );
+    if (!paid) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `Not enough gems (need ${enhancement.use_cost})` });
+    }
 
     // Verify unlocked
     const { rows: unlock } = await client.query(
@@ -180,11 +198,6 @@ router.post('/use', async (req, res) => {
       }
     }
 
-    // Deduct gems
-    await client.query(
-      'UPDATE provinces SET gems = gems - $1, updated_at = NOW() WHERE id = $2',
-      [enhancement.use_cost, provinceId]
-    );
     await client.query(
       'INSERT INTO gem_transactions (province_id, amount, reason) VALUES ($1, $2, $3)',
       [provinceId, -enhancement.use_cost, `Use: ${enhancement.name}`]
@@ -202,7 +215,7 @@ router.post('/use', async (req, res) => {
     await client.query('COMMIT');
     res.json({
       message: `${enhancement.name} activated${enhancement.duration_hours ? ` for ${enhancement.duration_hours} hours` : ''}!`,
-      gems: gems - enhancement.use_cost,
+      gems: paid.gems,
       expires_at: expiresAt,
     });
   } catch (err) {

@@ -131,37 +131,39 @@ router.post('/list', async (req, res) => {
   const validDurations = [24, 72, 168]; // 1d, 3d, 7d
   const listDuration = validDurations.includes(parseInt(duration_hours)) ? parseInt(duration_hours) : 24;
 
-  // Stall slot check
   const { rows: [stall] } = await pool.query(
     `SELECT level FROM province_buildings WHERE province_id = $1 AND building_type = 'marketplace_stall'`,
     [province.id]
   );
   const maxSlots = Math.max(1, stall ? stall.level : 1);
-  const { rows: activeListings } = await pool.query(
-    `SELECT COUNT(*) as count FROM marketplace_listings
-     WHERE seller_province_id = $1 AND is_sold = false AND expires_at > NOW()`,
-    [province.id]
-  );
-  if (parseInt(activeListings[0].count) >= maxSlots) {
-    return res.status(400).json({ error: `Max listing slots reached (${maxSlots}). Upgrade Marketplace Stall for more.` });
-  }
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
+    // Guarded deductions also lock the province row, so the slot count below is race-free
     if (isResourceListing) {
-      if (province[resource_type] < quantity) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ error: `Not enough ${resource_type}` });
-      }
-      await client.query(
+      const { rowCount: paid } = await client.query(
         `UPDATE provinces SET action_points = action_points - 1,
           ${resource_type} = ${resource_type} - $1, updated_at = NOW()
-         WHERE id = $2`,
+         WHERE id = $2 AND action_points >= 1 AND ${resource_type} >= $1`,
         [quantity, province.id]
       );
+      if (!paid) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `Not enough ${resource_type} or AP` });
+      }
     } else {
+      const { rowCount: paidAp } = await client.query(
+        `UPDATE provinces SET action_points = action_points - 1, updated_at = NOW()
+         WHERE id = $1 AND action_points >= 1`,
+        [province.id]
+      );
+      if (!paidAp) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Not enough AP (need 1)' });
+      }
+
       // Item listing: deduct from crafted_items
       const { rows: [inv] } = await client.query(
         `SELECT quantity FROM crafted_items WHERE province_id = $1 AND item_key = $2 FOR UPDATE`,
@@ -175,10 +177,17 @@ router.post('/list', async (req, res) => {
         `UPDATE crafted_items SET quantity = quantity - $1 WHERE province_id = $2 AND item_key = $3`,
         [quantity, province.id, item_key]
       );
-      await client.query(
-        `UPDATE provinces SET action_points = action_points - 1, updated_at = NOW() WHERE id = $1`,
-        [province.id]
-      );
+    }
+
+    // Stall slot check
+    const { rows: [active] } = await client.query(
+      `SELECT COUNT(*) as count FROM marketplace_listings
+       WHERE seller_province_id = $1 AND is_sold = false AND expires_at > NOW()`,
+      [province.id]
+    );
+    if (parseInt(active.count) >= maxSlots) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `Max listing slots reached (${maxSlots}). Upgrade Marketplace Stall for more.` });
     }
 
     const expiresAt = new Date(Date.now() + listDuration * 3600000);
@@ -208,6 +217,7 @@ router.post('/buy/:id', async (req, res) => {
   if (buyer.action_points < 1) return res.status(400).json({ error: 'Not enough AP (need 1)' });
 
   const client = await pool.connect();
+  let released = false;
   try {
     await client.query('BEGIN');
 
@@ -215,7 +225,7 @@ router.post('/buy/:id', async (req, res) => {
       `SELECT ml.*, p.race as seller_race
        FROM marketplace_listings ml
        JOIN provinces p ON p.id = ml.seller_province_id
-       WHERE ml.id = $1 FOR UPDATE`,
+       WHERE ml.id = $1 FOR UPDATE OF ml`,
       [req.params.id]
     );
 
@@ -237,11 +247,22 @@ router.post('/buy/:id', async (req, res) => {
     const sellerCfg = raceConfig[listing.seller_race];
     const sellerReceives = Math.floor(totalCost * 0.96 * (1 + sellerCfg.marketplaceSaleBonus));
 
-    // Deduct buyer gold + AP
+    // Lock buyer and seller in id order so crossing trades can't deadlock
     await client.query(
-      `UPDATE provinces SET action_points = action_points - 1, gold = gold - $1, updated_at = NOW() WHERE id = $2`,
+      'SELECT id FROM provinces WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE',
+      [[buyer.id, listing.seller_province_id]]
+    );
+
+    // Deduct buyer gold + AP
+    const { rowCount: paid } = await client.query(
+      `UPDATE provinces SET action_points = action_points - 1, gold = gold - $1, updated_at = NOW()
+       WHERE id = $2 AND action_points >= 1 AND gold >= $1`,
       [totalWithTax, buyer.id]
     );
+    if (!paid) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `Not enough gold or AP (need ${totalWithTax} gold including 5% tax, 1 AP)` });
+    }
 
     // Give buyer the goods
     if (listing.item_key) {
@@ -273,6 +294,9 @@ router.post('/buy/:id', async (req, res) => {
     );
 
     await client.query('COMMIT');
+    // Return the connection before the pool-based networth recalcs
+    client.release();
+    released = true;
     await calculateAndStoreNetworth(buyer.id);
     await calculateAndStoreNetworth(listing.seller_province_id);
 
@@ -281,11 +305,11 @@ router.post('/buy/:id', async (req, res) => {
       : `${listing.quantity} ${listing.resource_type}`;
     res.json({ message: `Purchased ${what}`, total_paid: totalWithTax, tax: taxAmount });
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (!released) await client.query('ROLLBACK').catch(() => {});
     console.error('Buy listing error:', err);
-    res.status(500).json({ error: 'Purchase failed' });
+    if (!res.headersSent) res.status(500).json({ error: 'Purchase failed' });
   } finally {
-    client.release();
+    if (!released) client.release();
   }
 });
 

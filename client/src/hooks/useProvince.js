@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { io } from 'socket.io-client';
 import api, { getApiError } from '../utils/api';
+import { getSocket, disconnectSocket } from '../utils/socket';
 
 export function useProvince() {
   const [province, setProvince] = useState(null);
@@ -101,27 +101,22 @@ export function useProvince() {
       if (initialLoadDone.current) refresh();
     }, 60000);
 
-    const token = localStorage.getItem('token');
-    let socket = null;
-    if (token) {
-      socket = io('/', {
-        auth: { token },
-        transports: ['websocket', 'polling'],
-        reconnection: true,
-        reconnectionAttempts: Infinity,
-        reconnectionDelay: 2000,
-        reconnectionDelayMax: 15000,
-      });
-      socket.on('province_update', () => refresh());
-      socket.on('raid_alert', (data) => {
-        setRaidAlert(data);
-        setUnreadCount(c => c + 1);
-      });
-      socket.on('season_end', (data) => {
-        window.dispatchEvent(new CustomEvent('season_end', { detail: data }));
-      });
-      // Refresh data when socket reconnects after a server restart
-      socket.on('reconnect', () => refresh());
+    // Shared app socket; this hook owns its lifetime (App mounts it once per login)
+    const socket = getSocket();
+    const onProvinceUpdate = () => refresh();
+    const onRaidAlert = (data) => {
+      setRaidAlert(data);
+      setUnreadCount(c => c + 1);
+    };
+    const onSeasonEnd = (data) => {
+      window.dispatchEvent(new CustomEvent('season_end', { detail: data }));
+    };
+    if (socket) {
+      socket.on('province_update', onProvinceUpdate);
+      socket.on('raid_alert', onRaidAlert);
+      socket.on('season_end', onSeasonEnd);
+      // Refresh data when socket reconnects after a server restart ('reconnect' is a Manager event)
+      socket.io.on('reconnect', onProvinceUpdate);
     }
 
     return () => {
@@ -129,7 +124,13 @@ export function useProvince() {
       clearTimeout(slowTimer);
       clearTimeout(hardTimer);
       clearInterval(pollInterval);
-      socket?.disconnect();
+      if (socket) {
+        socket.off('province_update', onProvinceUpdate);
+        socket.off('raid_alert', onRaidAlert);
+        socket.off('season_end', onSeasonEnd);
+        socket.io.off('reconnect', onProvinceUpdate);
+      }
+      disconnectSocket();
     };
   }, [refresh]);
 

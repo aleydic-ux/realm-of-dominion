@@ -5,6 +5,8 @@ import ProtectionBadge from '../components/ProtectionBadge';
 import PlayerProfileModal from '../components/PlayerProfileModal';
 import { usePageTitle } from '../hooks/usePageTitle';
 
+const asList = (v) => (Array.isArray(v) ? v : []);
+
 export default function Leaderboard({ province }) {
   const [data, setData] = useState(null);
   const [hof, setHof] = useState(null);
@@ -26,7 +28,15 @@ export default function Leaderboard({ province }) {
           api.get('/leaderboard'),
           api.get('/leaderboard/hall-of-fame'),
         ]);
-        if (!cancelled) { setData(lbRes.data); setHof(hofRes.data); }
+        if (!cancelled) {
+          // Normalize so a malformed response renders empty lists instead of crashing
+          const lb = lbRes.data || {};
+          setData({
+            overall: asList(lb.overall), military: asList(lb.military),
+            economic: asList(lb.economic), alliances: asList(lb.alliances),
+          });
+          setHof(asList(hofRes.data));
+        }
       } catch {
         if (!cancelled) setLoadError(true);
       }
