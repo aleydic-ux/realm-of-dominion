@@ -1,9 +1,9 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pool = require('../config/db');
 const authenticate = require('../middleware/auth');
+const { signToken } = require('../middleware/auth');
 const { sendPasswordResetEmail } = require('../services/email');
 
 const router = express.Router();
@@ -130,9 +130,7 @@ router.post('/register', async (req, res) => {
 
     await client.query('COMMIT');
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-    });
+    const token = signToken(user);
 
     res.status(201).json({
       token, user: { id: user.id, username, email }, province_id: province.id,
@@ -156,10 +154,10 @@ router.post('/login', async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      'SELECT id, username, email, password_hash, is_active FROM users WHERE username = $1',
+      'SELECT id, username, email, password_hash, is_active, deleted_at, token_version FROM users WHERE username = $1',
       [username]
     );
-    if (!rows.length) {
+    if (!rows.length || rows[0].deleted_at) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     const user = rows[0];
@@ -174,9 +172,7 @@ router.post('/login', async (req, res) => {
 
     await pool.query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-    });
+    const token = signToken(user);
 
     res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
   } catch (err) {
@@ -270,7 +266,10 @@ router.post('/reset-password', async (req, res) => {
     const { id: tokenId, user_id } = rows[0];
     const newHash = await bcrypt.hash(password, 12);
 
-    await pool.query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [newHash, user_id]);
+    await pool.query(
+      'UPDATE users SET password_hash = $1, token_version = token_version + 1, updated_at = NOW() WHERE id = $2',
+      [newHash, user_id]
+    );
     await pool.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1', [tokenId]);
 
     res.json({ message: 'Password updated successfully.' });
