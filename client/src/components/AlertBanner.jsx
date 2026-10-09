@@ -1,6 +1,7 @@
 const VARIANTS = {
   error: 'bg-red-900/30 border-red-700 text-red-300',
   success: 'bg-green-900/30 border-green-700 text-green-300',
+  info: 'bg-yellow-900/30 border-yellow-700 text-yellow-200',
 };
 
 export default function AlertBanner({ type = 'error', message }) {

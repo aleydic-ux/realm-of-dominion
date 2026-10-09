@@ -5,6 +5,7 @@ import ResourceBar from './components/ResourceBar';
 import RaidToast from './components/RaidToast';
 import { useProvince } from './hooks/useProvince';
 import HowToPlay from './help/HowToPlay';
+import { setUnauthorizedHandler } from './utils/api';
 
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
@@ -122,25 +123,34 @@ function ProtectedLayout({ onLogout }) {
 
 export default function App() {
   const [authed, setAuthed] = useState(!!localStorage.getItem('token'));
+  const [logoutNotice, setLogoutNotice] = useState('');
 
   const handleLogin = useCallback((token, user) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
+    setLogoutNotice('');
     setAuthed(true);
   }, []);
 
-  const handleLogout = useCallback(() => {
+  // notice: optional message for the login page (NavBar passes a click event, so check the type)
+  const handleLogout = useCallback((notice) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('rod_tutorial_seen');
+    setLogoutNotice(typeof notice === 'string' ? notice : '');
     setAuthed(false);
   }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => handleLogout('Your session has expired. Please log in again.'));
+    return () => setUnauthorizedHandler(null);
+  }, [handleLogout]);
 
   if (!authed) {
     return (
       <Suspense fallback={<div className="text-realm-text-muted">Loading...</div>}>
         <Routes>
-          <Route path="/login" element={<Login onLogin={handleLogin} />} />
+          <Route path="/login" element={<Login onLogin={handleLogin} notice={logoutNotice} />} />
           <Route path="/register" element={<Register onLogin={handleLogin} />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />

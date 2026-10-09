@@ -131,7 +131,8 @@ router.post('/change-password', authenticate, async (req, res) => {
     if (!rows.length) return res.status(401).json({ error: 'User not found.' });
 
     const valid = await bcrypt.compare(currentPassword, rows[0].password_hash);
-    if (!valid) return res.status(401).json({ error: 'Current password is incorrect.' });
+    // 400, not 401: a wrong current password is a form error, not an expired session
+    if (!valid) return res.status(400).json({ error: 'Current password is incorrect.' });
 
     const newHash = await bcrypt.hash(newPassword, 12);
     // Bumping token_version revokes every other session; hand this one a fresh token
