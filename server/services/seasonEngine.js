@@ -10,23 +10,51 @@ const SEASON_NAMES = [
   'Age of Gold', 'Age of Blood', 'Age of Frost', 'Age of Dawn',
 ];
 
-let seasonEndInProgress = false;
+// Advisory lock key: at most one rollover runs at a time, across all server instances
+const SEASON_LOCK_KEY = 4207001;
+// Protection for provinces carried into a new season (new players use NEWBIE_PROTECTION_HOURS)
+const CARRYOVER_PROTECTION_HOURS = 24;
+
+// In-process short-circuit; set before any await so concurrent callers can't both pass.
+// The advisory lock in rollover() is what guarantees a single rollover across instances.
+let rolloverInProgress = false;
 
 async function checkAndEndSeason(io) {
-  if (seasonEndInProgress) return;
+  if (rolloverInProgress) return;
+  rolloverInProgress = true;
+  try {
+    const { rows: [due] } = await pool.query(
+      'SELECT id FROM ages WHERE is_active = true AND ends_at <= NOW()'
+    );
+    if (due) await rollover(io);
+  } finally {
+    rolloverInProgress = false;
+  }
+}
 
-  const { rows: [age] } = await pool.query(
-    `SELECT * FROM ages WHERE is_active = true LIMIT 1`
-  );
-  if (!age) return;
-  if (new Date(age.ends_at) > new Date()) return; // still running
-
-  seasonEndInProgress = true;
-  console.log(`[season] Season "${age.name}" has ended. Starting rollover...`);
-
+async function rollover(io) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // Another instance (or an overlapping deploy) is already rolling over: skip, don't wait
+    const { rows: [{ locked }] } = await client.query(
+      'SELECT pg_try_advisory_xact_lock($1) AS locked', [SEASON_LOCK_KEY]
+    );
+    if (!locked) {
+      await client.query('ROLLBACK');
+      return;
+    }
+
+    // Re-check under the lock: a rollover that just committed leaves a fresh, unexpired age
+    const { rows: [age] } = await client.query(
+      'SELECT * FROM ages WHERE is_active = true AND ends_at <= NOW() FOR UPDATE'
+    );
+    if (!age) {
+      await client.query('ROLLBACK');
+      return;
+    }
+    console.log(`[season] Season "${age.name}" has ended. Starting rollover...`);
 
     // 1. Record top 10 overall (by networth) to hall of fame
     const { rows: topOverall } = await client.query(
@@ -76,7 +104,7 @@ async function checkAndEndSeason(io) {
       );
     }
 
-    // 3. Mark old age inactive
+    // 3. Mark old age inactive (before creating the new one: only one may be active)
     await client.query(
       `UPDATE ages SET is_active = false, updated_at = NOW() WHERE id = $1`,
       [age.id]
@@ -100,35 +128,12 @@ async function checkAndEndSeason(io) {
       [age.id]
     );
 
-    const protectionEndsAt = new Date(startsAt.getTime() + 24 * 3600000);
+    const protectionEndsAt = new Date(startsAt.getTime() + CARRYOVER_PROTECTION_HOURS * 3600000);
 
     for (const op of oldProvinces) {
-      // Insert fresh province
-      const { rows: [newProvince] } = await client.query(
-        `INSERT INTO provinces (user_id, age_id, name, race, protection_ends_at)
-         VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-        [op.user_id, newAge.id, op.name, op.race, protectionEndsAt]
-      );
-
-      // Init buildings
-      const buildingTypes = startingBuildings(op.race);
-      for (const bt of buildingTypes) {
-        await client.query(
-          `INSERT INTO province_buildings (province_id, building_type) VALUES ($1,$2)`,
-          [newProvince.id, bt]
-        );
-      }
-
-      // Init troops
-      const { rows: troopTypes } = await client.query(
-        `SELECT id FROM troop_types WHERE race = $1`, [op.race]
-      );
-      for (const tt of troopTypes) {
-        await client.query(
-          `INSERT INTO province_troops (province_id, troop_type_id) VALUES ($1,$2)`,
-          [newProvince.id, tt.id]
-        );
-      }
+      await createProvince(client, {
+        userId: op.user_id, ageId: newAge.id, name: op.name, race: op.race, protectionEndsAt,
+      });
     }
 
     // 6. Spawn bot provinces for the new season
@@ -145,7 +150,7 @@ async function checkAndEndSeason(io) {
 
     console.log(`[season] Rollover complete. New season: "${newName}" (id=${newAge.id})`);
 
-    // 7. Broadcast to all connected clients
+    // 8. Broadcast to all connected clients
     if (io) {
       io.emit('season_end', {
         old_season: age.name,
@@ -154,11 +159,87 @@ async function checkAndEndSeason(io) {
       });
     }
   } catch (err) {
-    await client.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => {});
     console.error('[season] Rollover failed:', err);
   } finally {
     client.release();
-    seasonEndInProgress = false;
+  }
+}
+
+// Fresh province with starting buildings and troops. Returns null if the user already
+// has a province in this age (unique on user_id, age_id), so concurrent calls are safe.
+async function createProvince(db, { userId, ageId, name, race, protectionEndsAt }) {
+  const { rows: [province] } = await db.query(
+    `INSERT INTO provinces (user_id, age_id, name, race, protection_ends_at)
+     VALUES ($1,$2,$3,$4,$5)
+     ON CONFLICT (user_id, age_id) DO NOTHING
+     RETURNING id`,
+    [userId, ageId, name, race, protectionEndsAt]
+  );
+  if (!province) return null;
+
+  for (const bt of startingBuildings(race)) {
+    await db.query(
+      'INSERT INTO province_buildings (province_id, building_type) VALUES ($1,$2)',
+      [province.id, bt]
+    );
+  }
+  const { rows: troopTypes } = await db.query('SELECT id FROM troop_types WHERE race = $1', [race]);
+  for (const tt of troopTypes) {
+    await db.query(
+      'INSERT INTO province_troops (province_id, troop_type_id) VALUES ($1,$2)',
+      [province.id, tt.id]
+    );
+  }
+  return province;
+}
+
+// Returns the active age, starting a new one if none exists. Race-free: the partial
+// unique index (migration 051) allows only one active age, so a concurrent insert no-ops.
+async function ensureActiveAge(db = pool) {
+  const { rows: [last] } = await db.query('SELECT name FROM ages ORDER BY id DESC LIMIT 1');
+  await db.query(
+    `INSERT INTO ages (name, starts_at, ends_at, is_active)
+     SELECT $1, NOW(), NOW() + make_interval(days => $2), true
+     WHERE NOT EXISTS (SELECT 1 FROM ages WHERE is_active = true)
+     ON CONFLICT (is_active) WHERE is_active DO NOTHING`,
+    [last ? pickNextSeasonName(last.name) : SEASON_NAMES[0], SEASON_LENGTH_DAYS]
+  );
+  const { rows: [age] } = await db.query('SELECT * FROM ages WHERE is_active = true');
+  return age;
+}
+
+// A player with no province in the active age gets a fresh one with their last name and
+// race, like a rollover carry-over. Old-season provinces are never moved into the active
+// age: that would carry a whole season's progress past the reset.
+async function recoverProvince(userId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const age = await ensureActiveAge(client);
+
+    const { rows: [last] } = await client.query(
+      'SELECT name, race FROM provinces WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+      [userId]
+    );
+    let name = last?.name;
+    const race = last?.race || 'human';
+    if (!name) {
+      const { rows: [user] } = await client.query('SELECT username FROM users WHERE id = $1', [userId]);
+      name = user ? `${user.username}'s Kingdom` : 'Kingdom';
+    }
+    const hours = last ? CARRYOVER_PROTECTION_HOURS : parseInt(process.env.NEWBIE_PROTECTION_HOURS || '24');
+
+    const created = await createProvince(client, {
+      userId, ageId: age.id, name, race, protectionEndsAt: new Date(Date.now() + hours * 3600000),
+    });
+    await client.query('COMMIT');
+    return created;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
   }
 }
 
@@ -167,4 +248,4 @@ function pickNextSeasonName(currentName) {
   return SEASON_NAMES[(idx + 1) % SEASON_NAMES.length];
 }
 
-module.exports = { checkAndEndSeason };
+module.exports = { checkAndEndSeason, ensureActiveAge, recoverProvince };
