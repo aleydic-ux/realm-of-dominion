@@ -19,9 +19,12 @@ if (connectionString && !connectionString.includes('connect_timeout')) {
 
 const QUERY_TIMEOUT_MS = 15000;
 
+// Hosted databases need SSL; ?sslmode=disable (stripped above) opts out for a local Postgres
+const sslDisabled = /[?&]sslmode=disable(&|$)/i.test(process.env.DATABASE_URL || '');
+
 const pool = new Pool({
   connectionString,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+  ssl: process.env.DATABASE_URL && !sslDisabled ? { rejectUnauthorized: false } : false,
   // Pool sizing — Neon free tier limits concurrent connections; keep moderate
   max: 10,
   // Kill idle connections after 20s so Neon doesn't silently drop them
