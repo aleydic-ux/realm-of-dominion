@@ -199,10 +199,10 @@ router.post('/execute', async (req, res) => {
     if (success) {
       if (action_type === 'recon') {
         const { rows: defTroops } = await client.query(
-          `SELECT tt.name, tt.tier, pt.count_home, pt.count_away
+          `SELECT tt.name, tt.tier, pt.count_home, pt.count_deployed AS count_away
            FROM province_troops pt
            JOIN troop_types tt ON tt.id = pt.troop_type_id
-           WHERE pt.province_id = $1 AND (pt.count_home > 0 OR pt.count_away > 0)`,
+           WHERE pt.province_id = $1 AND (pt.count_home > 0 OR pt.count_deployed > 0)`,
           [defender.id]
         );
         result = {
