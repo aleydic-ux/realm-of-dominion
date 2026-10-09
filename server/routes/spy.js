@@ -86,14 +86,15 @@ router.get('/reports', async (req, res) => {
 router.post('/execute', async (req, res) => {
   if (!req.province) return res.status(404).json({ error: 'No province found' });
   const attacker = req.province;
-  const { target_id, action_type } = req.body;
+  const { action_type } = req.body;
+  const target_id = parseInt(req.body.target_id);
 
-  if (!target_id || !action_type) {
+  if (!Number.isInteger(target_id) || !action_type) {
     return res.status(400).json({ error: 'target_id and action_type required' });
   }
   const action = SPY_ACTIONS[action_type];
   if (!action) return res.status(400).json({ error: 'Invalid action type' });
-  if (parseInt(target_id) === attacker.id) {
+  if (target_id === attacker.id) {
     return res.status(400).json({ error: 'Cannot spy on yourself' });
   }
 
@@ -109,14 +110,28 @@ router.post('/execute', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // Load defender
-    const { rows: [defender] } = await client.query(
-      `SELECT p.*, u.username FROM provinces p JOIN users u ON u.id = p.user_id WHERE p.id = $1`,
-      [target_id]
+    // Lock both provinces in id order: parallel ops from one attacker serialize (so the AP,
+    // gold and gem-buff reads below are current), and A-spies-B racing B-spies-A can't deadlock
+    const { rows: locked } = await client.query(
+      'SELECT * FROM provinces WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE',
+      [[attacker.id, target_id]]
     );
-    if (!defender) {
+    const defender = locked.find(p => p.id === target_id);
+    // Player provinces only, as before (bots have no user)
+    if (!defender || defender.user_id === null) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Target province not found' });
+    }
+
+    // Spend up front against the locked row; the snapshot checks above are only a fast path
+    const { rowCount: paid } = await client.query(
+      `UPDATE provinces SET action_points = action_points - $1, gold = gold - $2, updated_at = NOW()
+       WHERE id = $3 AND action_points >= $1 AND gold >= $2`,
+      [apCost, action.gold_cost, attacker.id]
+    );
+    if (!paid) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `Not enough AP or gold (need ${apCost} AP, ${action.gold_cost} gold)` });
     }
 
     if (defender.protection_ends_at && new Date(defender.protection_ends_at) > new Date()) {
@@ -140,7 +155,7 @@ router.post('/execute', async (req, res) => {
     const defBuffs = new Set(defBuffRows.map(r => r.enhancement_id));
 
     // Defender watchtower boosts detection
-    const defBuildings = await getBuildingLevels(defender.id);
+    const defBuildings = await getBuildingLevels(defender.id, client);
     const watchtowerLevel = defBuildings['watchtower'] || 0;
 
     // Resolve success chance
@@ -154,12 +169,10 @@ router.post('/execute', async (req, res) => {
     if (defBuffs.has('espionage_t1_counterintelligence')) detectionChance = Math.min(1, detectionChance + 0.25);
     detectionChance = Math.min(1, detectionChance + watchtowerLevel * 0.05);
 
-    // Ghost Network: guaranteed success, then consume
-    const hasGhostNetwork = atkBuffs.has('espionage_t2_ghost_network');
-    const success = hasGhostNetwork || Math.random() < successChance;
-
-    if (hasGhostNetwork) {
-      await client.query(
+    // Ghost Network: guaranteed success, consumed by this op (only if we actually removed it)
+    let hasGhostNetwork = false;
+    if (atkBuffs.has('espionage_t2_ghost_network')) {
+      const { rowCount } = await client.query(
         `DELETE FROM gem_buffs WHERE id = (
            SELECT id FROM gem_buffs WHERE province_id = $1
            AND enhancement_id = 'espionage_t2_ghost_network'
@@ -168,7 +181,9 @@ router.post('/execute', async (req, res) => {
          )`,
         [attacker.id]
       );
+      hasGhostNetwork = rowCount > 0;
     }
+    const success = hasGhostNetwork || Math.random() < successChance;
 
     // Detection is lower on a successful op
     const detected = Math.random() < (success ? detectionChance * 0.5 : detectionChance);
@@ -186,12 +201,6 @@ router.post('/execute', async (req, res) => {
         [defender.id]
       );
     }
-
-    // Deduct AP and gold from attacker
-    await client.query(
-      `UPDATE provinces SET action_points = action_points - $1, gold = gold - $2, updated_at = NOW() WHERE id = $3`,
-      [apCost, action.gold_cost, attacker.id]
-    );
 
     // Execute operation effects
     let result = {};
