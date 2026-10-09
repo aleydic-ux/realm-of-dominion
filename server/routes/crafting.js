@@ -290,13 +290,15 @@ router.post('/collect', async (req, res) => {
       return res.json({ message: 'Nothing ready to collect', collected: [] });
     }
 
+    const bonusCharge = req.province.race === 'ironveil' ? 1 : 0;
     const collected = [];
     for (const job of completed) {
-      await addToInventory(client, provinceId, job.item_key, job.quantity);
+      const qty = job.quantity + bonusCharge;
+      await addToInventory(client, provinceId, job.item_key, qty);
       await client.query(
         `UPDATE crafting_queue SET status = 'completed' WHERE id = $1`, [job.id]
       );
-      collected.push({ item_key: job.item_key, quantity: job.quantity, name: RECIPES[job.item_key]?.name });
+      collected.push({ item_key: job.item_key, quantity: qty, name: RECIPES[job.item_key]?.name });
     }
 
     await client.query('COMMIT');
@@ -567,8 +569,10 @@ async function collectCompletedCrafts(provinceId) {
        WHERE province_id = $1 AND status = 'in_progress' AND completes_at <= NOW()`,
       [provinceId]
     );
+    const { rows: [prov] } = await client.query(`SELECT race FROM provinces WHERE id = $1`, [provinceId]);
+    const bonusCharge = prov?.race === 'ironveil' ? 1 : 0;
     for (const job of completed) {
-      await addToInventory(client, provinceId, job.item_key, job.quantity);
+      await addToInventory(client, provinceId, job.item_key, job.quantity + bonusCharge);
       await client.query(`UPDATE crafting_queue SET status = 'completed' WHERE id = $1`, [job.id]);
     }
     await client.query('COMMIT');

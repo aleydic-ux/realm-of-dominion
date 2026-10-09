@@ -19,8 +19,10 @@ if (connectionString && !connectionString.includes('connect_timeout')) {
 
 const QUERY_TIMEOUT_MS = 15000;
 
-// Hosted databases need SSL; ?sslmode=disable (stripped above) opts out for a local Postgres
-const sslDisabled = /[?&]sslmode=disable(&|$)/i.test(process.env.DATABASE_URL || '');
+// Hosted databases need SSL; a local Postgres usually has none. Off for localhost URLs
+// or an explicit ?sslmode=disable (the param itself is stripped above).
+const rawUrl = process.env.DATABASE_URL || '';
+const sslDisabled = /[?&]sslmode=disable(&|$)/i.test(rawUrl) || rawUrl.includes('localhost');
 
 const pool = new Pool({
   connectionString,

@@ -27,6 +27,7 @@ const notificationRoutes = require('./routes/notifications');
 const userRoutes = require('./routes/user');
 const achievementRoutes = require('./routes/achievements');
 const mailRoutes = require('./routes/mail');
+const spyRoutes = require('./routes/spy');
 const initSocket = require('./socket/chat');
 
 const app = express();
@@ -89,6 +90,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/achievements', achievementRoutes);
 app.use('/api/mail', mailRoutes);
+app.use('/api/spy', spyRoutes);
 
 // Health check — Render pings this to know the server is ready
 // Uses a tight 5s timeout so the probe never hangs

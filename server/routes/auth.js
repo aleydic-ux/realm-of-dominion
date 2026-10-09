@@ -16,6 +16,9 @@ router.post('/register', async (req, res) => {
   if (!username || !email || !password || !province_name || !race) {
     return res.status(400).json({ error: 'All fields are required' });
   }
+  if (province_name.length < 1 || province_name.length > 50) {
+    return res.status(400).json({ error: 'Province name must be 1–50 characters' });
+  }
   if (!RACES.includes(race)) {
     return res.status(400).json({ error: 'Invalid race' });
   }

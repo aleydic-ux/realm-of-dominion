@@ -125,4 +125,24 @@ router.get('/log/:id', adminOnly, async (req, res) => {
   }
 });
 
+// POST /api/bots/admin/extend-season — extend the active season by N days
+router.post('/admin/extend-season', adminOnly, async (req, res) => {
+  const days = parseInt(req.body.days);
+  if (!days || days < 1 || days > 30) {
+    return res.status(400).json({ error: 'days must be between 1 and 30' });
+  }
+  try {
+    const { rows } = await pool.query(
+      `UPDATE ages SET ends_at = ends_at + ($1 * INTERVAL '1 day')
+       WHERE is_active = true RETURNING id, name, ends_at`,
+      [days]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'No active season found' });
+    res.json({ message: `Season extended by ${days} day(s)`, season: rows[0] });
+  } catch (err) {
+    console.error('Extend season error:', err);
+    res.status(500).json({ error: 'Failed to extend season' });
+  }
+});
+
 module.exports = router;
