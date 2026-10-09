@@ -13,7 +13,7 @@ const troops = [
 
   // Orc Troops (food upkeep scales by tier)
   { race: 'orc', tier: 1, name: 'Grunt',            offense: 4,  defense: 1,  gold: 1,    food: 1, hours: 1/3600, special: 'None', requires: null },
-  { race: 'orc', tier: 2, name: 'Berserker',        offense: 10, defense: 0,  gold: 15,   food: 1, hours: 1/3600, special: 'Double attack; dies if defending', requires: null },
+  { race: 'orc', tier: 2, name: 'Berserker',        offense: 10, defense: 0,  gold: 15,   food: 1, hours: 1/3600, special: 'High attack; dies if defending', requires: null },
   { race: 'orc', tier: 3, name: 'Warchief',         offense: 6,  defense: 5,  gold: 100,  food: 1, hours: 1/3600, special: '+5% to all attack units in same army', requires: null },
   { race: 'orc', tier: 4, name: 'Siege Breaker',    offense: 5,  defense: 2,  gold: 500,  food: 2, hours: 1/3600, special: 'Destroys one enemy building level on win', requires: 'war_hall:3' },
   { race: 'orc', tier: 5, name: 'Wyvern Rider',     offense: 14, defense: 4,  gold: 900,  food: 2, hours: 1/3600, special: 'Immune to non-ranged defenders', requires: 'war_hall:5' },

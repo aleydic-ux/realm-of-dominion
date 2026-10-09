@@ -150,7 +150,7 @@ const TAB_CONTENT = [
             <tbody>
               {[
                 { race: '👑 Human', str: '+20% gold, -10% build cost, +20% trade', bld: 'Royal Bank', sp: 'Best economy & traders' },
-                { race: '💀 Orc', str: '+25% ATK, +15% train speed', bld: 'Warchief Pit', sp: 'Berserker double-attacks (but dies defending)' },
+                { race: '💀 Orc', str: '+25% ATK, +15% train speed', bld: 'Warchief Pit', sp: 'Berserkers hit hard (but die defending)' },
                 { race: '☠️ Undead', str: '0 food upkeep, 2× return speed', bld: 'Crypt', sp: 'Troops never eat; can\'t use marketplace' },
                 { race: '🌿 Elf', str: '+30% mana, +15% land yield, +20% research', bld: 'Ancient Grove', sp: 'Magic specialists, best arcane power' },
                 { race: '⚒️ Dwarf', str: '-25% build cost, -25% siege damage', bld: 'Runic Forge', sp: 'Tunnel Rat bypasses walls; slowest army return' },
