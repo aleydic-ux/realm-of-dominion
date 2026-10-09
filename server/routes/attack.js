@@ -10,6 +10,9 @@ const { getBuildingLevels } = require('../services/resourceEngine');
 const { awardGems, checkLandMilestone } = require('../services/gemEngine');
 const { checkAchievements, incrementStat } = require('../services/achievementEngine');
 
+// Same per-target cap bots use (botEngine attacksAgainstTargetToday), rolling 24h window
+const MAX_ATTACKS_PER_TARGET_PER_DAY = 2;
+
 function isProtected(province) {
   return province.protection_ends_at && new Date(province.protection_ends_at) > new Date();
 }
@@ -133,6 +136,21 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Not enough AP (need 3)' });
     }
     attacker = locked.find(p => p.id === attacker.id);
+
+    // Per-target cap. Counted after the attacker row is locked, so parallel attacks
+    // from the same province see each other's committed rows.
+    const { rows: [recent] } = await client.query(
+      `SELECT COUNT(*)::int AS count FROM attacks
+       WHERE attacker_province_id = $1 AND defender_province_id = $2
+         AND attacked_at > NOW() - INTERVAL '24 hours'`,
+      [attacker.id, target_id]
+    );
+    if (recent.count >= MAX_ATTACKS_PER_TARGET_PER_DAY) {
+      await client.query('ROLLBACK');
+      return res.status(429).json({
+        error: `You can only attack the same province ${MAX_ATTACKS_PER_TARGET_PER_DAY} times per 24 hours`,
+      });
+    }
 
     // Newbie protection check
     if (isProtected(defender)) {
