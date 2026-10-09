@@ -183,7 +183,7 @@ const TAB_CONTENT = [
             { name: 'Walls', desc: '+15% defense/lvl. Best value for passive defense.' },
             { name: 'Library', desc: '-10% research time/lvl. Prioritize early if rushing techs.' },
             { name: 'Farm', desc: '+5% food production/lvl. Critical for large armies.' },
-            { name: 'Temple/Altar', desc: '+10% mana regen/lvl. +5% morale recovery/lvl.' },
+            { name: 'Temple/Altar', desc: '+10% mana regen/lvl. +1 morale/hr recovery/lvl.' },
             { name: 'Treasury', desc: '+8% gold cap/lvl. +4% gold income/lvl.' },
           ].map(b => (
             <div key={b.name} className="border-l-2 border-realm-gold/40 pl-2">

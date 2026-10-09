@@ -10,6 +10,32 @@ const BASE_MANA_PER_LAND = 0.04;     // land-scaled component — bigger provinc
 const BASE_PRODUCTION_PER_LAND = 0.55;
 const FOOD_PER_POPULATION_HOUR = 0.02;
 
+// Morale (per hour). Recovers toward MORALE_MAX; 40 -> 100 takes ~30h with no temple.
+// Starvation (food below 0) drains instead of recovering. Morale is an integer column,
+// so the fractional remainder carries over in morale_progress between ticks.
+const MORALE_MAX = 100;
+const MORALE_REGEN_PER_HOUR = 2;
+const MORALE_REGEN_PER_TEMPLE_LEVEL = 1;
+const MORALE_STARVATION_PER_HOUR = 5;
+
+/**
+ * Returns { morale, moraleProgress } after hoursElapsed.
+ */
+function computeMorale(morale, progress, hoursElapsed, starving, templeLevel) {
+  let rate = 0;
+  if (starving) rate = -MORALE_STARVATION_PER_HOUR;
+  else if (morale < MORALE_MAX) rate = MORALE_REGEN_PER_HOUR + templeLevel * MORALE_REGEN_PER_TEMPLE_LEVEL;
+  if (rate === 0) return { morale, moraleProgress: 0 };
+
+  const total = (progress || 0) + rate * hoursElapsed;
+  const whole = Math.trunc(total);
+  let next = morale + whole;
+  let remainder = total - whole;
+  if (rate > 0 && next >= MORALE_MAX) { next = Math.max(morale, MORALE_MAX); remainder = 0; }
+  if (rate < 0 && next <= 0) { next = 0; remainder = 0; }
+  return { morale: next, moraleProgress: remainder };
+}
+
 /**
  * Get building level map for a province.
  */
@@ -182,17 +208,25 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
     const manaGained = Math.floor(manaRate * hoursElapsed);
     const productionGained = Math.floor(productionRate * hoursElapsed);
 
-    // Apply resource changes (gold/mana/production never go below 0, food can go negative)
+    const { morale, moraleProgress } = computeMorale(
+      province.morale ?? MORALE_MAX, province.morale_progress, hoursElapsed,
+      Number(province.food) + foodGained < 0, templeLevel
+    );
+
+    // Apply resource changes (gold/mana/production never go below 0, food can go negative).
+    // Morale is written absolutely: the row is locked and was read in this transaction.
     await client.query(
       `UPDATE provinces SET
         gold = GREATEST(0, gold + $1),
         food = food + $2,
         mana = GREATEST(0, mana + $3),
         industry_points = GREATEST(0, industry_points + $4),
+        morale = $5,
+        morale_progress = $6,
         last_resource_update = NOW(),
         updated_at = NOW()
-       WHERE id = $5`,
-      [goldGained, foodGained, manaGained, productionGained, provinceId]
+       WHERE id = $7`,
+      [goldGained, foodGained, manaGained, productionGained, morale, moraleProgress, provinceId]
     );
 
     await client.query('COMMIT');
