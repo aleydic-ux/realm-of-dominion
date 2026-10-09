@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { startingBuildings } = require('../constants/races');
 const { spawnBots } = require('./botEngine');
 
 const SEASON_LENGTH_DAYS = parseInt(process.env.SEASON_LENGTH_DAYS || '7');
@@ -8,22 +9,6 @@ const SEASON_NAMES = [
   'Age of Glory', 'Age of Conquest', 'Age of Ruin', 'Age of Storms',
   'Age of Gold', 'Age of Blood', 'Age of Frost', 'Age of Dawn',
 ];
-
-const UNIVERSAL_BUILDINGS = [
-  'farm', 'barracks', 'treasury', 'marketplace_stall', 'watchtower',
-  'walls', 'library', 'mine_quarry', 'temple_altar', 'war_hall', 'arcane_sanctum',
-];
-const RACE_BUILDINGS = {
-  human: 'royal_bank',
-  orc: 'warchief_pit',
-  undead: 'crypt',
-  elf: 'ancient_grove',
-  dwarf: 'runic_forge',
-  serpathi: 'shadowveil_den',
-  ironveil: 'artificers_foundry',
-  ashborn: 'ashfire_altar',
-  tidewarden: 'tidal_basin',
-};
 
 let seasonEndInProgress = false;
 
@@ -126,7 +111,7 @@ async function checkAndEndSeason(io) {
       );
 
       // Init buildings
-      const buildingTypes = [...UNIVERSAL_BUILDINGS, RACE_BUILDINGS[op.race]].filter(Boolean);
+      const buildingTypes = startingBuildings(op.race);
       for (const bt of buildingTypes) {
         await client.query(
           `INSERT INTO province_buildings (province_id, building_type) VALUES ($1,$2)`,

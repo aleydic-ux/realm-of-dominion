@@ -5,20 +5,9 @@ const pool = require('../config/db');
 const authenticate = require('../middleware/auth');
 const { signToken } = require('../middleware/auth');
 const { sendPasswordResetEmail } = require('../services/email');
+const { RACES, startingBuildings } = require('../constants/races');
 
 const router = express.Router();
-
-const UNIVERSAL_BUILDINGS = [
-  'farm', 'barracks', 'treasury', 'marketplace_stall', 'watchtower',
-  'walls', 'library', 'mine_quarry', 'temple_altar', 'war_hall',
-];
-const RACE_BUILDINGS = {
-  human: 'royal_bank',
-  orc: 'warchief_pit',
-  undead: 'crypt',
-  elf: 'ancient_grove',
-  dwarf: 'runic_forge',
-};
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -27,7 +16,7 @@ router.post('/register', async (req, res) => {
   if (!username || !email || !password || !province_name || !race) {
     return res.status(400).json({ error: 'All fields are required' });
   }
-  if (!['human','orc','undead','elf','dwarf'].includes(race)) {
+  if (!RACES.includes(race)) {
     return res.status(400).json({ error: 'Invalid race' });
   }
   if (password.length < 8) {
@@ -109,7 +98,7 @@ router.post('/register', async (req, res) => {
     }
 
     // Init buildings (universal + race-specific)
-    const buildingTypes = [...UNIVERSAL_BUILDINGS, RACE_BUILDINGS[race]];
+    const buildingTypes = startingBuildings(race);
     for (const bt of buildingTypes) {
       await client.query(
         'INSERT INTO province_buildings (province_id, building_type) VALUES ($1, $2)',

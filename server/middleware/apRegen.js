@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { checkAndEndSeason } = require('../services/seasonEngine');
+const { startingBuildings } = require('../constants/races');
 
 const MAX_AP = parseInt(process.env.MAX_AP || '20');
 const AP_REGEN_MINUTES = parseInt(process.env.AP_REGEN_MINUTES || '15');
@@ -7,15 +8,6 @@ const AP_REGEN_MINUTES = parseInt(process.env.AP_REGEN_MINUTES || '15');
 const PROVINCE_QUERY = `SELECT p.* FROM provinces p
   JOIN ages a ON a.id = p.age_id
   WHERE p.user_id = $1 AND a.is_active = true`;
-
-const UNIVERSAL_BUILDINGS = [
-  'farm', 'barracks', 'treasury', 'marketplace_stall', 'watchtower',
-  'walls', 'library', 'mine_quarry', 'temple_altar', 'war_hall', 'arcane_sanctum',
-];
-const RACE_BUILDINGS = {
-  human: 'royal_bank', orc: 'warchief_pit', undead: 'crypt',
-  elf: 'ancient_grove', dwarf: 'runic_forge',
-};
 
 /**
  * Recalculates AP lazily based on elapsed time.
@@ -101,7 +93,7 @@ async function apRegen(req, res, next) {
                VALUES ($1,$2,$3,$4,$5) RETURNING id`,
               [req.user.id, activeAge.id, provinceName, race, protectionEndsAt]
             );
-            const buildingTypes = [...UNIVERSAL_BUILDINGS, RACE_BUILDINGS[race]];
+            const buildingTypes = startingBuildings(race);
             for (const bt of buildingTypes) {
               await pool.query(
                 'INSERT INTO province_buildings (province_id, building_type) VALUES ($1,$2)',
