@@ -93,6 +93,7 @@ app.use('/api/mail', mailRoutes);
 // Health check — Render pings this to know the server is ready
 // Uses a tight 5s timeout so the probe never hangs
 app.get('/api/health', async (req, res) => {
+  if (!startupComplete) return res.status(503).json({ status: 'starting' });
   try {
     const timeout = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('DB ping timeout (5s)')), 5000)
@@ -224,37 +225,10 @@ cron.schedule('*/10 * * * *', async () => {
   }
 });
 
-// Run pending migrations on startup (ensures they always run regardless of start command)
-const fs = require('fs');
-async function runMigrations() {
-  const client = await pool.connect();
-  try {
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS migrations (
-        id SERIAL PRIMARY KEY,
-        filename VARCHAR(255) UNIQUE NOT NULL,
-        applied_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-    const migrationsDir = path.join(__dirname, 'db', 'migrations');
-    const files = fs.readdirSync(migrationsDir).sort();
-    for (const file of files) {
-      if (!file.endsWith('.sql')) continue;
-      const { rows } = await client.query('SELECT id FROM migrations WHERE filename = $1', [file]);
-      if (rows.length > 0) continue;
-      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-      console.log(`[migrate] Applying ${file}...`);
-      await client.query(sql);
-      await client.query('INSERT INTO migrations (filename) VALUES ($1)', [file]);
-      console.log(`[migrate]   Done.`);
-    }
-    console.log('[migrate] All migrations up to date.');
-  } catch (err) {
-    console.error('[migrate] Migration failed:', err);
-  } finally {
-    client.release();
-  }
-}
+// Run pending migrations on startup too, so they apply whatever the start command is
+// (npm start runs migrate.js first; a second run waits on the lock and finds nothing to do)
+const { runMigrations } = require('./db/runMigrations');
+let startupComplete = false;
 
 // Prevent silent crashes from unhandled promise rejections
 process.on('unhandledRejection', (err) => {
@@ -290,8 +264,13 @@ server.listen(PORT, () => {
   console.log(`Realm of Dominion server running on port ${PORT}`);
   // Run startup tasks in background — non-blocking
   wakeDatabase()
-    .then(() => runMigrations())
-    .catch((err) => console.error('Startup tasks failed:', err.message));
+    .then(() => runMigrations(pool, { log: (msg) => console.log(`[migrate] ${msg}`) }))
+    .then(() => { startupComplete = true; })
+    .catch((err) => {
+      // Never serve on a half-migrated schema: exit so the deploy fails / the host restarts
+      console.error('[startup] Migrations failed, exiting:', err.message);
+      process.exit(1);
+    });
 });
 
 module.exports = { app, server };
