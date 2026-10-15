@@ -82,10 +82,8 @@ export default function Espionage({ province }) {
     setExecuting(null);
   }
 
-  // Spies can only target player provinces (the server rejects bots)
   const filteredProvinces = provinces.filter(p =>
     p.id !== province?.id &&
-    !p.is_bot &&
     p.name.toLowerCase().includes(search.toLowerCase())
   );
   const isProtected = (p) => p.protection_ends_at && new Date(p.protection_ends_at) > new Date();

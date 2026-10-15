@@ -117,8 +117,7 @@ router.post('/execute', async (req, res) => {
       [[attacker.id, target_id]]
     );
     const defender = locked.find(p => p.id === target_id);
-    // Player provinces only, as before (bots have no user)
-    if (!defender || defender.user_id === null) {
+    if (!defender) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Target province not found' });
     }
