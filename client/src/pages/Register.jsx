@@ -28,12 +28,12 @@ const RACES = [
   },
   {
     id: 'dwarf', label: 'Dwarf', icon: '⚒️',
-    bonuses: '-25% build cost, -25% siege damage taken',
+    bonuses: '-25% build cost, Tunnel Rats bypass walls',
     lore: 'Master builders. Impenetrable fortresses and runic weapons.',
   },
   {
     id: 'serpathi', label: 'Serpathi', icon: '🐍',
-    bonuses: 'Spy actions 20% cheaper, recover 15% of defensive troops, 25% enemy scout resistance, +10% mana regen',
+    bonuses: 'Spy actions cost 20% less AP, recover 15% of defensive troops, 25% enemy scout resistance, +10% mana regen',
     lore: 'We do not conquer. We wait, and then we take.',
   },
   {
@@ -43,7 +43,7 @@ const RACES = [
   },
   {
     id: 'ashborn', label: 'Ashborn', icon: '🔥',
-    bonuses: 'Raids deal +25% damage/loot, fury stacks per attack (+3% each, max 5), scorched earth on defense',
+    bonuses: 'Raids loot +25%, fury stacks per attack (+3% each, max 5), scorched earth on defense',
     lore: 'We have already burned. What can you do to us?',
   },
   {

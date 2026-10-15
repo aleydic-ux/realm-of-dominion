@@ -7,7 +7,7 @@ export const RESOURCE_TOOLTIPS = {
   gold: (
     <>
       <strong style={{color:'#c8a048'}}>Gold</strong> — Your treasury.<br/>
-      Earned from population income, Treasury building, and trade.<br/>
+      Earned from your land, Treasury building, and trade.<br/>
       Spent on troops, buildings, research, and crafting.
     </>
   ),
@@ -36,7 +36,7 @@ export const RESOURCE_TOOLTIPS = {
     <>
       <strong style={{color:'#c8d8e8'}}>Land</strong> — Province size in acres.<br/>
       Gained by Exploring (1 AP = 5–25 ac) or Conquering enemies.<br/>
-      More land = higher population cap and more resource production.
+      More land = more resource production.
     </>
   ),
   ap: (
@@ -49,35 +49,35 @@ export const RESOURCE_TOOLTIPS = {
 };
 
 export const PROVINCE_TOOLTIPS = {
-  population: 'Grows over time from land and morale. More population = more gold income.',
-  morale: 'Province happiness (0–100%). Drops when food runs out or you lose battles. Temple/Altar speeds recovery.',
+  population: 'Starts at 500. Eats food every hour; Massacre attacks kill it.',
+  morale: 'Province morale (0–100%). Recovers 2%/hr (+1%/hr per Temple/Altar level); drops 5%/hr while food is below zero. Scales attack and defense power.',
   networth: 'Total value of your province — troops + buildings + land + resources. Used for leaderboard ranking.',
 };
 
 export const ATTACK_TOOLTIPS = {
-  raid: 'Steal gold/resources. No land changes hands. Lowest casualties — best for farming inactive provinces. Costs 5 AP.',
-  conquest: 'Capture 10–30% of enemy land. Medium casualties on both sides. Costs 5 AP.',
-  raze: 'Destroy enemy buildings. Very high casualties. Best for crippling a dangerous rival. Costs 5 AP.',
-  massacre: 'Kill enemy population. Extreme casualties. Reduces their long-term income. Costs 5 AP.',
-  ap_cost: 'Costs 5 of your 20 AP. You regenerate 1 AP every 30 minutes.',
+  raid: 'Steal 5–15% of enemy gold/food/mana (more with a bigger army). No land changes hands — best for farming inactive provinces. Costs 3 AP.',
+  conquest: 'Capture 10–30% of enemy land based on your power advantage (max 50%). Costs 3 AP.',
+  raze: 'Knock one enemy building down a level. Best for crippling a dangerous rival. Costs 3 AP.',
+  massacre: 'Kill about 10% of the enemy population (more with a bigger army). Costs 3 AP.',
+  ap_cost: 'Costs 3 of your 20 AP. You regenerate 1 AP every 30 minutes. Casualties depend on the outcome, not the attack type.',
 };
 
 export const BUILDING_TOOLTIPS = {
   arcane_sanctum: 'Unlocks Tier 1 spells at L1, Tier 2 at L3, Tier 3 at L5. Essential for magic builds. +5% mana regen per level.',
   mine_quarry: 'Generates Industry Points for building upgrades. +8% IP per level.',
-  barracks: 'Reduces training time 10%/lvl, increases max troop cap 5%/lvl.',
-  watchtower: 'Reveals spies and attacks. +10% spy detect, +5% all defense per level.',
-  war_hall: 'Unlocks T4 troops at L3, T5 troops at L5. Required for end-game military. +5% attack per level.',
-  treasury: 'Increases gold storage cap and boosts passive income. +8% gold cap, +4% income per level.',
+  barracks: '+10% training speed per level.',
+  watchtower: 'Helps catch spies and defend. +5% spy detection, +5% defense per level.',
+  war_hall: 'Unlocks T4 troops at L3, T5 troops at L5. Required for end-game military.',
+  treasury: 'Boosts passive income. +4% gold income per level.',
   walls: '+15% defense bonus per level. Very cost-effective for defensive players.',
-  library: '-10% research time per level. Prioritize early if rushing techs.',
-  marketplace_stall: 'Adds trade slots (+1 per level). Required to sell resources to other players.',
-  temple_altar: 'Boosts mana regen (+10%/lvl) and speeds morale recovery (+5%/lvl).',
-  farm: 'Boosts food production +5%/lvl. Critical when running a large army.',
+  library: '+10% research speed and -10% building time per level. Prioritize early if rushing techs.',
+  marketplace_stall: 'One trade slot per level (minimum 1) for selling to other players.',
+  temple_altar: 'Boosts mana regen (+10%/lvl) and morale recovery (+1%/hr per level).',
+  farm: 'Boosts food production +10%/lvl. Critical when running a large army.',
   royal_bank: 'Human only. +15% gold income per level.',
   warchief_pit: 'Orc only. +10% troop attack per level.',
   crypt: 'Undead only. Raises skeleton troops from the dead after battle.',
-  ancient_grove: 'Elf only. +15% mana regen and +10% land yield per level.',
+  ancient_grove: 'Elf only. +15% mana regen and +10% food per level.',
   runic_forge: 'Dwarf only. +3 ATK/DEF bonus to Runic Warriors per level.',
 };
 
@@ -88,7 +88,7 @@ export const MILITARY_TOOLTIPS = {
   train_time: 'Base time per troop. Reduced by Barracks level.',
   home: 'Troops available at home for defense and deployment.',
   training: 'Troops currently in the training queue.',
-  deployed: 'Troops on an active attack mission — returning in 8 hours.',
+  deployed: 'Troops on an active attack mission. They return after about 8 hours (faster or slower by race).',
 };
 
 export const CRAFTING_TOOLTIPS = {

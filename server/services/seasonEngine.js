@@ -110,7 +110,7 @@ async function rollover(io) {
       [age.id]
     );
 
-    // 4. Create the new age (7-day season)
+    // 4. Create the new age (SEASON_LENGTH_DAYS long)
     const newName = pickNextSeasonName(age.name);
     const startsAt = new Date();
     const endsAt = new Date(startsAt.getTime() + SEASON_LENGTH_DAYS * 24 * 60 * 60 * 1000);
