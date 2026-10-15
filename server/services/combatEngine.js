@@ -12,7 +12,7 @@ const BASE_RETURN_HOURS = 8;
  * @param {Array} attackerTechs - attacker's tech effects
  * @param {Array} defenderTechs - defender's tech effects
  */
-function resolveAttack({ attacker, defender, attackType, troopsDeployed, attackerTroopTypes, defenderTroops, defenderTroopTypes, buildings, attackerTechs, defenderTechs, attackerSpellEffects = [], defenderSpellEffects = [] }) {
+function resolveAttack({ attacker, defender, attackType, troopsDeployed, attackerTroopTypes, defenderTroops, defenderTroopTypes, buildings, attackerBuildings = {}, defenderWatchtowerDebuff = 0, attackerTechs, defenderTechs, attackerSpellEffects = [], defenderSpellEffects = [] }) {
   const attackerCfg = raceConfig[attacker.race];
   const defenderCfg = raceConfig[defender.race];
 
@@ -35,6 +35,13 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
 
     let offense = troopType.offense_power;
 
+    // Runic Forge (Dwarf): +3 ATK per level to Runic Warriors
+    if (troopType.name === 'Runic Warrior') offense += 3 * (attackerBuildings['runic_forge'] || 0);
+    // Warchief Pit (Orc): +10% Warchief and Berserker attack per level
+    if (troopType.name === 'Warchief' || troopType.name === 'Berserker') {
+      offense *= 1 + 0.10 * (attackerBuildings['warchief_pit'] || 0);
+    }
+
     // Warchief bonus: +5% to all units in same army
     const warchiefCount = troopsDeployed[nameToId.get('Warchief')] || 0;
     if (warchiefCount > 0) offense *= 1.05;
@@ -46,9 +53,11 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
   // Apply race attack bonus
   attackerPower *= attackerCfg.troopAttackMultiplier;
 
-  // Ashborn fury: +3% per consecutive attack streak (max 5 stacks = +15%)
+  // Ashborn fury: +3% per consecutive attack streak (max 5 stacks = +15%);
+  // Ashfire Altar adds +1% per stack per level
   if (attackerCfg.specialRules.includes('ashborn_fury') && attacker.ashborn_attack_streak > 0) {
-    attackerPower *= 1 + (Math.min(5, attacker.ashborn_attack_streak) * 0.03);
+    const perStack = 0.03 + 0.01 * (attackerBuildings['ashfire_altar'] || 0);
+    attackerPower *= 1 + (Math.min(5, attacker.ashborn_attack_streak) * perStack);
   }
 
   // Apply morale modifier
@@ -71,6 +80,9 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
     if (!troopType) continue;
 
     let defense = troopType.defense_power;
+
+    // Runic Forge (Dwarf): +3 DEF per level to Runic Warriors
+    if (troopType.name === 'Runic Warrior') defense += 3 * (buildings['runic_forge'] || 0);
 
     // Orc Berserker dies when defending (special rule)
     if (troopType.name === 'Berserker' && !hasResearch(defenderTechs, 'berserker_survives_defense')) {
@@ -104,9 +116,10 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
   const defenderMorale = defender.morale / 100;
   defenderPower *= (0.5 + defenderMorale * 0.5);
 
-  // Apply watchtower defense bonus
+  // Apply watchtower defense bonus, reduced by War Colossus debuffs (negative, stacking, floor 0)
   const watchtowerLevel = buildings['watchtower'] || 0;
-  defenderPower *= 1 + (watchtowerLevel * 0.05);
+  const watchtowerEffectiveness = Math.max(0, 1 + defenderWatchtowerDebuff);
+  defenderPower *= 1 + (watchtowerLevel * 0.05 * watchtowerEffectiveness);
 
   // Apply war hall attack bonus for attacker
   const warHallLevel = buildings['war_hall'] || 0; // This is defender's war hall (defensive use)
@@ -142,6 +155,11 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
   // Tidewarden retreat penalty: attackers suffer +10% casualties
   if (defenderCfg.specialRules.includes('retreat_penalty_for_attackers')) {
     attackerCasualtyRate *= 1.10;
+  }
+
+  // Ashborn scorched earth, fed by the Ashfire Altar: attackers take +2% casualties per level
+  if (defenderCfg.specialRules.includes('scorched_earth')) {
+    attackerCasualtyRate *= 1 + 0.02 * (buildings['ashfire_altar'] || 0);
   }
 
   // Ashborn battle hardened: -15% defender casualties if province was attacked this season

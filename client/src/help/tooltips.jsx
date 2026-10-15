@@ -75,8 +75,8 @@ export const BUILDING_TOOLTIPS = {
   temple_altar: 'Boosts mana regen (+10%/lvl) and morale recovery (+1%/hr per level).',
   farm: 'Boosts food production +10%/lvl. Critical when running a large army.',
   royal_bank: 'Human only. +15% gold income per level.',
-  warchief_pit: 'Orc only. +10% troop attack per level.',
-  crypt: 'Undead only. Raises skeleton troops from the dead after battle.',
+  warchief_pit: 'Orc only. +10% Warchief and Berserker attack per level.',
+  crypt: 'Undead only. Each winning attack has a 10% chance (+7% per level) to raise 1–10 Skeletons.',
   ancient_grove: 'Elf only. +15% mana regen and +10% food per level.',
   runic_forge: 'Dwarf only. +3 ATK/DEF bonus to Runic Warriors per level.',
 };

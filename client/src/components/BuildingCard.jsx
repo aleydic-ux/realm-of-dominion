@@ -73,14 +73,14 @@ const BUILDING_EFFECTS = {
   temple_altar: '+10% mana regen, +1 morale/hr recovery per level',
   war_hall: 'Unlocks T4@L3, T5@L5',
   royal_bank: '+15% gold income per level',
-  warchief_pit: '+10% Warchief/Berserker power per level',
-  crypt: '+7% skeleton raise chance per level',
+  warchief_pit: '+10% Warchief & Berserker attack per level',
+  crypt: 'Wins raise 1-10 Skeletons: 10% chance +7% per level',
   ancient_grove: '+15% mana regen, +10% food per level',
   runic_forge: '+3 ATK/DEF to Runic Warriors per level',
   arcane_sanctum: '+5% mana regen per level; unlocks spells at L1/L3/L5',
   shadowveil_den: '+7% mana regen per level',
   artificers_foundry: '+10% industry points per level',
-  ashfire_altar: 'Empowers Ashborn fury and scorched earth abilities',
+  ashfire_altar: '+1% fury per stack; attackers take +2% casualties, per level',
   tidal_basin: '+12% gold income per level',
 };
 

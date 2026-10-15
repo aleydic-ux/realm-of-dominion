@@ -44,10 +44,11 @@ router.post('/', async (req, res) => {
   // Read-only combat context is loaded before taking a connection: nothing inside the
   // transaction below may use the shared pool, or a burst of attacks on one province
   // (all queued on its row lock, each holding a connection) starves it
-  let defenderBuildings, attackerTechs, defenderTechs;
+  let defenderBuildings, attackerBuildings, attackerTechs, defenderTechs;
   try {
-    [defenderBuildings, attackerTechs, defenderTechs] = await Promise.all([
+    [defenderBuildings, attackerBuildings, attackerTechs, defenderTechs] = await Promise.all([
       getBuildingLevels(target_id),
+      getBuildingLevels(attacker.id),
       getProvinceTechEffects(attacker.id),
       getProvinceTechEffects(target_id),
     ]);
@@ -83,6 +84,7 @@ router.post('/', async (req, res) => {
   // modifier_key 'attack_pct' → target 'troop_attack', 'defense_pct' → 'troop_defense'
   const CRAFT_COMBAT_MAP = { attack_pct: 'troop_attack', defense_pct: 'troop_defense' };
   let attackerCraftEffects = [], defenderCraftEffects = [];
+  let defenderWatchtowerDebuff = 0; // War Colossus: negative fraction of watchtower bonus
   try {
     const [acRes, dcRes] = await Promise.all([
       pool.query(
@@ -94,7 +96,7 @@ router.post('/', async (req, res) => {
       ),
       pool.query(
         `SELECT modifier_key, SUM(modifier_value) as total FROM active_effects
-         WHERE province_id = $1 AND modifier_key IN ('attack_pct','defense_pct')
+         WHERE province_id = $1 AND modifier_key IN ('attack_pct','defense_pct','watchtower_debuff')
            AND (expires_at IS NULL OR expires_at > NOW())
          GROUP BY modifier_key`,
         [target_id]
@@ -106,6 +108,7 @@ router.post('/', async (req, res) => {
     defenderCraftEffects = dcRes.rows
       .filter(r => CRAFT_COMBAT_MAP[r.modifier_key])
       .map(r => ({ modifier_type: 'multiplier', target: CRAFT_COMBAT_MAP[r.modifier_key], value: parseFloat(r.total) }));
+    defenderWatchtowerDebuff = parseFloat(dcRes.rows.find(r => r.modifier_key === 'watchtower_debuff')?.total || 0);
   } catch (_) { /* active_effects table may not exist yet */ }
 
   const client = await pool.connect();
@@ -268,6 +271,8 @@ router.post('/', async (req, res) => {
       defenderTroops,
       defenderTroopTypes,
       buildings: defenderBuildings,
+      attackerBuildings,
+      defenderWatchtowerDebuff,
       attackerTechs,
       defenderTechs,
       attackerSpellEffects: [...attackerSpellEffects, ...attackerCraftEffects],
@@ -374,10 +379,10 @@ router.post('/', async (req, res) => {
           // Reduce a random building level
           await client.query(
             `UPDATE province_buildings
-             SET level = GREATEST(0, level - 1), updated_at = NOW()
-             WHERE province_id = $1
-               AND level > 0
-             ORDER BY RANDOM() LIMIT 1`,
+             SET level = level - 1, updated_at = NOW()
+             WHERE id = (SELECT id FROM province_buildings
+                         WHERE province_id = $1 AND level > 0
+                         ORDER BY RANDOM() LIMIT 1)`,
             [target_id]
           );
         }
@@ -399,33 +404,32 @@ router.post('/', async (req, res) => {
 
         // War Colossus: destroys 15% watchtower effectiveness (stored as a debuff flag)
         if (effect.type === 'watchtower_debuff') {
+          // No .catch here: a failed statement aborts the transaction, so it must surface
           await client.query(
-            `INSERT INTO active_effects (province_id, modifier_key, modifier_value, expires_at)
-             VALUES ($1, 'watchtower_debuff', $2, NOW() + INTERVAL '24 hours')
-             ON CONFLICT DO NOTHING`,
-            [parseInt(target_id), effect.value]
-          ).catch(() => {}); // graceful if table schema differs
+            `INSERT INTO active_effects
+               (province_id, source_province_id, item_key, effect_type, modifier_key, modifier_value, expires_at)
+             VALUES ($1, $2, 'war_colossus', 'debuff', 'watchtower_debuff', $3, NOW() + INTERVAL '24 hours')`,
+            [target_id, attacker.id, -effect.value]
+          );
         }
+      }
 
-        // Undead skeleton raise
-        if (attacker.race === 'undead') {
-          let raiseChance = 0.10; // base 10%
-          const cryptLevel = defenderBuildings['crypt'] || 0;
-          raiseChance += cryptLevel * 0.07;
-          if (Math.random() < raiseChance) {
-            const { rows: [skeleton] } = await client.query(
-              `SELECT pt.troop_type_id FROM province_troops pt
-               JOIN troop_types tt ON tt.id = pt.troop_type_id
-               WHERE pt.province_id = $1 AND tt.name = 'Skeleton'`, [attacker.id]
+      // Undead skeleton raise: one roll per win, 10% base +7% per level of the attacker's Crypt
+      if (attacker.race === 'undead') {
+        const raiseChance = 0.10 + 0.07 * (attackerBuildings['crypt'] || 0);
+        if (Math.random() < raiseChance) {
+          const { rows: [skeleton] } = await client.query(
+            `SELECT pt.troop_type_id FROM province_troops pt
+             JOIN troop_types tt ON tt.id = pt.troop_type_id
+             WHERE pt.province_id = $1 AND tt.name = 'Skeleton'`, [attacker.id]
+          );
+          if (skeleton) {
+            const raisedCount = Math.floor(Math.random() * 10) + 1;
+            await client.query(
+              `UPDATE province_troops SET count_home = count_home + $1, updated_at = NOW()
+               WHERE province_id = $2 AND troop_type_id = $3`,
+              [raisedCount, attacker.id, skeleton.troop_type_id]
             );
-            if (skeleton) {
-              const raisedCount = Math.floor(Math.random() * 10) + 1;
-              await client.query(
-                `UPDATE province_troops SET count_home = count_home + $1, updated_at = NOW()
-                 WHERE province_id = $2 AND troop_type_id = $3`,
-                [raisedCount, attacker.id, skeleton.troop_type_id]
-              );
-            }
           }
         }
       }
