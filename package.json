@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Realm of Dominion - Web-based text kingdom builder",
   "main": "server/index.js",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
     "server:dev": "nodemon server/index.js",
