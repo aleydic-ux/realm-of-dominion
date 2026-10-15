@@ -120,7 +120,8 @@ router.post('/', async (req, res) => {
       [[attacker.id, target_id]]
     );
     const defender = locked.find(p => p.id === target_id);
-    if (!defender) {
+    // Only provinces in the attacker's (active) age; ones left in ended ages aren't targets
+    if (!defender || defender.age_id !== attacker.age_id) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Target province not found' });
     }
