@@ -112,7 +112,8 @@ router.post('/cast', async (req, res) => {
     let target = null;
     if (spell.targeted) {
       const tgt = locked.find(p => p.id === target_province_id);
-      if (!tgt) {
+      // Only provinces in the caster's (active) age; ones left in ended ages aren't targets
+      if (!tgt || tgt.age_id !== caster.age_id) {
         await client.query('ROLLBACK');
         return res.status(404).json({ error: 'Target province not found' });
       }

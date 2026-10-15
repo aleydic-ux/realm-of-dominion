@@ -15,7 +15,7 @@ const TAB_CONTENT = [
         <h3 className="text-realm-gold font-bold">Action Points (AP)</h3>
         <p className="text-realm-text-muted text-xs">
           AP is your core resource. Max 20. Regenerates <strong>1 AP every 30 minutes</strong>.
-          Almost every action costs 1–5 AP. Never sit at 20/20 — you waste regen!
+          Almost every action costs 1–4 AP. Never sit at 20/20 — you waste regen!
         </p>
       </div>
 
@@ -33,7 +33,7 @@ const TAB_CONTENT = [
       <div className="realm-panel space-y-2">
         <h3 className="text-realm-gold font-bold">Ages</h3>
         <p className="text-realm-text-muted text-xs">
-          The current <strong>Age of Iron</strong> lasts approximately 7 days.
+          Each Age lasts <strong>11 days</strong>.
           When it ends, scores are recorded to the Hall of Fame, all provinces reset, and a new Age begins.
           The leaderboard ranking at the end of the Age determines your legacy.
         </p>
@@ -53,13 +53,13 @@ const TAB_CONTENT = [
   () => (
     <div className="space-y-3 text-sm">
       {[
-        { icon: '💰', name: 'Gold', color: '#c8a048', earn: 'Population income, Treasury building, trade, Human bonus', spend: 'Training troops, buildings, research, crafting' },
+        { icon: '💰', name: 'Gold', color: '#c8a048', earn: 'Land (income scales with acres), Treasury building, trade, Human bonus', spend: 'Training troops, buildings, research, crafting' },
         { icon: '🌾', name: 'Food', color: '#2a8a48', earn: 'Farm building, Crop Rotation research, Harvest Tonic potion, land', spend: 'Consumed by troops every hour. If food hits 0, morale drops.' },
         { icon: '🔮', name: 'Mana', color: '#8830cc', earn: 'Arcane Sanctum (+5%/lvl), Temple/Altar (+10%/lvl), Ancient Grove (Elf), land, Ley Lines spell', spend: 'Casting spells, crafting potions' },
         { icon: '⚙️', name: 'Industry', color: '#c8d8e8', earn: 'Mine/Quarry (+8%/lvl), Industry Surge potion', spend: 'Building upgrades (alongside Gold), crafting' },
-        { icon: '🗺️', name: 'Land', color: '#c8d8e8', earn: 'Explore Territory (1 AP = 5–25 ac), Conquest attacks', spend: 'Sets population cap; more land = more income and production' },
-        { icon: '👥', name: 'Population', color: '#c8d8e8', earn: 'Grows automatically from land + morale', spend: 'Contributes to gold income. Population Boom research speeds growth.' },
-        { icon: '❤️', name: 'Morale', color: '#cc4444', earn: 'Stays at 100% normally. Temple/Altar speeds recovery.', spend: 'Drops from food shortage or heavy battle losses. Affects income.' },
+        { icon: '🗺️', name: 'Land', color: '#c8d8e8', earn: 'Explore Territory (1 AP = 5–25 ac), Conquest attacks', spend: 'More land = more gold, food, mana and industry income' },
+        { icon: '👥', name: 'Population', color: '#c8d8e8', earn: 'Starts at 500. Late joiners get a head-start bonus.', spend: 'Eats food every hour. Massacre attacks kill it.' },
+        { icon: '❤️', name: 'Morale', color: '#cc4444', earn: 'Recovers 2%/hr toward 100%, +1%/hr per Temple/Altar level.', spend: 'Drops 5%/hr while food is below zero, and from some enemy units\' morale drain. Scales your attack and defense power.' },
       ].map(r => (
         <div key={r.name} className="realm-panel flex gap-3">
           <span className="text-2xl">{r.icon}</span>
@@ -80,17 +80,17 @@ const TAB_CONTENT = [
         <h3 className="text-realm-gold font-bold">4 Attack Types</h3>
         <div className="space-y-2 text-xs text-realm-text-muted">
           {[
-            { name: 'Raid', desc: 'Steal 5–15% of enemy gold/food/mana. No land gained. Lowest casualties. Best for farming inactive provinces.' },
-            { name: 'Conquest', desc: 'Capture 10–30% of enemy land (based on power ratio). Medium casualties on both sides.' },
-            { name: 'Raze', desc: 'Destroy enemy buildings. Very high casualties. Best for crippling a dangerous rival.' },
-            { name: 'Massacre', desc: 'Kill enemy population to reduce their long-term income. Extreme casualties.' },
+            { name: 'Raid', desc: 'Steal 5–15% of enemy gold/food/mana (more with a bigger, higher-tier army). No land gained. Best for farming inactive provinces.' },
+            { name: 'Conquest', desc: 'Capture 10–30% of enemy land based on your power advantage (more with a bigger army, max 50%).' },
+            { name: 'Raze', desc: 'Knock one enemy building down a level. Best for crippling a dangerous rival.' },
+            { name: 'Massacre', desc: 'Kill about 10% of the enemy population (more with a bigger army).' },
           ].map(t => (
             <div key={t.name} className="border-l-2 border-realm-gold/40 pl-2">
               <strong className="text-realm-text">{t.name}</strong> — {t.desc}
             </div>
           ))}
         </div>
-        <p className="text-xs text-realm-text-muted mt-1">All attacks cost <strong className="text-realm-gold">5 AP</strong>.</p>
+        <p className="text-xs text-realm-text-muted mt-1">All attacks cost <strong className="text-realm-gold">3 AP</strong>. Casualties depend on the battle's outcome, not the attack type.</p>
       </div>
 
       <div className="realm-panel space-y-2">
@@ -151,9 +151,9 @@ const TAB_CONTENT = [
               {[
                 { race: '👑 Human', str: '+20% gold, -10% build cost, +20% trade', bld: 'Royal Bank', sp: 'Best economy & traders' },
                 { race: '💀 Orc', str: '+25% ATK, +15% train speed', bld: 'Warchief Pit', sp: 'Berserkers hit hard (but die defending)' },
-                { race: '☠️ Undead', str: '0 food upkeep, 2× return speed', bld: 'Crypt', sp: 'Troops never eat; can\'t use marketplace' },
+                { race: '☠️ Undead', str: '0 food upkeep, 2× return speed', bld: 'Crypt', sp: 'Troops never eat; can\'t sell on the marketplace' },
                 { race: '🌿 Elf', str: '+30% mana, +15% land yield, +20% research', bld: 'Ancient Grove', sp: 'Magic specialists, best arcane power' },
-                { race: '⚒️ Dwarf', str: '-25% build cost, -25% siege damage', bld: 'Runic Forge', sp: 'Tunnel Rat bypasses walls; slowest army return' },
+                { race: '⚒️ Dwarf', str: '-25% build cost', bld: 'Runic Forge', sp: 'Tunnel Rat bypasses walls; slowest army return' },
               ].map(r => (
                 <tr key={r.race}>
                   <td className="font-bold">{r.race}</td>
@@ -177,14 +177,14 @@ const TAB_CONTENT = [
         <div className="space-y-1 text-xs text-realm-text-muted">
           {[
             { name: 'Arcane Sanctum', desc: 'Unlocks spells at L1/L3/L5. +5% mana regen/lvl. Essential for magic builds.' },
-            { name: 'War Hall', desc: 'Unlocks T4 troops at L3, T5 at L5. +5% troop ATK/lvl. Required for end-game.' },
-            { name: 'Barracks', desc: '-10% training time/lvl. +5% troop cap/lvl.' },
+            { name: 'War Hall', desc: 'Unlocks T4 troops at L3, T5 at L5. Required for end-game.' },
+            { name: 'Barracks', desc: '+10% training speed/lvl.' },
             { name: 'Mine/Quarry', desc: '+8% Industry Points/lvl. Needed for all building upgrades.' },
             { name: 'Walls', desc: '+15% defense/lvl. Best value for passive defense.' },
-            { name: 'Library', desc: '-10% research time/lvl. Prioritize early if rushing techs.' },
-            { name: 'Farm', desc: '+5% food production/lvl. Critical for large armies.' },
+            { name: 'Library', desc: '+10% research speed/lvl, -10% building time/lvl. Prioritize early if rushing techs.' },
+            { name: 'Farm', desc: '+10% food production/lvl. Critical for large armies.' },
             { name: 'Temple/Altar', desc: '+10% mana regen/lvl. +1 morale/hr recovery/lvl.' },
-            { name: 'Treasury', desc: '+8% gold cap/lvl. +4% gold income/lvl.' },
+            { name: 'Treasury', desc: '+4% gold income/lvl.' },
           ].map(b => (
             <div key={b.name} className="border-l-2 border-realm-gold/40 pl-2">
               <strong className="text-realm-text">{b.name}</strong> — {b.desc}
@@ -218,7 +218,7 @@ const TAB_CONTENT = [
         { icon: '🧪', tip: 'Craft before big attacks', detail: 'Queue a War Elixir (+25% ATK) or Berserker Brew (+50% ATK) in the Alchemist Tower before launching a Conquest. Also consider Plague Vials on rich targets.' },
         { icon: '🏪', tip: 'Check the Marketplace', detail: 'If you\'re low on Food or Mana, check if players are selling. You can also sell excess resources to fund troop training.' },
         { icon: '🛡️', tip: 'Build Arcane Sanctum early', detail: 'Even 1 level unlocks Clairvoyance (scout enemies) and Mana Shield (+15% DEF). The earlier you cast, the more intel you have.' },
-        { icon: '⚔️', tip: 'New player protection', detail: 'Provinces under 48 hours old cannot be attacked by bots. Use this window to build, explore, and prepare your defenses.' },
+        { icon: '⚔️', tip: 'New player protection', detail: 'New provinces get a 24-hour shield: nobody can attack, spy on, or cast hostile spells at them (attacking someone yourself drops it). Bots also leave provinces alone for their first 48 hours. Use this window to build, explore, and prepare your defenses.' },
         { icon: '🔔', tip: 'Check your notifications', detail: 'The bell icon shows incoming raids in real-time. Review the Reports page after being attacked to understand what you lost and adjust your defenses.' },
       ].map(t => (
         <div key={t.tip} className="realm-panel flex gap-3">

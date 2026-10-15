@@ -5,10 +5,10 @@ import { formatNumber, RACE_ICONS, isProtected } from '../utils/formatters';
 import { usePageTitle } from '../hooks/usePageTitle';
 
 const ATTACK_TYPES = [
-  { id: 'raid', label: 'Raid', icon: '🥷', desc: 'Steal resources. No land gained. Low casualties.' },
-  { id: 'conquest', label: 'Conquest', icon: '🏴', desc: 'Capture land (10-30%). Medium casualties.' },
-  { id: 'raze', label: 'Raze', icon: '🔥', desc: 'Destroy enemy buildings. High casualties on both sides.' },
-  { id: 'massacre', label: 'Massacre', icon: '💀', desc: 'Reduce enemy population. Very high casualties.' },
+  { id: 'raid', label: 'Raid', icon: '🥷', desc: 'Steal resources. No land gained.' },
+  { id: 'conquest', label: 'Conquest', icon: '🏴', desc: 'Capture land (10-30%, more with a bigger army).' },
+  { id: 'raze', label: 'Raze', icon: '🔥', desc: 'Knock one enemy building down a level.' },
+  { id: 'massacre', label: 'Massacre', icon: '💀', desc: 'Kill about 10% of enemy population.' },
 ];
 
 export default function Attack({ province, troops = [], refresh }) {
@@ -209,7 +209,7 @@ export default function Attack({ province, troops = [], refresh }) {
                   );
                 })}
                 <div className="text-xs text-realm-text-dim mt-1">
-                  Deploying: <span className="text-realm-gold">{totalDeployed}</span> troops | 5 AP
+                  Deploying: <span className="text-realm-gold">{totalDeployed}</span> troops | 3 AP
                 </div>
               </div>
             )}
@@ -223,7 +223,7 @@ export default function Attack({ province, troops = [], refresh }) {
             disabled={loading || !target || !totalDeployed || (province?.action_points || 0) < 5}
             className="realm-btn-red w-full text-base py-3"
           >
-            {loading ? 'Attacking...' : `⚔️ Launch ${ATTACK_TYPES.find(t => t.id === attackType)?.label} (5 AP)`}
+            {loading ? 'Attacking...' : `⚔️ Launch ${ATTACK_TYPES.find(t => t.id === attackType)?.label} (3 AP)`}
           </button>
         </div>
       </div>

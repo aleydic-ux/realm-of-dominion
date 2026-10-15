@@ -3,7 +3,7 @@ export default function AuthLayout({ children, subtitle, maxWidth = 'max-w-md' }
     <div
       className="relative min-h-screen flex items-center justify-center p-4"
       style={{
-        backgroundImage: "url('/MAIN PAGE BACKGROUND.png')",
+        backgroundImage: "url('/main-page-background.webp')",
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
