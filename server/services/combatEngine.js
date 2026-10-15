@@ -12,7 +12,7 @@ const BASE_RETURN_HOURS = 8;
  * @param {Array} attackerTechs - attacker's tech effects
  * @param {Array} defenderTechs - defender's tech effects
  */
-function resolveAttack({ attacker, defender, attackType, troopsDeployed, attackerTroopTypes, defenderTroops, defenderTroopTypes, buildings, attackerBuildings = {}, defenderWatchtowerDebuff = 0, attackerTechs, defenderTechs, attackerSpellEffects = [], defenderSpellEffects = [] }) {
+function resolveAttack({ attacker, defender, attackType, troopsDeployed, attackerTroopTypes, defenderTroops, defenderTroopTypes, buildings, attackerBuildings = {}, defenderWatchtowerDebuff = 0, defenderWallDebuff = 0, attackerTechs, defenderTechs, attackerSpellEffects = [], defenderSpellEffects = [] }) {
   const attackerCfg = raceConfig[attacker.race];
   const defenderCfg = raceConfig[defender.race];
 
@@ -96,7 +96,9 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
   const wallLevel = buildings['walls'] || 0;
   const fortressBonus = hasResearch(defenderTechs, 'wall_level_bonus') ? 1 : 0;
   const effectiveWallLevel = wallLevel + fortressBonus;
-  const wallBonus = 1 + (effectiveWallLevel * 0.15);
+  // Ironclad debuffs (negative, stacking) cut wall effectiveness, floor 0
+  const wallEffectiveness = Math.max(0, 1 + defenderWallDebuff);
+  const wallBonus = 1 + (effectiveWallLevel * 0.15 * wallEffectiveness);
 
   // Tunnel Rat bypasses walls
   const tunnelRatCount = troopsDeployed[nameToId.get('Tunnel Rat')] || 0;

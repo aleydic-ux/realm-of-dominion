@@ -85,6 +85,7 @@ router.post('/', async (req, res) => {
   const CRAFT_COMBAT_MAP = { attack_pct: 'troop_attack', defense_pct: 'troop_defense' };
   let attackerCraftEffects = [], defenderCraftEffects = [];
   let defenderWatchtowerDebuff = 0; // War Colossus: negative fraction of watchtower bonus
+  let defenderWallDebuff = 0;       // Ironclad: negative fraction of wall bonus
   try {
     const [acRes, dcRes] = await Promise.all([
       pool.query(
@@ -96,7 +97,7 @@ router.post('/', async (req, res) => {
       ),
       pool.query(
         `SELECT modifier_key, SUM(modifier_value) as total FROM active_effects
-         WHERE province_id = $1 AND modifier_key IN ('attack_pct','defense_pct','watchtower_debuff')
+         WHERE province_id = $1 AND modifier_key IN ('attack_pct','defense_pct','watchtower_debuff','wall_debuff')
            AND (expires_at IS NULL OR expires_at > NOW())
          GROUP BY modifier_key`,
         [target_id]
@@ -109,6 +110,7 @@ router.post('/', async (req, res) => {
       .filter(r => CRAFT_COMBAT_MAP[r.modifier_key])
       .map(r => ({ modifier_type: 'multiplier', target: CRAFT_COMBAT_MAP[r.modifier_key], value: parseFloat(r.total) }));
     defenderWatchtowerDebuff = parseFloat(dcRes.rows.find(r => r.modifier_key === 'watchtower_debuff')?.total || 0);
+    defenderWallDebuff = parseFloat(dcRes.rows.find(r => r.modifier_key === 'wall_debuff')?.total || 0);
   } catch (_) { /* active_effects table may not exist yet */ }
 
   const client = await pool.connect();
@@ -273,6 +275,7 @@ router.post('/', async (req, res) => {
       buildings: defenderBuildings,
       attackerBuildings,
       defenderWatchtowerDebuff,
+      defenderWallDebuff,
       attackerTechs,
       defenderTechs,
       attackerSpellEffects: [...attackerSpellEffects, ...attackerCraftEffects],
@@ -402,6 +405,16 @@ router.post('/', async (req, res) => {
           );
         }
 
+        // Ironclad: cuts the defender's wall effectiveness by 20% for 24h
+        if (effect.type === 'wall_debuff') {
+          await client.query(
+            `INSERT INTO active_effects
+               (province_id, source_province_id, item_key, effect_type, modifier_key, modifier_value, expires_at)
+             VALUES ($1, $2, 'ironclad', 'debuff', 'wall_debuff', $3, NOW() + INTERVAL '24 hours')`,
+            [target_id, attacker.id, -effect.value]
+          );
+        }
+
         // War Colossus: destroys 15% watchtower effectiveness (stored as a debuff flag)
         if (effect.type === 'watchtower_debuff') {
           // No .catch here: a failed statement aborts the transaction, so it must surface
@@ -463,6 +476,17 @@ router.post('/', async (req, res) => {
       [attacker.id]
     );
 
+    // Ashborn fury streak counts consecutive wins: a win adds a stack, a loss or draw resets it.
+    // Inside the transaction (the attacker row is locked) so quick successive attacks apply in order.
+    if (attacker.race === 'ashborn') {
+      await client.query(
+        `UPDATE provinces
+         SET ashborn_attack_streak = CASE WHEN $2 THEN ashborn_attack_streak + 1 ELSE 0 END, updated_at = NOW()
+         WHERE id = $1`,
+        [attacker.id, result.outcome === 'win']
+      );
+    }
+
     await client.query('COMMIT');
     // Return the connection now; the post-commit work below uses the pool
     client.release();
@@ -470,14 +494,6 @@ router.post('/', async (req, res) => {
 
     // ── Post-commit race state updates ──
     try {
-      // Ashborn attacker: increment attack streak
-      if (attacker.race === 'ashborn') {
-        await pool.query(
-          `UPDATE provinces SET ashborn_attack_streak = ashborn_attack_streak + 1, updated_at = NOW() WHERE id = $1`,
-          [attacker.id]
-        );
-      }
-
       // Mark defender as attacked this season (enables Ashborn battle_hardened)
       await pool.query(
         `UPDATE provinces SET attacked_this_season = TRUE, updated_at = NOW() WHERE id = $1`,

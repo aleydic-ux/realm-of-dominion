@@ -43,7 +43,7 @@ const RACES = [
   },
   {
     id: 'ashborn', label: 'Ashborn', icon: '🔥',
-    bonuses: 'Raids loot +25%, fury stacks per attack (+3% each, max 5), scorched earth on defense',
+    bonuses: 'Raids loot +25%, fury stacks per winning attack (+3% each, max 5; a loss or draw resets it), scorched earth on defense',
     lore: 'We have already burned. What can you do to us?',
   },
   {
