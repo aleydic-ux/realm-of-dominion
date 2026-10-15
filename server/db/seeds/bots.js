@@ -4,18 +4,10 @@
  */
 require('dotenv').config();
 const { Pool } = require('pg');
+const { RACES: BOT_RACES, startingBuildings } = require('../../constants/races');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-const UNIVERSAL_BUILDINGS = [
-  'farm', 'barracks', 'treasury', 'marketplace_stall', 'watchtower',
-  'walls', 'library', 'mine_quarry', 'temple_altar', 'war_hall', 'arcane_sanctum',
-];
-const RACE_BUILDINGS = {
-  human: 'royal_bank', orc: 'warchief_pit', undead: 'crypt',
-  elf: 'ancient_grove', dwarf: 'runic_forge',
-};
-const BOT_RACES = ['human', 'orc', 'undead', 'elf', 'dwarf'];
 const BOT_NAMES = [
   'Ironhold', 'Grimveil', 'Thornshire', 'Embervast', 'Coldmere',
   'Duskfall', 'Ravenmark', 'Stonehaven', 'Ashwood', 'Bleakspire',
@@ -67,7 +59,7 @@ async function seedBots() {
           [age.id, name, race, difficulty]
         );
 
-        const buildingTypes = [...UNIVERSAL_BUILDINGS, RACE_BUILDINGS[race]].filter(Boolean);
+        const buildingTypes = startingBuildings(race);
         for (const bt of buildingTypes) {
           await client.query(
             `INSERT INTO province_buildings (province_id, building_type) VALUES ($1, $2)`,

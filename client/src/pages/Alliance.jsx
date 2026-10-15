@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { useProvince } from '../hooks/useProvince';
 import { useSocket } from '../hooks/useSocket';
 import api, { getApiError } from '../utils/api';
 import { formatNumber, formatDateTime, RACE_ICONS } from '../utils/formatters';
@@ -408,9 +407,9 @@ function ManageTab({ allianceId, allianceData, myRank, myProvinceId, onRefresh, 
   );
 }
 
-export default function Alliance({ province }) {
-  const { alliance } = useProvince();
+export default function Alliance({ province, alliance }) {
   const { joinAlliance, onMessage } = useSocket();
+  const allianceId = alliance?.id;
   const [allianceData, setAllianceData] = useState(null);
   const [messages, setMessages] = useState([]);
   const [activeTab, setActiveTab] = useState('members');
@@ -419,21 +418,18 @@ export default function Alliance({ province }) {
 
   usePageTitle('Alliance');
 
+  // Keyed on the id: the alliance object is replaced on every province refresh
   useEffect(() => {
-    if (alliance) {
-      loadAlliance(alliance.id);
-      joinAlliance(alliance.id);
-    }
-  }, [alliance]);
+    if (allianceId) loadAlliance(allianceId);
+  }, [allianceId]);
 
   useEffect(() => {
-    if (alliance) {
-      const cleanup = onMessage(msg => {
-        setMessages(prev => [...prev, msg]);
-      });
-      return cleanup;
-    }
-  }, [alliance, onMessage]);
+    if (allianceId) return joinAlliance(allianceId);
+  }, [allianceId, joinAlliance]);
+
+  useEffect(() => {
+    if (allianceId) return onMessage(msg => setMessages(prev => [...prev, msg]));
+  }, [allianceId, onMessage]);
 
   async function loadAlliance(id) {
     try {

@@ -4,7 +4,7 @@ import api, { getApiError } from '../utils/api';
 import AuthLayout from '../components/AuthLayout';
 import AlertBanner from '../components/AlertBanner';
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, notice = '' }) {
   const location = useLocation();
   const successMessage = location.state?.successMessage || '';
   const [form, setForm] = useState({ username: '', password: '' });
@@ -30,6 +30,7 @@ export default function Login({ onLogin }) {
       <form onSubmit={handleSubmit} className="realm-panel flex flex-col gap-5" style={{ padding: '2rem', backdropFilter: 'blur(8px)', background: 'rgba(22, 32, 48, 0.85)' }}>
         <h2 className="text-realm-gold font-display text-center" style={{ fontSize: '1.6rem', letterSpacing: '0.1em', textShadow: '0 0 12px rgba(200,160,72,0.3)' }}>Login</h2>
 
+        <AlertBanner type="info" message={notice} />
         <AlertBanner type="success" message={successMessage} />
         <AlertBanner type="error" message={error} />
 

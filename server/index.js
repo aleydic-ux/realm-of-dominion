@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+require('./middleware/asyncErrors'); // before any route is created
 const cors = require('cors');
 const compression = require('compression');
 const http = require('http');
@@ -91,128 +92,10 @@ app.use('/api/achievements', achievementRoutes);
 app.use('/api/mail', mailRoutes);
 app.use('/api/spy', spyRoutes);
 
-// Diagnostic endpoint (temporary) — shows DB state for debugging
-app.get('/api/debug/state', async (req, res) => {
-  try {
-    const [ages, provinces, migrations] = await Promise.all([
-      pool.query('SELECT id, name, is_active, ends_at FROM ages ORDER BY id'),
-      pool.query('SELECT id, user_id, age_id, name, race FROM provinces ORDER BY id'),
-      pool.query("SELECT filename FROM migrations WHERE filename LIKE '%age%' OR filename LIKE '%027%' ORDER BY filename"),
-    ]);
-    res.json({
-      ages: ages.rows,
-      provinces: provinces.rows,
-      age_migrations: migrations.rows.map(r => r.filename),
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Authenticated debug — simulates the exact apRegen query for the logged-in user
-const authenticate = require('./middleware/auth');
-app.get('/api/debug/me', authenticate, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const provinceQuery = await pool.query(
-      `SELECT p.* FROM provinces p
-       JOIN ages a ON a.id = p.age_id
-       WHERE p.user_id = $1 AND a.is_active = true`,
-      [userId]
-    );
-    const columns = await pool.query(
-      `SELECT column_name FROM information_schema.columns WHERE table_name = 'provinces' ORDER BY ordinal_position`
-    );
-    const buildings = provinceQuery.rows[0] ? await pool.query(
-      'SELECT building_type, level FROM province_buildings WHERE province_id = $1',
-      [provinceQuery.rows[0].id]
-    ) : { rows: [] };
-    res.json({
-      jwt_user_id: userId,
-      province: provinceQuery.rows[0] || null,
-      province_columns: columns.rows.map(r => r.column_name),
-      buildings: buildings.rows,
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Manual stuck-timer clear + province/me simulation for ANY user (temp debug)
-app.get('/api/debug/fix/:userId', async (req, res) => {
-  const userId = parseInt(req.params.userId);
-  const results = { userId, steps: [] };
-  try {
-    // Step 1: Clear stuck timers
-    await pool.query(`UPDATE province_troops SET count_home = count_home + count_training, count_training = 0, training_completes_at = NULL, updated_at = NOW() WHERE count_training > 0`);
-    results.steps.push('cleared stuck troops');
-    await pool.query(`UPDATE province_buildings SET is_upgrading = false, upgrade_completes_at = NULL, updated_at = NOW() WHERE is_upgrading = true`);
-    results.steps.push('cleared stuck buildings');
-    await pool.query(`UPDATE province_research SET status = 'complete', updated_at = NOW() WHERE status = 'in_progress'`);
-    results.steps.push('cleared stuck research');
-    await pool.query(`UPDATE crafting_queue SET status = 'complete' WHERE status = 'in_progress' AND completes_at <= NOW()`);
-    results.steps.push('cleared stuck crafting');
-
-    // Step 2: Find province
-    const { rows: [province] } = await pool.query(
-      `SELECT p.id, p.name, p.race, p.age_id, a.is_active as age_active
-       FROM provinces p LEFT JOIN ages a ON a.id = p.age_id
-       WHERE p.user_id = $1 ORDER BY p.created_at DESC LIMIT 1`, [userId]
-    );
-    results.province = province || null;
-
-    // Step 3: Try the same queries as province/me
-    if (province) {
-      try {
-        const { getProvinceTechEffects } = require('./services/techEngine');
-        await getProvinceTechEffects(province.id);
-        results.steps.push('techEffects OK');
-      } catch (e) { results.steps.push('techEffects FAILED: ' + e.message); }
-
-      try {
-        const { lazyResourceUpdate } = require('./services/resourceEngine');
-        await lazyResourceUpdate(province.id);
-        results.steps.push('resourceUpdate OK');
-      } catch (e) { results.steps.push('resourceUpdate FAILED: ' + e.message); }
-
-      try {
-        const { checkAndReturnTroops } = require('./services/troopReturn');
-        await checkAndReturnTroops(province.id);
-        results.steps.push('troopReturn OK');
-      } catch (e) { results.steps.push('troopReturn FAILED: ' + e.message); }
-
-      try {
-        await pool.query(
-          `SELECT p.*, u.username, a.name as age_name, a.ends_at as age_ends_at, a.starts_at as age_started_at
-           FROM provinces p JOIN users u ON u.id = p.user_id JOIN ages a ON a.id = p.age_id WHERE p.id = $1`, [province.id]
-        );
-        results.steps.push('displayQuery OK');
-      } catch (e) { results.steps.push('displayQuery FAILED: ' + e.message); }
-    }
-
-    res.json(results);
-  } catch (err) {
-    results.steps.push('FATAL: ' + err.message);
-    res.status(500).json(results);
-  }
-});
-
-// Quick diagnostic — no DB needed, shows if env vars are set
-app.get('/api/ping', (req, res) => {
-  const url = process.env.DATABASE_URL || '';
-  const hostMatch = url.match(/@([^/:]+)/);
-  res.json({
-    status: 'server_ok',
-    db_host: hostMatch ? hostMatch[1] : 'NOT SET',
-    db_url_length: url.length,
-    node_env: process.env.NODE_ENV || 'not set',
-    uptime: Math.floor(process.uptime()) + 's',
-  });
-});
-
 // Health check — Render pings this to know the server is ready
 // Uses a tight 5s timeout so the probe never hangs
 app.get('/api/health', async (req, res) => {
+  if (!startupComplete) return res.status(503).json({ status: 'starting' });
   try {
     const timeout = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('DB ping timeout (5s)')), 5000)
@@ -229,6 +112,11 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// Unknown API routes return JSON 404 instead of the SPA fallback
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
 // Serve React frontend
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist));
@@ -238,26 +126,15 @@ app.get('*', (req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
+  // Response already started: let Express close the connection
+  if (res.headersSent) return next(err);
+  // Malformed input reaching a query (e.g. a non-numeric id) is the client's error
+  if (err.code === '22P02') return res.status(400).json({ error: 'Invalid input' });
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Clear ALL stuck timers on startup (handles timezone-corrupted data)
 const pool = require('./config/db');
-async function clearStuckTimers() {
-  try {
-    console.log('[startup] Clearing stuck timers...');
-    await pool.query(`UPDATE province_troops SET count_home = count_home + count_training, count_training = 0, training_completes_at = NULL, updated_at = NOW() WHERE count_training > 0`);
-    console.log('[startup] Cleared stuck troops.');
-    await pool.query(`UPDATE province_buildings SET is_upgrading = false, upgrade_completes_at = NULL, updated_at = NOW() WHERE is_upgrading = true`);
-    console.log('[startup] Cleared stuck buildings.');
-    await pool.query(`UPDATE province_research SET status = 'complete', updated_at = NOW() WHERE status = 'in_progress'`);
-    console.log('[startup] Cleared stuck research.');
-    console.log('[startup] All stuck timers cleared.');
-  } catch (err) {
-    console.error('[startup] Failed to clear stuck timers:', err.message);
-  }
-}
 
 // Season rollover — check every hour if current age has expired
 const { checkAndEndSeason } = require('./services/seasonEngine');
@@ -350,37 +227,10 @@ cron.schedule('*/10 * * * *', async () => {
   }
 });
 
-// Run pending migrations on startup (ensures they always run regardless of start command)
-const fs = require('fs');
-async function runMigrations() {
-  const client = await pool.connect();
-  try {
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS migrations (
-        id SERIAL PRIMARY KEY,
-        filename VARCHAR(255) UNIQUE NOT NULL,
-        applied_at TIMESTAMP DEFAULT NOW()
-      )
-    `);
-    const migrationsDir = path.join(__dirname, 'db', 'migrations');
-    const files = fs.readdirSync(migrationsDir).sort();
-    for (const file of files) {
-      if (!file.endsWith('.sql')) continue;
-      const { rows } = await client.query('SELECT id FROM migrations WHERE filename = $1', [file]);
-      if (rows.length > 0) continue;
-      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-      console.log(`[migrate] Applying ${file}...`);
-      await client.query(sql);
-      await client.query('INSERT INTO migrations (filename) VALUES ($1)', [file]);
-      console.log(`[migrate]   Done.`);
-    }
-    console.log('[migrate] All migrations up to date.');
-  } catch (err) {
-    console.error('[migrate] Migration failed:', err);
-  } finally {
-    client.release();
-  }
-}
+// Run pending migrations on startup too, so they apply whatever the start command is
+// (npm start runs migrate.js first; a second run waits on the lock and finds nothing to do)
+const { runMigrations } = require('./db/runMigrations');
+let startupComplete = false;
 
 // Prevent silent crashes from unhandled promise rejections
 process.on('unhandledRejection', (err) => {
@@ -416,9 +266,13 @@ server.listen(PORT, () => {
   console.log(`Realm of Dominion server running on port ${PORT}`);
   // Run startup tasks in background — non-blocking
   wakeDatabase()
-    .then(() => runMigrations())
-    .then(() => clearStuckTimers())
-    .catch((err) => console.error('Startup tasks failed:', err.message));
+    .then(() => runMigrations(pool, { log: (msg) => console.log(`[migrate] ${msg}`) }))
+    .then(() => { startupComplete = true; })
+    .catch((err) => {
+      // Never serve on a half-migrated schema: exit so the deploy fails / the host restarts
+      console.error('[startup] Migrations failed, exiting:', err.message);
+      process.exit(1);
+    });
 });
 
 module.exports = { app, server };

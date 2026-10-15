@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const jwt = require('jsonwebtoken');
+const { isSessionValid } = require('../middleware/auth');
 
 function initSocket(io) {
   // Authenticate socket connections
@@ -14,15 +15,19 @@ function initSocket(io) {
       const timeout = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Auth query timeout')), 8000)
       );
-      const query = pool.query(
-        `SELECT p.id as province_id, p.name as province_name, p.race
-         FROM provinces p
-         JOIN ages a ON a.id = p.age_id AND a.is_active = true
-         WHERE p.user_id = $1`,
-        [payload.userId]
-      );
-      const { rows } = await Promise.race([query, timeout]);
+      const query = Promise.all([
+        isSessionValid(payload),
+        pool.query(
+          `SELECT p.id as province_id, p.name as province_name, p.race
+           FROM provinces p
+           JOIN ages a ON a.id = p.age_id AND a.is_active = true
+           WHERE p.user_id = $1`,
+          [payload.userId]
+        ),
+      ]);
+      const [sessionValid, { rows }] = await Promise.race([query, timeout]);
 
+      if (!sessionValid) return next(new Error('Invalid token'));
       if (!rows.length) return next(new Error('No active province'));
       socket.provinceId = rows[0].province_id;
       socket.provinceName = rows[0].province_name;

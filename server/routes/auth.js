@@ -1,28 +1,13 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pool = require('../config/db');
 const authenticate = require('../middleware/auth');
+const { signToken } = require('../middleware/auth');
 const { sendPasswordResetEmail } = require('../services/email');
+const { RACES, startingBuildings } = require('../constants/races');
 
 const router = express.Router();
-
-const UNIVERSAL_BUILDINGS = [
-  'farm', 'barracks', 'treasury', 'marketplace_stall', 'watchtower',
-  'walls', 'library', 'mine_quarry', 'temple_altar', 'war_hall',
-];
-const RACE_BUILDINGS = {
-  human: 'royal_bank',
-  orc: 'warchief_pit',
-  undead: 'crypt',
-  elf: 'ancient_grove',
-  dwarf: 'runic_forge',
-  serpathi: 'shadowveil_den',
-  ironveil: 'artificers_foundry',
-  ashborn: 'ashfire_altar',
-  tidewarden: 'tidal_basin',
-};
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -34,7 +19,7 @@ router.post('/register', async (req, res) => {
   if (province_name.length < 1 || province_name.length > 50) {
     return res.status(400).json({ error: 'Province name must be 1–50 characters' });
   }
-  if (!['human','orc','undead','elf','dwarf','serpathi','ironveil','ashborn','tidewarden'].includes(race)) {
+  if (!RACES.includes(race)) {
     return res.status(400).json({ error: 'Invalid race' });
   }
   if (password.length < 8) {
@@ -116,7 +101,7 @@ router.post('/register', async (req, res) => {
     }
 
     // Init buildings (universal + race-specific)
-    const buildingTypes = [...UNIVERSAL_BUILDINGS, RACE_BUILDINGS[race]];
+    const buildingTypes = startingBuildings(race);
     for (const bt of buildingTypes) {
       await client.query(
         'INSERT INTO province_buildings (province_id, building_type) VALUES ($1, $2)',
@@ -137,9 +122,7 @@ router.post('/register', async (req, res) => {
 
     await client.query('COMMIT');
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-    });
+    const token = signToken(user);
 
     res.status(201).json({
       token, user: { id: user.id, username, email }, province_id: province.id,
@@ -163,10 +146,10 @@ router.post('/login', async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      'SELECT id, username, email, password_hash, is_active FROM users WHERE username = $1',
+      'SELECT id, username, email, password_hash, is_active, deleted_at, token_version FROM users WHERE username = $1',
       [username]
     );
-    if (!rows.length) {
+    if (!rows.length || rows[0].deleted_at) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     const user = rows[0];
@@ -181,9 +164,7 @@ router.post('/login', async (req, res) => {
 
     await pool.query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-    });
+    const token = signToken(user);
 
     res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
   } catch (err) {
@@ -277,7 +258,10 @@ router.post('/reset-password', async (req, res) => {
     const { id: tokenId, user_id } = rows[0];
     const newHash = await bcrypt.hash(password, 12);
 
-    await pool.query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [newHash, user_id]);
+    await pool.query(
+      'UPDATE users SET password_hash = $1, token_version = token_version + 1, updated_at = NOW() WHERE id = $2',
+      [newHash, user_id]
+    );
     await pool.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1', [tokenId]);
 
     res.json({ message: 'Password updated successfully.' });

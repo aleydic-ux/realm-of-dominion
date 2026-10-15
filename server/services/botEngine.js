@@ -5,6 +5,7 @@ const { resolveAttack } = require('./combatEngine');
 const { calculateAndStoreNetworth } = require('./networthCalc');
 const { getProvinceTechEffects } = require('./techEngine');
 const raceConfig = require('../config/raceConfig');
+const { RACES: BOT_RACES, startingBuildings } = require('../constants/races');
 
 // Socket.io reference — set from index.js to avoid circular imports
 let _io = null;
@@ -21,17 +22,6 @@ const PERSONALITIES = {
   adaptive:   { attackRatio: 1.3,     buildPriority: 'mixed', trainRate: 0.50 },
 };
 
-const UNIVERSAL_BUILDINGS = [
-  'farm', 'barracks', 'treasury', 'marketplace_stall', 'watchtower',
-  'walls', 'library', 'mine_quarry', 'temple_altar', 'war_hall', 'arcane_sanctum',
-];
-const RACE_BUILDINGS = {
-  human: 'royal_bank', orc: 'warchief_pit', undead: 'crypt',
-  elf: 'ancient_grove', dwarf: 'runic_forge',
-  serpathi: 'shadowveil_den', ironveil: 'artificers_foundry',
-  ashborn: 'ashfire_altar', tidewarden: 'tidal_basin',
-};
-const BOT_RACES = ['human', 'orc', 'undead', 'elf', 'dwarf', 'serpathi', 'ironveil', 'ashborn', 'tidewarden'];
 const MIN_WORLD_POPULATION = 12; // spawn more bots if total kingdoms < this
 
 const BOT_NAMES = [
@@ -138,7 +128,7 @@ async function spawnBots(client, ageId, protectionEndsAt) {
         [ageId, name, race, personality, aggressionLevel, protectionEndsAt]
       );
 
-      const buildingTypes = [...UNIVERSAL_BUILDINGS, RACE_BUILDINGS[race]].filter(Boolean);
+      const buildingTypes = startingBuildings(race);
       if (buildingTypes.length) {
         const bValues = buildingTypes.map((_, i) => `($1, $${i + 2})`).join(', ');
         await client.query(
@@ -180,7 +170,7 @@ async function spawnSingleBot(ageId, personality) {
       [ageId, name, race, personality, 0.3 + Math.random() * 0.5]
     );
 
-    const buildingTypes = [...UNIVERSAL_BUILDINGS, RACE_BUILDINGS[race]].filter(Boolean);
+    const buildingTypes = startingBuildings(race);
     for (const bt of buildingTypes) {
       await client.query(
         `INSERT INTO province_buildings (province_id, building_type) VALUES ($1, $2)`,

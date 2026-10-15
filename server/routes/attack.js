@@ -10,6 +10,9 @@ const { getBuildingLevels } = require('../services/resourceEngine');
 const { awardGems, checkLandMilestone } = require('../services/gemEngine');
 const { checkAchievements, incrementStat } = require('../services/achievementEngine');
 
+// Same per-target cap bots use (botEngine attacksAgainstTargetToday), rolling 24h window
+const MAX_ATTACKS_PER_TARGET_PER_DAY = 2;
+
 function isProtected(province) {
   return province.protection_ends_at && new Date(province.protection_ends_at) > new Date();
 }
@@ -21,10 +24,11 @@ router.use(authenticate, apRegen);
 // POST /api/attack
 router.post('/', async (req, res) => {
   if (!req.province) return res.status(404).json({ error: 'No province found' });
-  const attacker = req.province;
-  const { target_id, attack_type, troops } = req.body;
+  let attacker = req.province;
+  const { attack_type, troops } = req.body;
+  const target_id = parseInt(req.body.target_id);
 
-  if (!target_id || !attack_type || !troops) {
+  if (!Number.isInteger(target_id) || !attack_type || !troops) {
     return res.status(400).json({ error: 'target_id, attack_type, and troops required' });
   }
   if (!['raid','conquest','raze','massacre'].includes(attack_type)) {
@@ -33,21 +37,119 @@ router.post('/', async (req, res) => {
   if (attacker.action_points < 3) {
     return res.status(400).json({ error: 'Not enough AP (need 3)' });
   }
-  if (attacker.id === parseInt(target_id)) {
+  if (attacker.id === target_id) {
     return res.status(400).json({ error: 'Cannot attack yourself' });
   }
 
+  // Read-only combat context is loaded before taking a connection: nothing inside the
+  // transaction below may use the shared pool, or a burst of attacks on one province
+  // (all queued on its row lock, each holding a connection) starves it
+  let defenderBuildings, attackerTechs, defenderTechs;
+  try {
+    [defenderBuildings, attackerTechs, defenderTechs] = await Promise.all([
+      getBuildingLevels(target_id),
+      getProvinceTechEffects(attacker.id),
+      getProvinceTechEffects(target_id),
+    ]);
+  } catch (err) {
+    console.error('Attack context error:', err);
+    return res.status(500).json({ error: 'Attack failed' });
+  }
+
+  // Load active spell buffs for combat (graceful fallback if table not yet migrated)
+  let attackerSpellEffects = [], defenderSpellEffects = [];
+  try {
+    const [attackerSpellRes, defenderSpellRes] = await Promise.all([
+      pool.query(
+        `SELECT effect_json FROM spell_effects
+         WHERE caster_province_id = $1 AND target_province_id = $1
+           AND category = 'buff' AND expires_at > NOW()
+           AND effect_json->>'modifier_type' IS NOT NULL`,
+        [attacker.id]
+      ),
+      pool.query(
+        `SELECT effect_json FROM spell_effects
+         WHERE caster_province_id = $1 AND target_province_id = $1
+           AND category = 'buff' AND expires_at > NOW()
+           AND effect_json->>'modifier_type' IS NOT NULL`,
+        [target_id]
+      ),
+    ]);
+    attackerSpellEffects = attackerSpellRes.rows.map(r => r.effect_json).filter(Boolean);
+    defenderSpellEffects = defenderSpellRes.rows.map(r => r.effect_json).filter(Boolean);
+  } catch (_) { /* spell_effects table may not exist yet */ }
+
+  // Load active crafting effects and format as spell-compatible modifiers
+  // modifier_key 'attack_pct' → target 'troop_attack', 'defense_pct' → 'troop_defense'
+  const CRAFT_COMBAT_MAP = { attack_pct: 'troop_attack', defense_pct: 'troop_defense' };
+  let attackerCraftEffects = [], defenderCraftEffects = [];
+  try {
+    const [acRes, dcRes] = await Promise.all([
+      pool.query(
+        `SELECT modifier_key, SUM(modifier_value) as total FROM active_effects
+         WHERE province_id = $1 AND modifier_key IN ('attack_pct','defense_pct')
+           AND (expires_at IS NULL OR expires_at > NOW())
+         GROUP BY modifier_key`,
+        [attacker.id]
+      ),
+      pool.query(
+        `SELECT modifier_key, SUM(modifier_value) as total FROM active_effects
+         WHERE province_id = $1 AND modifier_key IN ('attack_pct','defense_pct')
+           AND (expires_at IS NULL OR expires_at > NOW())
+         GROUP BY modifier_key`,
+        [target_id]
+      ),
+    ]);
+    attackerCraftEffects = acRes.rows
+      .filter(r => CRAFT_COMBAT_MAP[r.modifier_key])
+      .map(r => ({ modifier_type: 'multiplier', target: CRAFT_COMBAT_MAP[r.modifier_key], value: parseFloat(r.total) }));
+    defenderCraftEffects = dcRes.rows
+      .filter(r => CRAFT_COMBAT_MAP[r.modifier_key])
+      .map(r => ({ modifier_type: 'multiplier', target: CRAFT_COMBAT_MAP[r.modifier_key], value: parseFloat(r.total) }));
+  } catch (_) { /* active_effects table may not exist yet */ }
+
   const client = await pool.connect();
+  let released = false;
   try {
     await client.query('BEGIN');
 
-    // Load defender
-    const { rows: [defender] } = await client.query(
-      'SELECT * FROM provinces WHERE id = $1', [target_id]
+    // Lock both provinces in id order so concurrent attacks (including A->B racing
+    // B->A) serialize instead of double-spending or deadlocking.
+    const { rows: locked } = await client.query(
+      'SELECT * FROM provinces WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE',
+      [[attacker.id, target_id]]
     );
+    const defender = locked.find(p => p.id === target_id);
     if (!defender) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Target province not found' });
+    }
+
+    // Spend AP up front against the locked row; the snapshot check above is only a fast path
+    const { rowCount: apOk } = await client.query(
+      `UPDATE provinces SET action_points = action_points - 3, updated_at = NOW()
+       WHERE id = $1 AND action_points >= 3`,
+      [attacker.id]
+    );
+    if (!apOk) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Not enough AP (need 3)' });
+    }
+    attacker = locked.find(p => p.id === attacker.id);
+
+    // Per-target cap. Counted after the attacker row is locked, so parallel attacks
+    // from the same province see each other's committed rows.
+    const { rows: [recent] } = await client.query(
+      `SELECT COUNT(*)::int AS count FROM attacks
+       WHERE attacker_province_id = $1 AND defender_province_id = $2
+         AND attacked_at > NOW() - INTERVAL '24 hours'`,
+      [attacker.id, target_id]
+    );
+    if (recent.count >= MAX_ATTACKS_PER_TARGET_PER_DAY) {
+      await client.query('ROLLBACK');
+      return res.status(429).json({
+        error: `You can only attack the same province ${MAX_ATTACKS_PER_TARGET_PER_DAY} times per 24 hours`,
+      });
     }
 
     // Newbie protection check
@@ -90,17 +192,11 @@ router.post('/', async (req, res) => {
       { rows: attackerTroops },
       { rows: defenderTroops },
       { rows: defenderTroopTypes },
-      defenderBuildings,
-      attackerTechs,
-      defenderTechs,
     ] = await Promise.all([
       client.query('SELECT * FROM troop_types WHERE race = $1', [attacker.race]),
-      client.query('SELECT * FROM province_troops WHERE province_id = $1', [attacker.id]),
+      client.query('SELECT * FROM province_troops WHERE province_id = $1 FOR UPDATE', [attacker.id]),
       client.query('SELECT * FROM province_troops WHERE province_id = $1', [target_id]),
       client.query('SELECT * FROM troop_types WHERE race = $1', [defender.race]),
-      getBuildingLevels(parseInt(target_id)),
-      getProvinceTechEffects(attacker.id),
-      getProvinceTechEffects(parseInt(target_id)),
     ]);
 
     // Validate troops
@@ -122,58 +218,6 @@ router.post('/', async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Must deploy at least one troop' });
     }
-
-    // Load active spell buffs for combat (graceful fallback if table not yet migrated)
-    let attackerSpellEffects = [], defenderSpellEffects = [];
-    try {
-      const [attackerSpellRes, defenderSpellRes] = await Promise.all([
-        pool.query(
-          `SELECT effect_json FROM spell_effects
-           WHERE caster_province_id = $1 AND target_province_id = $1
-             AND category = 'buff' AND expires_at > NOW()
-             AND effect_json->>'modifier_type' IS NOT NULL`,
-          [attacker.id]
-        ),
-        pool.query(
-          `SELECT effect_json FROM spell_effects
-           WHERE caster_province_id = $1 AND target_province_id = $1
-             AND category = 'buff' AND expires_at > NOW()
-             AND effect_json->>'modifier_type' IS NOT NULL`,
-          [parseInt(target_id)]
-        ),
-      ]);
-      attackerSpellEffects = attackerSpellRes.rows.map(r => r.effect_json).filter(Boolean);
-      defenderSpellEffects = defenderSpellRes.rows.map(r => r.effect_json).filter(Boolean);
-    } catch (_) { /* spell_effects table may not exist yet */ }
-
-    // Load active crafting effects and format as spell-compatible modifiers
-    // modifier_key 'attack_pct' → target 'troop_attack', 'defense_pct' → 'troop_defense'
-    const CRAFT_COMBAT_MAP = { attack_pct: 'troop_attack', defense_pct: 'troop_defense' };
-    let attackerCraftEffects = [], defenderCraftEffects = [];
-    try {
-      const [acRes, dcRes] = await Promise.all([
-        pool.query(
-          `SELECT modifier_key, SUM(modifier_value) as total FROM active_effects
-           WHERE province_id = $1 AND modifier_key IN ('attack_pct','defense_pct')
-             AND (expires_at IS NULL OR expires_at > NOW())
-           GROUP BY modifier_key`,
-          [attacker.id]
-        ),
-        pool.query(
-          `SELECT modifier_key, SUM(modifier_value) as total FROM active_effects
-           WHERE province_id = $1 AND modifier_key IN ('attack_pct','defense_pct')
-             AND (expires_at IS NULL OR expires_at > NOW())
-           GROUP BY modifier_key`,
-          [parseInt(target_id)]
-        ),
-      ]);
-      attackerCraftEffects = acRes.rows
-        .filter(r => CRAFT_COMBAT_MAP[r.modifier_key])
-        .map(r => ({ modifier_type: 'multiplier', target: CRAFT_COMBAT_MAP[r.modifier_key], value: parseFloat(r.total) }));
-      defenderCraftEffects = dcRes.rows
-        .filter(r => CRAFT_COMBAT_MAP[r.modifier_key])
-        .map(r => ({ modifier_type: 'multiplier', target: CRAFT_COMBAT_MAP[r.modifier_key], value: parseFloat(r.total) }));
-    } catch (_) { /* active_effects table may not exist yet */ }
 
     // Phantom attack validation (Tidewarden once-per-season ability)
     const usePhantomAttack = req.body.use_phantom_attack === true;
@@ -239,14 +283,18 @@ router.post('/', async (req, res) => {
     // Apply attacker losses (remove from home, add to deployed - losses)
     for (const [troopTypeIdStr, count] of Object.entries(troopsDeployed)) {
       const troopTypeId = parseInt(troopTypeIdStr);
-      await client.query(
+      const { rowCount: troopsOk } = await client.query(
         `UPDATE province_troops
          SET count_home = count_home - $1,
              count_deployed = count_deployed + $1,
              updated_at = NOW()
-         WHERE province_id = $2 AND troop_type_id = $3`,
+         WHERE province_id = $2 AND troop_type_id = $3 AND count_home >= $1`,
         [count, attacker.id, troopTypeId]
       );
+      if (!troopsOk) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `Not enough troops of type ${troopTypeId} at home` });
+      }
     }
 
     // Remove dead troops from deployed
@@ -382,12 +430,7 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // AP deduction and attack record
-    await client.query(
-      `UPDATE provinces SET action_points = action_points - 3, updated_at = NOW() WHERE id = $1`,
-      [attacker.id]
-    );
-
+    // Attack record
     // Build a name snapshot so Reports can show names even if troop_types IDs change
     const nameMap = {};
     for (const tt of [...attackerTroopTypes, ...defenderTroopTypes]) {
@@ -410,14 +453,15 @@ router.post('/', async (req, res) => {
     );
 
     // Delete single-battle crafting effects (expires_at IS NULL) for attacker after combat
-    try {
-      await pool.query(
-        `DELETE FROM active_effects WHERE province_id = $1 AND expires_at IS NULL`,
-        [attacker.id]
-      );
-    } catch (_) { /* active_effects may not exist yet */ }
+    await client.query(
+      `DELETE FROM active_effects WHERE province_id = $1 AND expires_at IS NULL`,
+      [attacker.id]
+    );
 
     await client.query('COMMIT');
+    // Return the connection now; the post-commit work below uses the pool
+    client.release();
+    released = true;
 
     // ── Post-commit race state updates ──
     try {
@@ -634,11 +678,11 @@ router.post('/', async (req, res) => {
       troops_return_at: result.troopsReturnAt,
     });
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (!released) await client.query('ROLLBACK').catch(() => {});
     console.error('Attack error:', err);
-    res.status(500).json({ error: 'Attack failed' });
+    if (!res.headersSent) res.status(500).json({ error: 'Attack failed' });
   } finally {
-    client.release();
+    if (!released) client.release();
   }
 });
 

@@ -1,8 +1,9 @@
 const { Pool, types } = require('pg');
 require('dotenv').config();
 
-// Parse TIMESTAMP WITHOUT TIME ZONE as UTC (OID 1114)
-// By default node-postgres interprets it in local system timezone, causing comparison bugs
+// Timestamp columns are TIMESTAMPTZ (migration 050), which node-postgres parses as
+// absolute instants. Any stray TIMESTAMP WITHOUT TIME ZONE value (OID 1114) is read
+// as UTC rather than the server's local zone, matching how 050 converted old data.
 types.setTypeParser(1114, (val) => new Date(val + 'Z'));
 
 // Clean up connection string:
@@ -18,9 +19,14 @@ if (connectionString && !connectionString.includes('connect_timeout')) {
 
 const QUERY_TIMEOUT_MS = 15000;
 
+// Hosted databases need SSL; a local Postgres usually has none. Off for localhost URLs
+// or an explicit ?sslmode=disable (the param itself is stripped above).
+const rawUrl = process.env.DATABASE_URL || '';
+const sslDisabled = /[?&]sslmode=disable(&|$)/i.test(rawUrl) || rawUrl.includes('localhost');
+
 const pool = new Pool({
   connectionString,
-  ssl: process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost') ? { rejectUnauthorized: false } : false,
+  ssl: process.env.DATABASE_URL && !sslDisabled ? { rejectUnauthorized: false } : false,
   // Pool sizing — Neon free tier limits concurrent connections; keep moderate
   max: 10,
   // Kill idle connections after 20s so Neon doesn't silently drop them
@@ -40,6 +46,16 @@ pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err.message);
 });
 
+// Give every client an error handler once, when the pool opens the connection.
+// Without one, a FATAL PostgreSQL error (code 57P01) on a checked-out client causes
+// an unhandled 'error' event and crashes the process. Attaching it per checkout
+// instead stacked a new listener on each reuse of the same pooled client.
+pool.on('connect', (client) => {
+  client.on('error', (err) => {
+    console.error('DB client error (connection terminated):', err.message);
+  });
+});
+
 // Wrap pool.query() to DESTROY stuck connections on timeout.
 //
 // The old Promise.race approach had a fatal flaw: when the timeout fired,
@@ -50,7 +66,6 @@ pool.on('error', (err) => {
 // This version checks out a client explicitly so we can call
 // client.release(true) on timeout — which destroys the connection and lets
 // the pool create a fresh one.
-const _poolQuery = pool.query.bind(pool);
 const _connect = pool.connect.bind(pool);
 
 pool.query = async function queryWithTimeout(text, params) {
@@ -88,17 +103,6 @@ pool.query = async function queryWithTimeout(text, params) {
         }
       });
   });
-};
-
-// Wrap pool.connect() so every checked-out client gets a silent error handler.
-// Without this, a FATAL PostgreSQL error (code 57P01) on a client with no
-// listener causes an unhandled 'error' event and crashes the process.
-pool.connect = async function wrappedConnect() {
-  const client = await _connect();
-  client.on('error', (err) => {
-    console.error('DB client error (connection terminated):', err.message);
-  });
-  return client;
 };
 
 module.exports = pool;

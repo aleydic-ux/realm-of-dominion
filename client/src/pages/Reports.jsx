@@ -260,8 +260,9 @@ export default function Reports({ province }) {
       try {
         const { data } = await api.get('/province/me/attacks');
         if (!cancelled) {
-          setAttacks(data.attacks || data);
-          setTroopTypes(data.troopTypes || {});
+          // Normalize so a malformed response renders an empty list instead of crashing
+          setAttacks(Array.isArray(data?.attacks) ? data.attacks : Array.isArray(data) ? data : []);
+          setTroopTypes(data?.troopTypes && typeof data.troopTypes === 'object' ? data.troopTypes : {});
         }
       } catch {
         if (!cancelled) setLoadError(true);

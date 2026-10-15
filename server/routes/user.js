@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const pool = require('../config/db');
 const authenticate = require('../middleware/auth');
+const { signToken } = require('../middleware/auth');
 const { sendEmailVerificationEmail } = require('../services/email');
 
 const router = express.Router();
@@ -130,12 +131,17 @@ router.post('/change-password', authenticate, async (req, res) => {
     if (!rows.length) return res.status(401).json({ error: 'User not found.' });
 
     const valid = await bcrypt.compare(currentPassword, rows[0].password_hash);
-    if (!valid) return res.status(401).json({ error: 'Current password is incorrect.' });
+    // 400, not 401: a wrong current password is a form error, not an expired session
+    if (!valid) return res.status(400).json({ error: 'Current password is incorrect.' });
 
     const newHash = await bcrypt.hash(newPassword, 12);
-    await pool.query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [newHash, req.user.id]);
+    // Bumping token_version revokes every other session; hand this one a fresh token
+    const { rows: [user] } = await pool.query(
+      'UPDATE users SET password_hash = $1, token_version = token_version + 1, updated_at = NOW() WHERE id = $2 RETURNING id, token_version',
+      [newHash, req.user.id]
+    );
 
-    res.json({ message: 'Password updated.' });
+    res.json({ message: 'Password updated.', token: signToken(user) });
   } catch (err) {
     console.error('Change password error:', err);
     res.status(500).json({ error: 'Failed to update password.' });

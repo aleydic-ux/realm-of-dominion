@@ -70,7 +70,7 @@ const BUILDING_EFFECTS = {
   walls: '+15% defense bonus per level',
   library: '+10% research speed per level',
   mine_quarry: '+8% industry points per level',
-  temple_altar: '+10% mana regen, +5% morale recovery per level',
+  temple_altar: '+10% mana regen, +1 morale/hr recovery per level',
   war_hall: '+5% troop attack; unlocks T4@L3, T5@L5',
   royal_bank: '+15% gold income per level',
   warchief_pit: '+10% Warchief/Berserker power per level',
