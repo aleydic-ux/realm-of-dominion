@@ -231,6 +231,154 @@ const techs = [
     effect: { modifier_type: 'multiplier', targets: ['troop_attack', 'troop_defense'], value: 0.1, scope: 'race_specific' },
     desc: 'All Dwarf troops +10% ATK and DEF'
   },
+
+  // Serpathi Tech Tree
+  {
+    race: 'serpathi', tier: 1, name: 'Venom Glands', gold: 1000, mana: 50, hours: 6, lib: 2, prereq: null,
+    effect: { modifier_type: 'multiplier', target: 'troop_attack', value: 0.2, scope: 'troop_name:Venom Striker' },
+    desc: 'Venom Strikers +20% ATK'
+  },
+  {
+    race: 'serpathi', tier: 1, name: 'Shadow Craft', gold: 1000, mana: 50, hours: 6, lib: 2, prereq: null,
+    effect: { modifier_type: 'multiplier', target: 'spy_success', value: 0.1, scope: 'all' },
+    desc: '+10% spy operation success'
+  },
+  {
+    race: 'serpathi', tier: 2, name: 'Serpent Scales', gold: 2500, mana: 150, hours: 13, lib: 2, prereq: 'Venom Glands',
+    effect: { modifier_type: 'multiplier', target: 'troop_defense', value: 0.2, scope: 'troop_name:Thornblade' },
+    desc: 'Thornblades +20% DEF'
+  },
+  {
+    race: 'serpathi', tier: 2, name: 'Silent Approach', gold: 2500, mana: 150, hours: 13, lib: 2, prereq: 'Shadow Craft',
+    effect: { modifier_type: 'multiplier', target: 'spy_detection', value: -0.2, scope: 'all' },
+    desc: 'Spy operations are 20% less likely to be detected'
+  },
+  {
+    race: 'serpathi', tier: 2, name: 'Coiled Reserves', gold: 2500, mana: 150, hours: 13, lib: 2, prereq: null,
+    effect: { modifier_type: 'multiplier', target: 'troop_defense', value: 0.1, scope: 'all' },
+    desc: '+10% all troop defense'
+  },
+  {
+    race: 'serpathi', tier: 3, name: 'Hydra Brood', gold: 5000, mana: 300, hours: 22, lib: 3, prereq: 'Serpent Scales',
+    effect: { modifier_type: 'multiplier', target: 'troop_attack', value: 0.2, scope: 'troop_name:Serpent Hydra' },
+    desc: 'Serpent Hydras +20% ATK'
+  },
+  {
+    race: 'serpathi', tier: 3, name: 'Toxin Mastery', gold: 5000, mana: 300, hours: 22, lib: 3, prereq: 'Silent Approach',
+    effect: { modifier_type: 'flat', target: 'enemy_morale', value: -5, scope: 'all' },
+    desc: 'Winning attacks drain 5 extra enemy morale'
+  },
+
+  // Ironveil Tech Tree
+  {
+    race: 'ironveil', tier: 1, name: 'Steam Boilers', gold: 1000, mana: 50, hours: 6, lib: 2, prereq: null,
+    effect: { modifier_type: 'multiplier', target: 'industry_points', value: 0.2, scope: 'all' },
+    desc: '+20% industry output'
+  },
+  {
+    race: 'ironveil', tier: 1, name: 'Reinforced Plating', gold: 1000, mana: 50, hours: 6, lib: 2, prereq: null,
+    effect: { modifier_type: 'multiplier', target: 'troop_defense', value: 0.2, scope: 'troop_name:Clockwork Knight' },
+    desc: 'Clockwork Knights +20% DEF'
+  },
+  {
+    race: 'ironveil', tier: 2, name: 'Siege Engineering', gold: 2500, mana: 150, hours: 13, lib: 2, prereq: 'Steam Boilers',
+    effect: { modifier_type: 'multiplier', target: 'troop_attack', value: 0.25, scope: 'troop_name:Siege Automaton' },
+    desc: 'Siege Automatons +25% ATK'
+  },
+  {
+    race: 'ironveil', tier: 2, name: 'Assembly Lines', gold: 2500, mana: 150, hours: 13, lib: 2, prereq: 'Steam Boilers',
+    effect: { modifier_type: 'multiplier', target: 'building_cost', value: -0.2, scope: 'all' },
+    desc: '-20% building cost and construction time'
+  },
+  {
+    race: 'ironveil', tier: 2, name: 'Gear Discipline', gold: 2500, mana: 150, hours: 13, lib: 2, prereq: 'Reinforced Plating',
+    effect: { modifier_type: 'multiplier', target: 'troop_attack', value: 0.1, scope: 'all' },
+    desc: '+10% all troop attack'
+  },
+  {
+    race: 'ironveil', tier: 3, name: 'Colossus Forge', gold: 5000, mana: 300, hours: 22, lib: 3, prereq: 'Siege Engineering',
+    effect: { modifier_type: 'multiplier', targets: ['troop_attack', 'troop_defense'], value: 0.2, scope: 'troop_name:War Colossus' },
+    desc: 'War Colossus +20% ATK and DEF'
+  },
+  {
+    race: 'ironveil', tier: 3, name: 'Bastion Protocol', gold: 5000, mana: 300, hours: 22, lib: 3, prereq: 'Gear Discipline',
+    effect: { modifier_type: 'multiplier', target: 'troop_defense', value: 0.15, scope: 'all' },
+    desc: '+15% all troop defense'
+  },
+
+  // Ashborn Tech Tree
+  {
+    race: 'ashborn', tier: 1, name: 'Kindling', gold: 1000, mana: 50, hours: 6, lib: 2, prereq: null,
+    effect: { modifier_type: 'multiplier', target: 'raid_resources', value: 0.15, scope: 'all' },
+    desc: '+15% resources stolen on raids'
+  },
+  {
+    race: 'ashborn', tier: 1, name: 'Ember Training', gold: 1000, mana: 50, hours: 6, lib: 2, prereq: null,
+    effect: { modifier_type: 'multiplier', target: 'troop_attack', value: 0.2, scope: 'troop_name:Ember Raider' },
+    desc: 'Ember Raiders +20% ATK'
+  },
+  {
+    race: 'ashborn', tier: 2, name: 'Wildfire', gold: 2500, mana: 150, hours: 13, lib: 2, prereq: 'Kindling',
+    effect: { modifier_type: 'multiplier', target: 'enemy_food', value: -0.05, scope: 'all' },
+    desc: 'Winning attacks burn 5% of enemy food'
+  },
+  {
+    race: 'ashborn', tier: 2, name: 'Fire Walk', gold: 2500, mana: 150, hours: 13, lib: 2, prereq: 'Ember Training',
+    effect: { modifier_type: 'multiplier', target: 'troop_defense', value: 0.25, scope: 'troop_name:Flame Warden' },
+    desc: 'Flame Wardens +25% DEF'
+  },
+  {
+    race: 'ashborn', tier: 2, name: 'Smoldering Rage', gold: 2500, mana: 150, hours: 13, lib: 2, prereq: null,
+    effect: { modifier_type: 'flat', target: 'fury_per_stack', value: 0.01, scope: 'all' },
+    desc: 'Fury stacks give +1% more each'
+  },
+  {
+    race: 'ashborn', tier: 3, name: 'Cinder Legion', gold: 5000, mana: 300, hours: 22, lib: 3, prereq: 'Fire Walk',
+    effect: { modifier_type: 'multiplier', target: 'troop_attack', value: 0.25, scope: 'troop_name:Cinderborn' },
+    desc: 'Cinderborn +25% ATK'
+  },
+  {
+    race: 'ashborn', tier: 3, name: 'Inferno', gold: 5000, mana: 300, hours: 22, lib: 3, prereq: 'Wildfire',
+    effect: { modifier_type: 'multiplier', targets: ['troop_attack', 'troop_defense'], value: 0.2, scope: 'troop_name:Infernal Drake' },
+    desc: 'Infernal Drakes +20% ATK and DEF'
+  },
+
+  // Tidewarden Tech Tree
+  {
+    race: 'tidewarden', tier: 1, name: 'Undertow', gold: 1000, mana: 50, hours: 6, lib: 2, prereq: null,
+    effect: { modifier_type: 'multiplier', target: 'troop_defense', value: 0.25, scope: 'troop_name:Tide Watcher' },
+    desc: 'Tide Watchers +25% DEF'
+  },
+  {
+    race: 'tidewarden', tier: 1, name: 'Pearl Divers', gold: 1000, mana: 50, hours: 6, lib: 2, prereq: null,
+    effect: { modifier_type: 'multiplier', target: 'food_production', value: 0.15, scope: 'all' },
+    desc: '+15% food production'
+  },
+  {
+    race: 'tidewarden', tier: 2, name: 'Riptide', gold: 2500, mana: 150, hours: 13, lib: 2, prereq: 'Undertow',
+    effect: { modifier_type: 'multiplier', targets: ['troop_attack', 'troop_defense'], value: 0.2, scope: 'troop_name:Current Dancer' },
+    desc: 'Current Dancers +20% ATK and DEF'
+  },
+  {
+    race: 'tidewarden', tier: 2, name: 'Harbor Walls', gold: 2500, mana: 150, hours: 13, lib: 2, prereq: 'Undertow',
+    effect: { modifier_type: 'multiplier', target: 'wall_effectiveness', value: 0.2, scope: 'all' },
+    desc: '+20% wall effectiveness'
+  },
+  {
+    race: 'tidewarden', tier: 2, name: 'Merchant Fleet', gold: 2500, mana: 150, hours: 13, lib: 2, prereq: 'Pearl Divers',
+    effect: { modifier_type: 'multiplier', target: 'marketplace_sale', value: 0.15, scope: 'all' },
+    desc: '+15% marketplace sale earnings'
+  },
+  {
+    race: 'tidewarden', tier: 3, name: 'Leviathan Bulwark', gold: 5000, mana: 300, hours: 22, lib: 3, prereq: 'Harbor Walls',
+    effect: { modifier_type: 'multiplier', target: 'troop_defense', value: 0.2, scope: 'troop_name:Leviathan Guard' },
+    desc: 'Leviathan Guard +20% DEF'
+  },
+  {
+    race: 'tidewarden', tier: 3, name: 'Kraken\'s Call', gold: 5000, mana: 300, hours: 22, lib: 3, prereq: 'Riptide',
+    effect: { modifier_type: 'multiplier', target: 'troop_attack', value: 0.2, scope: 'troop_name:Kraken Lord' },
+    desc: 'Kraken Lords +20% ATK'
+  },
 ];
 
 async function seed() {

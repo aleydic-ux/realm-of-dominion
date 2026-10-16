@@ -65,7 +65,7 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
   // Ashborn fury: +3% per consecutive attack streak (max 5 stacks = +15%);
   // Ashfire Altar adds +1% per stack per level
   if (attackerCfg.specialRules.includes('ashborn_fury') && attacker.ashborn_attack_streak > 0) {
-    const perStack = 0.03 + 0.01 * (attackerBuildings['ashfire_altar'] || 0);
+    const perStack = 0.03 + 0.01 * (attackerBuildings['ashfire_altar'] || 0) + sumEffects('fury_per_stack', attackerTechs);
     attackerPower *= 1 + (Math.min(5, attacker.ashborn_attack_streak) * perStack);
   }
 
@@ -273,7 +273,13 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
     specialEffects.push({ type: 'watchtower_debuff', value: 0.15 });
   }
 
-  // Plague Carrier: winning attacks burn enemy food
+  // Toxin Mastery (Serpathi): winning attacks drain extra enemy morale
+  const toxin = sumEffects('enemy_morale', attackerTechs);
+  if (outcome === 'win' && toxin < 0) {
+    specialEffects.push({ type: 'morale_drain', value: toxin });
+  }
+
+  // Plague Carrier / Wildfire: winning attacks burn enemy food
   const plague = -sumEffects('enemy_food', attackerTechs);
   if (outcome === 'win' && plague > 0) {
     specialEffects.push({ type: 'food_burn', value: plague });

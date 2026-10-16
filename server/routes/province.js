@@ -5,7 +5,7 @@ const authenticate = require('../middleware/auth');
 const apRegen = require('../middleware/apRegen');
 const { lazyResourceUpdate, calculateBuildingCost, getBuildingLevels, computeRates, loadRateEffects, loadTroopTotals,
   EFFECTIVE_LEVEL_SQL, maxBuildingLevel } = require('../services/resourceEngine');
-const { getProvinceTechEffects, applyTechModifiers, allianceBuffMultiplier } = require('../services/techEngine');
+const { getProvinceTechEffects, applyTechModifiers, sumEffects, allianceBuffMultiplier } = require('../services/techEngine');
 const { calculateAndStoreNetworth } = require('../services/networthCalc');
 const { batchHours, queueBatch } = require('../services/trainingQueue');
 const { checkAndReturnTroops } = require('../services/troopReturn');
@@ -314,10 +314,9 @@ router.post('/build', async (req, res) => {
   const targetLevel = building.level + 1;
   const cost = calculateBuildingCost(targetLevel, province.race, building_type);
 
-  // Apply Steam Engine tech: -30% cost
+  // Steam Engine (Dwarf) / Assembly Lines (Ironveil): cheaper and faster construction
   const techEffects = await getProvinceTechEffects(province.id);
-  const steamEngine = techEffects.find(e => e && e.target === 'building_cost');
-  const costMultiplier = steamEngine ? 1 + steamEngine.value : 1; // value is -0.30
+  const costMultiplier = Math.max(0.1, 1 + sumEffects('building_cost', techEffects)); // e.g. -0.30
   const finalGold = Math.ceil(cost.gold * costMultiplier);
   const finalPP = Math.ceil(cost.industry_points * costMultiplier);
   const finalTimeHours = cost.time_hours * costMultiplier;

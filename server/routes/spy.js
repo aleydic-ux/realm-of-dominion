@@ -167,6 +167,8 @@ router.post('/execute', async (req, res) => {
     let successChance = action.base_success;
     if (defender.race === 'serpathi') successChance *= 0.75;           // scout_resistance
     if (atkBuffs.has('espionage_t3_shadowmaster')) successChance = Math.min(0.95, successChance * 3);
+    // Shadow Craft (Serpathi research)
+    successChance = Math.min(0.95, successChance * (1 + sumEffects('spy_success', atkTechs)));
 
     // Resolve detection chance
     let detectionChance = action.base_detection;
@@ -174,6 +176,8 @@ router.post('/execute', async (req, res) => {
     if (defBuffs.has('espionage_t1_counterintelligence')) detectionChance = Math.min(1, detectionChance + 0.25);
     // Watchtower: +5% detection per level; Scouting Network makes it 20% more effective
     detectionChance = Math.min(1, detectionChance + watchtowerLevel * 0.05 * (1 + sumEffects('watchtower_bonus', defTechs)));
+    // Silent Approach (Serpathi research): harder to catch
+    detectionChance = Math.max(0, detectionChance * (1 + sumEffects('spy_detection', atkTechs)));
 
     // Ghost Network: guaranteed success, consumed by this op (only if we actually removed it)
     let hasGhostNetwork = false;
