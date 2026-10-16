@@ -3,7 +3,7 @@ const pool = require('../config/db');
 const withTransaction = require('../db/withTransaction');
 const authenticate = require('../middleware/auth');
 const apRegen = require('../middleware/apRegen');
-const { lazyResourceUpdate, calculateBuildingCost, getBuildingLevels, computeRates, loadRateEffects } = require('../services/resourceEngine');
+const { lazyResourceUpdate, calculateBuildingCost, getBuildingLevels, computeRates, loadRateEffects, loadTroopTotals } = require('../services/resourceEngine');
 const { getProvinceTechEffects, applyTechModifiers, allianceBuffMultiplier } = require('../services/techEngine');
 const { calculateAndStoreNetworth } = require('../services/networthCalc');
 const { checkAndReturnTroops } = require('../services/troopReturn');
@@ -113,23 +113,20 @@ router.get('/rates', async (req, res) => {
   const provinceId = req.province.id;
   try {
     const province = req.province;
-    const [techEffects, buildings, { rows: [{ total_upkeep }] }, { spellModifiers, activeEffects }] = await Promise.all([
+    const [techEffects, buildings, { troopUpkeepRaw, troopWages }, { spellModifiers, activeEffects }] = await Promise.all([
       getProvinceTechEffects(provinceId),
       getBuildingLevels(provinceId),
-      pool.query(
-        `SELECT SUM(pt.count_home * tt.food_upkeep) as total_upkeep
-         FROM province_troops pt
-         JOIN troop_types tt ON tt.id = pt.troop_type_id
-         WHERE pt.province_id = $1`, [provinceId]
-      ),
+      loadTroopTotals(provinceId),
       loadRateEffects(provinceId),
     ]);
-    const { goldRate, foodRate, foodProduction, foodUpkeep, manaRate, industryRate } = computeRates({
-      province, buildings, techEffects, troopUpkeepRaw: parseFloat(total_upkeep || 0), spellModifiers, activeEffects,
+    const { goldRate, goldIncome, foodRate, foodProduction, foodUpkeep, manaRate, industryRate } = computeRates({
+      province, buildings, techEffects, troopUpkeepRaw, troopWages, spellModifiers, activeEffects,
     });
 
     res.json({
       gold_per_hour: Math.floor(goldRate),
+      gold_income: Math.floor(goldIncome),
+      troop_wages: Math.ceil(troopWages),
       food_per_hour: Math.floor(foodRate),
       food_production: Math.floor(foodProduction),
       food_upkeep: Math.floor(foodUpkeep),

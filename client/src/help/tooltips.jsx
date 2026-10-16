@@ -7,7 +7,7 @@ export const RESOURCE_TOOLTIPS = {
   gold: (
     <>
       <strong style={{color:'#c8a048'}}>Gold</strong> — Your treasury.<br/>
-      Earned from your land, Treasury building, and trade.<br/>
+      Earned from your land, Treasury building, and trade. Troops draw wages every hour.<br/>
       Spent on troops, buildings, research, and crafting.
     </>
   ),
@@ -50,7 +50,7 @@ export const RESOURCE_TOOLTIPS = {
 
 export const PROVINCE_TOOLTIPS = {
   population: 'Starts at 500. Eats food every hour; Massacre attacks kill it.',
-  morale: 'Province morale (0–100%). Recovers 2%/hr (+1%/hr per Temple/Altar level); drops 5%/hr while food is below zero. Scales attack and defense power.',
+  morale: 'Province morale (0–100%). Recovers 2%/hr (+1%/hr per Temple/Altar level); drops 5%/hr while food is below zero or wages go unpaid. Scales attack and defense power.',
   networth: 'Total value of your province — troops + buildings + land + resources. Used for leaderboard ranking.',
 };
 

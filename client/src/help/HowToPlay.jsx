@@ -53,13 +53,13 @@ const TAB_CONTENT = [
   () => (
     <div className="space-y-3 text-sm">
       {[
-        { icon: '💰', name: 'Gold', color: '#c8a048', earn: 'Land (income scales with acres), Treasury building, trade, Human bonus', spend: 'Training troops, buildings, research, crafting' },
+        { icon: '💰', name: 'Gold', color: '#c8a048', earn: 'Land (income scales with acres), Treasury building, trade, Human bonus', spend: 'Training troops, troop wages (paid hourly), buildings, research, crafting' },
         { icon: '🌾', name: 'Food', color: '#2a8a48', earn: 'Farm building, Crop Rotation research, Harvest Tonic potion, land', spend: 'Consumed by troops every hour. If food hits 0, morale drops.' },
         { icon: '🔮', name: 'Mana', color: '#8830cc', earn: 'Arcane Sanctum (+5%/lvl), Temple/Altar (+10%/lvl), Ancient Grove (Elf), land, Ley Lines spell', spend: 'Casting spells, crafting potions' },
         { icon: '⚙️', name: 'Industry', color: '#c8d8e8', earn: 'Mine/Quarry (+8%/lvl), Industry Surge potion', spend: 'Building upgrades (alongside Gold), crafting' },
         { icon: '🗺️', name: 'Land', color: '#c8d8e8', earn: 'Explore Territory (1 AP = 5–25 ac), Conquest attacks', spend: 'More land = more gold, food, mana and industry income' },
         { icon: '👥', name: 'Population', color: '#c8d8e8', earn: 'Starts at 500. Late joiners get a head-start bonus.', spend: 'Eats food every hour. Massacre attacks kill it.' },
-        { icon: '❤️', name: 'Morale', color: '#cc4444', earn: 'Recovers 2%/hr toward 100%, +1%/hr per Temple/Altar level.', spend: 'Drops 5%/hr while food is below zero, and from some enemy units\' morale drain. Scales your attack and defense power.' },
+        { icon: '❤️', name: 'Morale', color: '#cc4444', earn: 'Recovers 2%/hr toward 100%, +1%/hr per Temple/Altar level.', spend: 'Drops 5%/hr while food is below zero or troop wages go unpaid, and from some enemy units\' morale drain. Scales your attack and defense power.' },
       ].map(r => (
         <div key={r.name} className="realm-panel flex gap-3">
           <span className="text-2xl">{r.icon}</span>

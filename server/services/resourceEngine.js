@@ -9,6 +9,9 @@ const BASE_MANA_PER_HOUR = 3.3;      // flat base — all provinces
 const BASE_MANA_PER_LAND = 0.04;     // land-scaled component — bigger provinces regen faster
 const BASE_PRODUCTION_PER_LAND = 0.55;
 const FOOD_PER_POPULATION_HOUR = 0.02;
+// Troop wages (gold/hour per troop at home or deployed): 0.25% of its price, at least 0.02
+const WAGE_RATE = 0.0025;
+const MIN_WAGE = 0.02;
 
 // Morale (per hour). Recovers toward MORALE_MAX; 40 -> 100 takes ~30h with no temple.
 // Starvation (food below 0) drains instead of recovering. Morale is an integer column,
@@ -45,10 +48,11 @@ function computeMorale(morale, progress, hoursElapsed, starving, templeLevel, ca
  * @param {Object} p.buildings - { building_type: level }
  * @param {Array}  p.techEffects - completed research effects
  * @param {number} p.troopUpkeepRaw - SUM(count_home * food_upkeep) before race modifiers
+ * @param {number} p.troopWages - gold/hour owed to troops (see loadTroopTotals)
  * @param {Array}  p.spellModifiers - active spell effect_json rows targeting this province
  * @param {Array}  p.activeEffects - active_effects rows (modifier_key, modifier_value, effect_type)
  */
-function computeRates({ province, buildings, techEffects, troopUpkeepRaw, spellModifiers = [], activeEffects = [] }) {
+function computeRates({ province, buildings, techEffects, troopUpkeepRaw, troopWages = 0, spellModifiers = [], activeEffects = [] }) {
   const cfg = raceConfig[province.race];
   const lvl = (b) => buildings[b] || 0;
   // Nature Bond doubles the Ancient Grove's output
@@ -101,6 +105,10 @@ function computeRates({ province, buildings, techEffects, troopUpkeepRaw, spellM
     }
   }
 
+  // --- Troop wages come out of gross gold income ---
+  const goldIncome = goldRate;
+  goldRate -= troopWages;
+
   // --- Food upkeep: troops + population (Population Boom cuts what the population eats) ---
   const foodProduction = foodRate;
   const troopUpkeep = troopUpkeepRaw * cfg.troopFoodUpkeepMultiplier;
@@ -111,7 +119,26 @@ function computeRates({ province, buildings, techEffects, troopUpkeepRaw, spellM
   const caps = techEffects.filter(e => e && typeof e.morale_cap === 'number').map(e => e.morale_cap);
   const moraleCap = caps.length ? Math.min(MORALE_MAX, ...caps) : MORALE_MAX;
 
-  return { goldRate, foodRate, foodProduction, foodUpkeep: troopUpkeep + popUpkeep, manaRate, industryRate, moraleCap };
+  return {
+    goldRate, goldIncome, troopWages, foodRate, foodProduction, foodUpkeep: troopUpkeep + popUpkeep,
+    manaRate, industryRate, moraleCap,
+  };
+}
+
+// Raw troop food upkeep (troops at home) and gold wages (troops at home or deployed)
+async function loadTroopTotals(provinceId, db = pool) {
+  const { rows: [row] } = await db.query(
+    `SELECT SUM(pt.count_home * tt.food_upkeep) AS total_upkeep,
+            SUM((pt.count_home + pt.count_deployed) * GREATEST($2::float, tt.gold_cost * $3::float)) AS total_wages
+     FROM province_troops pt
+     JOIN troop_types tt ON tt.id = pt.troop_type_id
+     WHERE pt.province_id = $1`,
+    [provinceId, MIN_WAGE, WAGE_RATE]
+  );
+  return {
+    troopUpkeepRaw: parseFloat(row?.total_upkeep || 0),
+    troopWages: parseFloat(row?.total_wages || 0),
+  };
 }
 
 // Active spell modifiers and active_effects rows for a province (tolerates missing tables)
@@ -213,16 +240,10 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
     if (hoursElapsed <= 0) { await client.query('ROLLBACK'); return; }
 
     const buildings = await getBuildingLevels(provinceId, client);
-    const { rows: [{ total_upkeep }] } = await client.query(
-      `SELECT SUM(pt.count_home * tt.food_upkeep) as total_upkeep
-       FROM province_troops pt
-       JOIN troop_types tt ON tt.id = pt.troop_type_id
-       WHERE pt.province_id = $1`,
-      [provinceId]
-    );
+    const { troopUpkeepRaw, troopWages } = await loadTroopTotals(provinceId, client);
     const { spellModifiers, activeEffects } = await loadRateEffects(provinceId, client);
     const { goldRate, foodRate, manaRate, industryRate: productionRate, moraleCap } = computeRates({
-      province, buildings, techEffects, troopUpkeepRaw: parseFloat(total_upkeep || 0), spellModifiers, activeEffects,
+      province, buildings, techEffects, troopUpkeepRaw, troopWages, spellModifiers, activeEffects,
     });
     const templeLevel = buildings['temple_altar'] || 0;
 
@@ -232,9 +253,11 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
     const manaGained = Math.floor(manaRate * hoursElapsed);
     const productionGained = Math.floor(productionRate * hoursElapsed);
 
+    // Starving, or unable to pay troop wages, drains morale
+    const unpaidWages = troopWages > 0 && Number(province.gold) + goldGained < 0;
     const { morale, moraleProgress } = computeMorale(
       province.morale ?? MORALE_MAX, province.morale_progress, hoursElapsed,
-      Number(province.food) + foodGained < 0, templeLevel, moraleCap
+      Number(province.food) + foodGained < 0 || unpaidWages, templeLevel, moraleCap
     );
 
     // Apply resource changes (gold/mana/production never go below 0, food can go negative).
@@ -313,4 +336,4 @@ function getLandForBuildingLevel(level) {
   return 5 + (level - 1) * 3;
 }
 
-module.exports = { lazyResourceUpdate, calculateBuildingCost, getLandForBuildingLevel, getBuildingLevels, computeRates, loadRateEffects };
+module.exports = { lazyResourceUpdate, calculateBuildingCost, getLandForBuildingLevel, getBuildingLevels, computeRates, loadRateEffects, loadTroopTotals };
