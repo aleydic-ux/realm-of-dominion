@@ -1,12 +1,13 @@
 const pool = require('../config/db');
 const jwt = require('jsonwebtoken');
-const { isSessionValid } = require('../middleware/auth');
+const { isSessionValid, readCookie, SESSION_COOKIE } = require('../middleware/auth');
 
 function initSocket(io) {
   // Authenticate socket connections
   io.use(async (socket, next) => {
     try {
-      const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+      // The browser sends the httpOnly session cookie with the handshake; auth.token is for tools
+      const token = readCookie(socket.handshake.headers.cookie, SESSION_COOKIE) || socket.handshake.auth?.token;
       if (!token) return next(new Error('Authentication required'));
 
       const payload = jwt.verify(token, process.env.JWT_SECRET);

@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const pool = require('../config/db');
 const authenticate = require('../middleware/auth');
-const { signToken } = require('../middleware/auth');
+const { signToken, setSessionCookie, clearSessionCookie } = require('../middleware/auth');
 const { sendEmailVerificationEmail } = require('../services/email');
 
 const router = express.Router();
@@ -141,7 +141,9 @@ router.post('/change-password', authenticate, async (req, res) => {
       [newHash, req.user.id]
     );
 
-    res.json({ message: 'Password updated.', token: signToken(user) });
+    // Other sessions are revoked by the token_version bump; keep this one with a fresh cookie
+    setSessionCookie(res, signToken(user));
+    res.json({ message: 'Password updated.' });
   } catch (err) {
     console.error('Change password error:', err);
     res.status(500).json({ error: 'Failed to update password.' });
@@ -157,6 +159,7 @@ router.post('/delete-account', authenticate, async (req, res) => {
 
   try {
     await pool.query('UPDATE users SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1', [req.user.id]);
+    clearSessionCookie(res);
     res.json({ message: 'Account scheduled for deletion.' });
   } catch (err) {
     console.error('Delete account error:', err);

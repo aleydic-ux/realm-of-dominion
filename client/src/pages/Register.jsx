@@ -70,10 +70,10 @@ export default function Register({ onLogin }) {
     try {
       const { data } = await api.post('/auth/register', form);
       if (data.late_join) {
-        setPendingLogin({ token: data.token, user: data.user });
+        setPendingLogin({ user: data.user });
         setLateJoin(data.late_join);
       } else {
-        onLogin(data.token, data.user);
+        onLogin(data.user);
       }
     } catch (err) {
       setError(getApiError(err, 'Registration failed'));
@@ -188,7 +188,7 @@ export default function Register({ onLogin }) {
               </table>
             </div>
             <button
-              onClick={() => { onLogin(pendingLogin.token, pendingLogin.user); }}
+              onClick={() => { onLogin(pendingLogin.user); }}
               className="realm-btn-gold w-full"
             >
               Begin My Kingdom

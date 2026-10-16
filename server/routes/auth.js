@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const pool = require('../config/db');
 const authenticate = require('../middleware/auth');
-const { signToken } = require('../middleware/auth');
+const { signToken, setSessionCookie, clearSessionCookie } = require('../middleware/auth');
 const { sendPasswordResetEmail } = require('../services/email');
 const { RACES, startingBuildings } = require('../constants/races');
 
@@ -122,10 +122,10 @@ router.post('/register', async (req, res) => {
 
     await client.query('COMMIT');
 
-    const token = signToken(user);
+    setSessionCookie(res, signToken(user));
 
     res.status(201).json({
-      token, user: { id: user.id, username, email }, province_id: province.id,
+      user: { id: user.id, username, email }, province_id: province.id,
       late_join: applyBonus ? { joined_on_day: joinedOnDay, days_late: daysLate, bonus: lateJoinBonus } : null,
     });
   } catch (err) {
@@ -164,19 +164,27 @@ router.post('/login', async (req, res) => {
 
     await pool.query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
 
-    const token = signToken(user);
+    setSessionCookie(res, signToken(user));
 
-    res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
+    res.json({ user: { id: user.id, username: user.username, email: user.email } });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Login failed' });
   }
 });
 
-// POST /api/auth/logout
-router.post('/logout', authenticate, (req, res) => {
-  // JWT is stateless; client should discard the token
+// POST /api/auth/logout — no auth needed: clearing a stale or invalid cookie must still work
+router.post('/logout', (req, res) => {
+  clearSessionCookie(res);
   res.json({ message: 'Logged out successfully' });
+});
+
+// POST /api/auth/session — moves a still-valid token (sent as a Bearer header by clients from
+// before cookie sessions) into the httpOnly cookie, so those players aren't logged out
+router.post('/session', authenticate, async (req, res) => {
+  const { rows: [user] } = await pool.query('SELECT id, token_version FROM users WHERE id = $1', [req.user.id]);
+  setSessionCookie(res, signToken(user));
+  res.json({ message: 'Session upgraded' });
 });
 
 // GET /api/auth/me
