@@ -73,10 +73,13 @@ export default function Military({ province, troops = [], refresh }) {
           onDeploy={(t, qty) => { setTrainModal(t); setTrainQty(qty || 1); setError(''); }}
         />
 
-        {/* Training timers */}
-        {troops.filter(t => t.count_training > 0).map(t => (
-          <div key={t.troop_type_id} className="mt-2 text-sm text-yellow-400">
-            Training {t.count_training}x {t.name}... {formatTime(t.training_completes_at)}
+        {/* Training queue: one line per batch, each with its own timer */}
+        {troops.flatMap(t => (t.batches?.length
+          ? t.batches.map(b => ({ key: b.id, qty: b.quantity, name: t.name, at: b.completes_at }))
+          : t.count_training > 0 ? [{ key: `t${t.troop_type_id}`, qty: t.count_training, name: t.name, at: t.training_completes_at }] : []
+        )).sort((a, b) => new Date(a.at) - new Date(b.at)).map(b => (
+          <div key={b.key} className="mt-2 text-sm text-yellow-400">
+            Training {b.qty}x {b.name}... {formatTime(b.at)}
           </div>
         ))}
 
@@ -96,7 +99,7 @@ export default function Military({ province, troops = [], refresh }) {
             <div className="text-sm text-realm-text-muted space-y-1">
               <div>ATK: <span className="text-red-400">{trainModal.offense_power}</span> | DEF: <span className="text-blue-400">{trainModal.defense_power}</span></div>
               <div>Cost per unit: <span className="text-yellow-400">{formatNumber(trainModal.gold_cost)} gold</span></div>
-              <div>Training time: <span className="text-realm-text">{trainingTime(trainModal.tier)}s per troop</span></div>
+              <div>Training time: <span className="text-realm-text">{formatDuration(trainingTime(trainModal.tier))} per batch</span> <span className="text-xs text-realm-text-dim">(any size; Barracks speed it up)</span></div>
               <div className="text-xs text-realm-text-dim">{trainModal.special_ability}</div>
             </div>
             <div>
@@ -110,7 +113,7 @@ export default function Military({ province, troops = [], refresh }) {
               />
               <div className="text-xs text-realm-text-dim mt-1">
                 Total cost: <span className="text-yellow-400">{formatNumber(trainQty * trainModal.gold_cost)} gold</span>
-                {' | '}Time: <span className="text-realm-text-muted">{formatDuration(trainQty * trainingTime(trainModal.tier) / 3600)}</span>
+                {' | '}Time: <span className="text-realm-text-muted">up to {formatDuration(trainingTime(trainModal.tier))}</span>
               </div>
             </div>
             {error && <div className="text-red-400 text-sm">{error}</div>}

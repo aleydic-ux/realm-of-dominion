@@ -42,7 +42,7 @@ export default function TroopTable({ troops, showDeploy = false, onDeploy, gold 
             <td className="text-red-400">{t.offense_power}</td>
             <td className="text-blue-400">{t.defense_power}</td>
             <td className="text-yellow-400">{formatNumber(t.gold_cost)}g</td>
-            <td className="text-realm-text-muted">{trainingTime(t.tier)}s/troop</td>
+            <td className="text-realm-text-muted">{formatDuration(trainingTime(t.tier))}/batch</td>
             <td className="text-realm-gold">{formatNumber(t.count_home)}</td>
             {showDeploy && (
               <td className="text-yellow-400">{formatNumber(t.count_training)}</td>

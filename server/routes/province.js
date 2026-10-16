@@ -7,6 +7,7 @@ const { lazyResourceUpdate, calculateBuildingCost, getBuildingLevels, computeRat
   EFFECTIVE_LEVEL_SQL, maxBuildingLevel } = require('../services/resourceEngine');
 const { getProvinceTechEffects, applyTechModifiers, allianceBuffMultiplier } = require('../services/techEngine');
 const { calculateAndStoreNetworth } = require('../services/networthCalc');
+const { batchHours, queueBatch } = require('../services/trainingQueue');
 const { checkAndReturnTroops } = require('../services/troopReturn');
 const raceConfig = require('../config/raceConfig');
 const { awardGems, checkLandMilestone } = require('../services/gemEngine');
@@ -35,7 +36,7 @@ router.get('/me', async (req, res) => {
     ]);
 
     step = 'displayQueries';
-    const [provinceRes, buildingsRes, troopsRes, researchRes, allianceRes] = await Promise.all([
+    const [provinceRes, buildingsRes, troopsRes, researchRes, allianceRes, queueRes] = await Promise.all([
       pool.query(
         `SELECT p.*, u.username, u.province_motto, u.active_title,
                 a.name as age_name, a.ends_at as age_ends_at, a.starts_at as age_started_at
@@ -66,13 +67,22 @@ router.get('/me', async (req, res) => {
          JOIN alliances a ON a.id = am.alliance_id
          WHERE am.province_id = $1`, [provinceId]
       ),
+      pool.query(
+        `SELECT id, troop_type_id, quantity, completes_at FROM training_queue
+         WHERE province_id = $1 ORDER BY completes_at`, [provinceId]
+      ),
     ]);
 
     step = 'response';
+    // Each troop row carries its queued batches (B1 training queue)
+    const troops = troopsRes.rows.map(t => ({
+      ...t,
+      batches: queueRes.rows.filter(b => b.troop_type_id === t.troop_type_id),
+    }));
     res.json({
       province: provinceRes.rows[0],
       buildings: buildingsRes.rows,
-      troops: troopsRes.rows,
+      troops,
       research: researchRes.rows,
       alliance: allianceRes.rows[0] || null,
     });
@@ -394,29 +404,6 @@ router.post('/train', async (req, res) => {
     }
   }
 
-  // Check province troop row and flush completed training using JS date comparison
-  let { rows: [pt] } = await pool.query(
-    'SELECT * FROM province_troops WHERE province_id = $1 AND troop_type_id = $2',
-    [province.id, troop_type_id]
-  );
-  if (pt && pt.count_training > 0) {
-    const done = !pt.training_completes_at || new Date(pt.training_completes_at).getTime() <= Date.now();
-    if (done) {
-      await pool.query(
-        `UPDATE province_troops
-         SET count_home = count_home + count_training,
-             count_training = 0,
-             training_completes_at = NULL,
-             updated_at = NOW()
-         WHERE province_id = $1 AND troop_type_id = $2`,
-        [province.id, troop_type_id]
-      );
-      pt = { ...pt, count_training: 0, training_completes_at: null };
-    } else {
-      return res.status(400).json({ error: 'Already training this troop type. Wait for current batch to complete.' });
-    }
-  }
-
   const totalCost = troopType.gold_cost * quantity;
   if (province.gold < totalCost) {
     return res.status(400).json({ error: `Not enough gold (need ${totalCost})` });
@@ -429,29 +416,20 @@ router.post('/train', async (req, res) => {
   );
   const barracksLevel = barracks ? barracks.level : 0;
   const cfg = raceConfig[province.race];
-  const speedMultiplier = cfg.trainingSpeedMultiplier;
-  const barracksSpeedBonus = 1 + (barracksLevel * 0.10);
-  // Seconds per troop scales by tier: T1=1s, T2=3s, T3=9s, T4=27s, T5=81s
-  const secsPerTroop = Math.pow(3, (troopType.tier || 1) - 1);
-  const trainingHours = (quantity * secsPerTroop / 3600) / (barracksSpeedBonus * speedMultiplier);
+  // A batch takes a fixed time by tier, whatever its size (barracks and race speed shorten it)
+  const trainingHours = batchHours(troopType.tier || 1, barracksLevel, cfg.trainingSpeedMultiplier);
   const completesAt = new Date(Date.now() + trainingHours * 3600000);
 
-  // Pay and claim the training slot atomically (one batch per troop type)
+  // Pay and queue the batch atomically; the gold UPDATE locks the province row, so the
+  // queue-size check inside queueBatch can't race a parallel order
   const trainFailure = await withTransaction(async (client) => {
     const { rowCount: paid } = await client.query(
       `UPDATE provinces SET gold = gold - $1, updated_at = NOW() WHERE id = $2 AND gold >= $1`,
       [totalCost, province.id]
     );
     if (!paid) return `Not enough gold (need ${totalCost})`;
-
-    const { rowCount: started } = await client.query(
-      `UPDATE province_troops
-       SET count_training = $1, training_completes_at = $2, updated_at = NOW()
-       WHERE province_id = $3 AND troop_type_id = $4 AND count_training = 0`,
-      [quantity, completesAt, province.id, troop_type_id]
-    );
-    if (!started) return 'Already training this troop type. Wait for current batch to complete.';
-    return null;
+    // A failure string rolls the payment back
+    return queueBatch(client, { provinceId: province.id, troopTypeId: troopType.id, quantity, completesAt });
   });
   if (trainFailure) return res.status(400).json({ error: trainFailure });
 

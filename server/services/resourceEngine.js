@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 const raceConfig = require('../config/raceConfig');
 const { applyTechModifiers, sumEffects, allianceBuffMultiplier } = require('./techEngine');
+const { completeTraining } = require('./trainingQueue');
 
 // Base resource generation rates (per hour)
 const BASE_GOLD_PER_LAND = 1.65;
@@ -201,17 +202,7 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
 
   // Complete finished timers in parallel (independent updates, no transaction needed)
   const [trainingRes, buildingRes, researchRes] = await Promise.all([
-    pool.query(
-      `UPDATE province_troops
-       SET count_home = count_home + count_training,
-           count_training = 0,
-           training_completes_at = NULL,
-           updated_at = NOW()
-       WHERE province_id = $1
-         AND count_training > 0
-         AND (training_completes_at IS NULL OR training_completes_at <= $2)`,
-      [provinceId, nowTs]
-    ),
+    completeTraining(pool, provinceId, nowTs).then(rowCount => ({ rowCount })),
     pool.query(
       `UPDATE province_buildings
        SET is_upgrading = false,

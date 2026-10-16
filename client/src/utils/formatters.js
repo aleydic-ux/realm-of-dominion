@@ -69,8 +69,10 @@ export const RACE_LABELS = {
 };
 
 /** Seconds to train one troop of a given tier. Shared with server. */
+// Base hours per training batch by tier, any batch size (mirrors server trainingQueue.js);
+// Barracks (+10%/level) and race training speed shorten it
 export function trainingTime(tier) {
-  return Math.pow(3, (tier || 1) - 1);
+  return { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 }[tier || 1] || 1;
 }
 
 export function isProtected(province) {

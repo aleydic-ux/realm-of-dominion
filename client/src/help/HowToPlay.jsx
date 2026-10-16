@@ -23,7 +23,7 @@ const TAB_CONTENT = [
         <h3 className="text-realm-gold font-bold">Your First Steps</h3>
         <ol className="text-realm-text-muted text-xs space-y-1 list-decimal list-inside">
           <li><strong>Explore Territory</strong> on the Province tab — spend 1 AP to gain 5–25 acres of land.</li>
-          <li><strong>Train troops</strong> in the Military tab — you need an army to attack and defend.</li>
+          <li><strong>Train troops</strong> in the Military tab — you need an army to attack and defend. A batch of any size takes 1–5 hours by tier, so plan ahead: losses take time to replace.</li>
           <li><strong>Upgrade buildings</strong> to boost resource income and unlock new abilities.</li>
           <li><strong>Research tech</strong> — the Library tab unlocks powerful permanent bonuses.</li>
           <li><strong>Launch an attack</strong> — raid enemies for gold and conquer their land.</li>

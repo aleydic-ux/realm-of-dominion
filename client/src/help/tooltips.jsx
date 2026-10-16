@@ -85,7 +85,7 @@ export const MILITARY_TOOLTIPS = {
   atk: 'Attack power per troop. Total attack = sum of (qty × ATK) for all deployed troops.',
   def: 'Defense power per troop. Total defense = sum of (qty × DEF) for troops at home.',
   food_hr: 'Food consumed per hour by this troop type. Watch total Food/hr vs. your production.',
-  train_time: 'Base time per troop. Reduced by Barracks level.',
+  train_time: 'Time per batch, any size (T1 1h up to T5 5h). Reduced by Barracks level and race training speed.',
   home: 'Troops available at home for defense and deployment.',
   training: 'Troops currently in the training queue.',
   deployed: 'Troops on an active attack mission. They return after about 8 hours (faster or slower by race).',

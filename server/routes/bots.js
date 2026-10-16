@@ -85,6 +85,7 @@ router.post('/reset/:id', adminOnly, async (req, res) => {
        WHERE province_id = $1`,
       [botId]
     );
+    await pool.query('DELETE FROM training_queue WHERE province_id = $1', [botId]);
     res.json({ message: `Bot "${bot.name}" reset to starting values` });
   } catch (err) {
     console.error('[admin/bots] reset error:', err.message);
