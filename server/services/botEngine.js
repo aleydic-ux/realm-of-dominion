@@ -1,6 +1,6 @@
 const pool = require('../config/db');
 const { RECIPES, COST_RESOURCE_MAP } = require('../constants/craftingRecipes');
-const { lazyResourceUpdate, getBuildingLevels, calculateBuildingCost } = require('./resourceEngine');
+const { lazyResourceUpdate, getBuildingLevels, calculateBuildingCost, maxBuildingLevel } = require('./resourceEngine');
 const { resolveAttack } = require('./combatEngine');
 const { calculateAndStoreNetworth } = require('./networthCalc');
 const { getProvinceTechEffects } = require('./techEngine');
@@ -442,7 +442,7 @@ async function botUpgradeBuildings(province, config) {
 
   for (const bt of priorities) {
     const building = buildings.find(b => b.building_type === bt);
-    if (!building || building.level >= 5) continue;
+    if (!building || building.level >= maxBuildingLevel(building.building_type)) continue;
 
     const targetLevel = building.level + 1;
     const cost = calculateBuildingCost(targetLevel, province.race, bt);

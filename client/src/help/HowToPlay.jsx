@@ -174,6 +174,10 @@ const TAB_CONTENT = [
     <div className="space-y-4 text-sm">
       <div className="realm-panel space-y-2">
         <h3 className="text-realm-gold font-bold">Key Buildings</h3>
+        <p className="text-xs text-realm-text-dim">
+          Buildings go up to <strong className="text-realm-text">level 8</strong> (War Hall: 5). Levels 6–8 cost far
+          more and take hours, so they are long-term goals. A building's bonus starts when its upgrade finishes.
+        </p>
         <div className="space-y-1 text-xs text-realm-text-muted">
           {[
             { name: 'Arcane Sanctum', desc: 'Unlocks spells at L1/L3/L5. +5% mana regen/lvl. Essential for magic builds.' },
@@ -181,7 +185,7 @@ const TAB_CONTENT = [
             { name: 'Barracks', desc: '+10% training speed/lvl.' },
             { name: 'Mine/Quarry', desc: '+8% Industry Points/lvl. Needed for all building upgrades.' },
             { name: 'Walls', desc: '+15% defense/lvl. Best value for passive defense.' },
-            { name: 'Library', desc: '+10% research speed/lvl, -10% building time/lvl. Prioritize early if rushing techs.' },
+            { name: 'Library', desc: '+10% research speed/lvl, -10% building time/lvl (max -50%). Prioritize early if rushing techs.' },
             { name: 'Farm', desc: '+10% food production/lvl. Critical for large armies.' },
             { name: 'Temple/Altar', desc: '+10% mana regen/lvl. +1 morale/hr recovery/lvl.' },
             { name: 'Treasury', desc: '+4% gold income/lvl.' },

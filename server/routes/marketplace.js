@@ -6,6 +6,7 @@ const raceConfig = require('../config/raceConfig');
 const { calculateAndStoreNetworth } = require('../services/networthCalc');
 const { RECIPES } = require('../constants/craftingRecipes');
 const { getProvinceTechEffects, sumEffects } = require('../services/techEngine');
+const { EFFECTIVE_LEVEL_SQL } = require('../services/resourceEngine');
 
 const router = express.Router();
 router.use(authenticate, apRegen);
@@ -133,7 +134,7 @@ router.post('/list', async (req, res) => {
   const listDuration = validDurations.includes(parseInt(duration_hours)) ? parseInt(duration_hours) : 24;
 
   const { rows: [stall] } = await pool.query(
-    `SELECT level FROM province_buildings WHERE province_id = $1 AND building_type = 'marketplace_stall'`,
+    `SELECT ${EFFECTIVE_LEVEL_SQL} AS level FROM province_buildings WHERE province_id = $1 AND building_type = 'marketplace_stall'`,
     [province.id]
   );
   const maxSlots = Math.max(1, stall ? stall.level : 1);

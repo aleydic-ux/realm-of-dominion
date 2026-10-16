@@ -164,12 +164,27 @@ async function loadRateEffects(provinceId, db = pool) {
   return { spellModifiers, activeEffects };
 }
 
+// A building's level is raised when its upgrade starts; its bonus only counts once the upgrade
+// finishes, so effects and requirements read this instead of the raw level
+const EFFECTIVE_LEVEL_SQL = 'level - CASE WHEN is_upgrading AND upgrade_completes_at > NOW() THEN 1 ELSE 0 END';
+
+// Max level 8 (Phase 2 B2); the War Hall stays at 5, its unlocks end there
+const MAX_BUILDING_LEVEL = 8;
+function maxBuildingLevel(buildingType) {
+  return buildingType === 'war_hall' ? 5 : MAX_BUILDING_LEVEL;
+}
+
+// Cost growth per level: x1.8 up to level 5, x2.5 per level after, so levels 6-8 are season-long goals
+function buildingCostMultiplier(targetLevel) {
+  return Math.pow(1.8, Math.min(targetLevel, 5) - 1) * Math.pow(2.5, Math.max(0, targetLevel - 5));
+}
+
 /**
  * Get building level map for a province.
  */
 async function getBuildingLevels(provinceId, db = pool) {
   const { rows } = await db.query(
-    'SELECT building_type, level FROM province_buildings WHERE province_id = $1',
+    `SELECT building_type, ${EFFECTIVE_LEVEL_SQL} AS level FROM province_buildings WHERE province_id = $1`,
     [provinceId]
   );
   const map = {};
@@ -317,8 +332,8 @@ const BUILDING_BASE_COSTS = {
 function calculateBuildingCost(targetLevel, race, buildingType) {
   const cfg = raceConfig[race];
   const base = BUILDING_BASE_COSTS[buildingType] || { gold: 500, industry_points: 50 };
-  const multiplier = Math.pow(1.8, targetLevel - 1);
-  // L1=20s, L2=60s, L3=3min, L4=9min, L5=27min (×3 per level)
+  const multiplier = buildingCostMultiplier(targetLevel);
+  // L1=20s, L2=60s, L3=3min, L4=9min, L5=27min, L6=81min, L7=4h, L8=12h (×3 per level)
   const timeSeconds = Math.round(20 * Math.pow(3, targetLevel - 1));
   return {
     gold: Math.ceil(base.gold * multiplier * cfg.buildingCostMultiplier),
@@ -336,4 +351,5 @@ function getLandForBuildingLevel(level) {
   return 5 + (level - 1) * 3;
 }
 
-module.exports = { lazyResourceUpdate, calculateBuildingCost, getLandForBuildingLevel, getBuildingLevels, computeRates, loadRateEffects, loadTroopTotals };
+module.exports = { lazyResourceUpdate, calculateBuildingCost, getLandForBuildingLevel, getBuildingLevels, computeRates, loadRateEffects, loadTroopTotals,
+  EFFECTIVE_LEVEL_SQL, maxBuildingLevel, buildingCostMultiplier };

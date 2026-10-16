@@ -3,7 +3,8 @@ const pool = require('../config/db');
 const withTransaction = require('../db/withTransaction');
 const authenticate = require('../middleware/auth');
 const apRegen = require('../middleware/apRegen');
-const { lazyResourceUpdate, calculateBuildingCost, getBuildingLevels, computeRates, loadRateEffects, loadTroopTotals } = require('../services/resourceEngine');
+const { lazyResourceUpdate, calculateBuildingCost, getBuildingLevels, computeRates, loadRateEffects, loadTroopTotals,
+  EFFECTIVE_LEVEL_SQL, maxBuildingLevel } = require('../services/resourceEngine');
 const { getProvinceTechEffects, applyTechModifiers, allianceBuffMultiplier } = require('../services/techEngine');
 const { calculateAndStoreNetworth } = require('../services/networthCalc');
 const { checkAndReturnTroops } = require('../services/troopReturn');
@@ -244,7 +245,8 @@ router.post('/build', async (req, res) => {
     [province.id, building_type]
   );
   if (!building) return res.status(404).json({ error: 'Building not found for your province' });
-  if (building.level >= 5) return res.status(400).json({ error: 'Building is already at max level (5)' });
+  const maxLevel = maxBuildingLevel(building_type);
+  if (building.level >= maxLevel) return res.status(400).json({ error: `Building is already at max level (${maxLevel})` });
   if (building.is_upgrading) {
     const done = !building.upgrade_completes_at || new Date(building.upgrade_completes_at).getTime() <= Date.now();
     if (done) {
@@ -273,7 +275,7 @@ router.post('/build', async (req, res) => {
   // Check Library L1 requirement for Library itself
   if (building_type === 'library') {
     const { rows: [treasury] } = await pool.query(
-      'SELECT level FROM province_buildings WHERE province_id = $1 AND building_type = $2',
+      `SELECT ${EFFECTIVE_LEVEL_SQL} AS level FROM province_buildings WHERE province_id = $1 AND building_type = $2`,
       [province.id, 'treasury']
     );
     if (!treasury || treasury.level < 1) {
@@ -282,7 +284,7 @@ router.post('/build', async (req, res) => {
   }
   if (building_type === 'war_hall') {
     const { rows: [barracks] } = await pool.query(
-      'SELECT level FROM province_buildings WHERE province_id = $1 AND building_type = $2',
+      `SELECT ${EFFECTIVE_LEVEL_SQL} AS level FROM province_buildings WHERE province_id = $1 AND building_type = $2`,
       [province.id, 'barracks']
     );
     if (!barracks || barracks.level < 2) {
@@ -291,7 +293,7 @@ router.post('/build', async (req, res) => {
   }
   if (building_type === 'temple_altar') {
     const { rows: [library] } = await pool.query(
-      'SELECT level FROM province_buildings WHERE province_id = $1 AND building_type = $2',
+      `SELECT ${EFFECTIVE_LEVEL_SQL} AS level FROM province_buildings WHERE province_id = $1 AND building_type = $2`,
       [province.id, 'library']
     );
     if (!library || library.level < 1) {
@@ -317,13 +319,13 @@ router.post('/build', async (req, res) => {
     return res.status(400).json({ error: `Not enough production points (need ${finalPP})` });
   }
 
-  // Library reduces build time: -10% per level
+  // Library reduces build time: -10% per level, capped at -50% (level 5)
   const { rows: [lib] } = await pool.query(
-    'SELECT level FROM province_buildings WHERE province_id = $1 AND building_type = $2',
+    `SELECT ${EFFECTIVE_LEVEL_SQL} AS level FROM province_buildings WHERE province_id = $1 AND building_type = $2`,
     [province.id, 'library']
   );
   const libraryLevel = lib ? lib.level : 0;
-  const timeReduction = 1 - (libraryLevel * 0.10);
+  const timeReduction = 1 - (Math.min(libraryLevel, 5) * 0.10);
   const buildTimeHours = Math.max(10 / 3600, finalTimeHours * timeReduction);
   const completesAt = new Date(Date.now() + buildTimeHours * 3600000);
 
@@ -384,7 +386,7 @@ router.post('/train', async (req, res) => {
   if (troopType.requires_building) {
     const [bType, bLevel] = troopType.requires_building.split(':');
     const { rows: [bld] } = await pool.query(
-      'SELECT level FROM province_buildings WHERE province_id = $1 AND building_type = $2',
+      `SELECT ${EFFECTIVE_LEVEL_SQL} AS level FROM province_buildings WHERE province_id = $1 AND building_type = $2`,
       [province.id, bType]
     );
     if (!bld || bld.level < parseInt(bLevel)) {
@@ -422,7 +424,7 @@ router.post('/train', async (req, res) => {
 
   // Training time with barracks speed bonus
   const { rows: [barracks] } = await pool.query(
-    'SELECT level FROM province_buildings WHERE province_id = $1 AND building_type = $2',
+    `SELECT ${EFFECTIVE_LEVEL_SQL} AS level FROM province_buildings WHERE province_id = $1 AND building_type = $2`,
     [province.id, 'barracks']
   );
   const barracksLevel = barracks ? barracks.level : 0;
@@ -489,7 +491,7 @@ router.post('/research', async (req, res) => {
 
   // Check library level
   const { rows: [lib] } = await pool.query(
-    'SELECT level FROM province_buildings WHERE province_id = $1 AND building_type = $2',
+    `SELECT ${EFFECTIVE_LEVEL_SQL} AS level FROM province_buildings WHERE province_id = $1 AND building_type = $2`,
     [province.id, 'library']
   );
   const libraryLevel = lib ? lib.level : 0;
@@ -677,7 +679,7 @@ router.get('/me/buildings', async (req, res) => {
       'SELECT * FROM province_buildings WHERE province_id = $1 ORDER BY building_type',
       [req.province.id]
     );
-    res.json(rows);
+    res.json(rows.map(b => ({ ...b, max_level: maxBuildingLevel(b.building_type) })));
   } catch (err) {
     res.status(500).json({ error: 'Failed to load buildings' });
   }

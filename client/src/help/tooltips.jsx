@@ -70,7 +70,7 @@ export const BUILDING_TOOLTIPS = {
   war_hall: 'Unlocks T4 troops at L3, T5 troops at L5. Required for end-game military.',
   treasury: 'Boosts passive income. +4% gold income per level.',
   walls: '+15% defense bonus per level. Very cost-effective for defensive players.',
-  library: '+10% research speed and -10% building time per level. Prioritize early if rushing techs.',
+  library: '+10% research speed and -10% building time per level (building time max -50%). Prioritize early if rushing techs.',
   marketplace_stall: 'One trade slot per level (minimum 1) for selling to other players.',
   temple_altar: 'Boosts mana regen (+10%/lvl) and morale recovery (+1%/hr per level).',
   farm: 'Boosts food production +10%/lvl. Critical when running a large army.',
