@@ -151,12 +151,11 @@ function ChangePasswordSection() {
 
     setLoading(true);
     try {
-      const { data } = await api.post('/user/change-password', {
+      await api.post('/user/change-password', {
         currentPassword: form.currentPassword,
         newPassword: form.newPassword,
       });
-      // Other sessions are revoked; keep this one alive with the new token
-      if (data.token) localStorage.setItem('token', data.token);
+      // Other sessions are revoked; the server refreshed this one's cookie
       setStatus({ success: 'Password updated successfully.' });
       setForm({ currentPassword: '', newPassword: '', confirm: '' });
     } catch (err) {

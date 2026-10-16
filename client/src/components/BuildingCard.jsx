@@ -25,11 +25,16 @@ const BUILDING_BASE_COSTS = {
   tidal_basin:       { gold: 600,  pp: 60 },
 };
 
+// Mirrors server resourceEngine: max level 8 (War Hall 5); cost x1.8 per level to L5, x2.5 after
+function maxLevelOf(buildingType) {
+  return buildingType === 'war_hall' ? 5 : 8;
+}
+
 function calcUpgradeCost(currentLevel, race, buildingType) {
   const targetLevel = currentLevel + 1;
   const mult = RACE_BUILD_MULTIPLIER[race] || 1.0;
   const base = BUILDING_BASE_COSTS[buildingType] || { gold: 500, pp: 50 };
-  const exp = Math.pow(1.8, targetLevel - 1);
+  const exp = Math.pow(1.8, Math.min(targetLevel, 5) - 1) * Math.pow(2.5, Math.max(0, targetLevel - 5));
   const timeSeconds = Math.round(20 * Math.pow(3, targetLevel - 1));
   return {
     gold: Math.ceil(base.gold * exp * mult),
@@ -68,7 +73,7 @@ const BUILDING_EFFECTS = {
   marketplace_stall: '1 trade slot per level (min 1)',
   watchtower: '+5% spy detection, +5% defense per level',
   walls: '+15% defense bonus per level',
-  library: '+10% research speed, -10% build time per level',
+  library: '+10% research speed, -10% build time (max -50%) per level',
   mine_quarry: '+8% industry points per level',
   temple_altar: '+10% mana regen, +1 morale/hr recovery per level',
   war_hall: 'Unlocks T4@L3, T5@L5',
@@ -85,7 +90,8 @@ const BUILDING_EFFECTS = {
 };
 
 export default function BuildingCard({ building, onBuild, gold, industry_points, race }) {
-  const isMax = building.level >= 5;
+  const maxLevel = building.max_level || maxLevelOf(building.building_type);
+  const isMax = building.level >= maxLevel;
   const isUpgrading = building.is_upgrading;
   const label = BUILDING_LABELS[building.building_type] || building.building_type;
   const effect = BUILDING_EFFECTS[building.building_type] || '';
@@ -106,7 +112,7 @@ export default function BuildingCard({ building, onBuild, gold, industry_points,
       <div className="flex items-center justify-between">
         <h3 className="text-realm-gold font-display">{label}</h3>
         <div className="flex gap-1.5 items-center" style={{ marginRight: isMax ? '40px' : 0 }}>
-          {Array.from({ length: 5 }).map((_, i) => (
+          {Array.from({ length: maxLevel }).map((_, i) => (
             <div
               key={i}
               className={`w-2.5 h-2.5 rounded-full border ${

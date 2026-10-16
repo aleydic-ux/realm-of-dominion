@@ -6,7 +6,7 @@ import RaidToast from './components/RaidToast';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useProvince } from './hooks/useProvince';
 import HowToPlay from './help/HowToPlay';
-import { setUnauthorizedHandler } from './utils/api';
+import api, { setUnauthorizedHandler } from './utils/api';
 
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
@@ -129,11 +129,22 @@ function ProtectedLayout({ onLogout }) {
 
 export default function App() {
   const location = useLocation();
-  const [authed, setAuthed] = useState(!!localStorage.getItem('token'));
+  // 'user' is only a display hint; the session itself is an httpOnly cookie
+  const [authed, setAuthed] = useState(() => !!localStorage.getItem('user') || !!localStorage.getItem('token'));
   const [logoutNotice, setLogoutNotice] = useState('');
 
-  const handleLogin = useCallback((token, user) => {
-    localStorage.setItem('token', token);
+  // Sessions from before cookie auth kept the JWT in localStorage: trade it for the cookie once
+  useEffect(() => {
+    const legacy = localStorage.getItem('token');
+    if (!legacy) return;
+    localStorage.removeItem('token');
+    api.post('/auth/session', null, { headers: { Authorization: `Bearer ${legacy}` } })
+      .then(() => { if (!localStorage.getItem('user')) localStorage.setItem('user', '{}'); })
+      .catch(() => {});
+  }, []);
+
+  const handleLogin = useCallback((user) => {
+    localStorage.removeItem('token');
     localStorage.setItem('user', JSON.stringify(user));
     setLogoutNotice('');
     setAuthed(true);
@@ -141,6 +152,7 @@ export default function App() {
 
   // notice: optional message for the login page (NavBar passes a click event, so check the type)
   const handleLogout = useCallback((notice) => {
+    api.post('/auth/logout').catch(() => {}); // clears the httpOnly cookie
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('rod_tutorial_seen');

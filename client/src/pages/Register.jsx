@@ -48,7 +48,7 @@ const RACES = [
   },
   {
     id: 'tidewarden', label: 'Tidewarden', icon: '🌊',
-    bonuses: '+20% gold & food, phantom attack once/season, +10% marketplace, attackers suffer extra losses',
+    bonuses: '+10% gold, +10% mana, phantom attack once/season, attackers suffer +10% losses',
     lore: 'The tide comes in. The tide goes out. So does our mercy.',
   },
 ];
@@ -70,10 +70,10 @@ export default function Register({ onLogin }) {
     try {
       const { data } = await api.post('/auth/register', form);
       if (data.late_join) {
-        setPendingLogin({ token: data.token, user: data.user });
+        setPendingLogin({ user: data.user });
         setLateJoin(data.late_join);
       } else {
-        onLogin(data.token, data.user);
+        onLogin(data.user);
       }
     } catch (err) {
       setError(getApiError(err, 'Registration failed'));
@@ -139,8 +139,8 @@ export default function Register({ onLogin }) {
           </div>
 
           <div className="bg-realm-surface border border-realm-border/50 rounded p-3 text-xs text-realm-text-dim">
-            Your province will start with a <span className="text-blue-300">24-hour newbie shield</span>.
-            You will not be attackable during this time.
+            Your province will start with a <span className="text-blue-300">24-hour newbie shield</span>
+            (longer if you join after the season starts). You will not be attackable during this time.
           </div>
 
           <button type="submit" className="realm-btn-gold w-full" disabled={loading}>
@@ -186,9 +186,14 @@ export default function Register({ onLogin }) {
                   )}
                 </tbody>
               </table>
+              {lateJoin.protection_hours && (
+                <p className="text-xs text-realm-text-dim mt-2">
+                  🛡️ Your newbie shield lasts <span className="text-blue-300">{lateJoin.protection_hours} hours</span>.
+                </p>
+              )}
             </div>
             <button
-              onClick={() => { onLogin(pendingLogin.token, pendingLogin.user); }}
+              onClick={() => { onLogin(pendingLogin.user); }}
               className="realm-btn-gold w-full"
             >
               Begin My Kingdom

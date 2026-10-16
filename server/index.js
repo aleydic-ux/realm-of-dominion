@@ -28,6 +28,7 @@ const userRoutes = require('./routes/user');
 const achievementRoutes = require('./routes/achievements');
 const mailRoutes = require('./routes/mail');
 const spyRoutes = require('./routes/spy');
+const { requireSameOrigin } = require('./middleware/auth');
 const initSocket = require('./socket/chat');
 
 const app = express();
@@ -54,6 +55,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+app.use('/api/', requireSameOrigin);
 
 // Rate limiting
 const apiLimiter = rateLimit({

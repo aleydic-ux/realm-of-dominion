@@ -5,10 +5,10 @@ let socket = null;
 
 export function getSocket() {
   if (!socket) {
-    if (!localStorage.getItem('token')) return null;
+    if (!localStorage.getItem('user')) return null;
+    // The httpOnly session cookie authenticates the handshake (and every reconnect)
     socket = io('/', {
-      // Read the token on every (re)connect so a refreshed one (e.g. after a password change) is used
-      auth: (cb) => cb({ token: localStorage.getItem('token') }),
+      withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: Infinity,

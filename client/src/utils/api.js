@@ -6,12 +6,7 @@ const api = axios.create({
   timeout: 20000, // 20s — fail fast instead of hanging forever
 });
 
-// Attach JWT token to every request
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+// The session is an httpOnly cookie the browser sends on its own; nothing to attach here
 
 // Login/register forms get their 401s back as errors to display, not a logout
 const AUTH_FORM_PATHS = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password'];
@@ -28,11 +23,10 @@ api.interceptors.response.use(
   (error) => {
     const url = error.config?.url || '';
     const isAuthForm = AUTH_FORM_PATHS.some(p => url.startsWith(p));
-    if (error.response?.status === 401 && !isAuthForm && localStorage.getItem('token')) {
+    if (error.response?.status === 401 && !isAuthForm && localStorage.getItem('user')) {
       if (unauthorizedHandler) {
         unauthorizedHandler();
       } else {
-        localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/login';
       }

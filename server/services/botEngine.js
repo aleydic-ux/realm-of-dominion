@@ -1,6 +1,8 @@
 const pool = require('../config/db');
 const { RECIPES, COST_RESOURCE_MAP } = require('../constants/craftingRecipes');
-const { lazyResourceUpdate, getBuildingLevels, calculateBuildingCost } = require('./resourceEngine');
+const { lazyResourceUpdate, getBuildingLevels, calculateBuildingCost, maxBuildingLevel } = require('./resourceEngine');
+const { batchHours, queueBatch } = require('./trainingQueue');
+const withTransaction = require('../db/withTransaction');
 const { resolveAttack } = require('./combatEngine');
 const { calculateAndStoreNetworth } = require('./networthCalc');
 const { getProvinceTechEffects } = require('./techEngine');
@@ -238,6 +240,7 @@ async function respawnWipedBots() {
          WHERE province_id = $1`,
         [bot.id]
       );
+      await pool.query('DELETE FROM training_queue WHERE province_id = $1', [bot.id]);
       // Give starting T1 troops so respawned bots aren't helpless
       await pool.query(
         `UPDATE province_troops SET count_home = 40, updated_at = NOW()
@@ -442,7 +445,7 @@ async function botUpgradeBuildings(province, config) {
 
   for (const bt of priorities) {
     const building = buildings.find(b => b.building_type === bt);
-    if (!building || building.level >= 5) continue;
+    if (!building || building.level >= maxBuildingLevel(building.building_type)) continue;
 
     const targetLevel = building.level + 1;
     const cost = calculateBuildingCost(targetLevel, province.race, bt);
@@ -493,16 +496,19 @@ async function botTrainTroops(province, config) {
   const trainCount = Math.min(canAfford, maxTrain);
   const cost = trainCount * target.gold_cost;
 
-  await pool.query(
-    `UPDATE provinces SET gold = GREATEST(0, gold - $1), updated_at = NOW() WHERE id = $2`,
-    [cost, province.id]
-  );
-  await pool.query(
-    `UPDATE province_troops SET count_home = count_home + $1, updated_at = NOW()
-     WHERE province_id = $2 AND troop_type_id = $3`,
-    [trainCount, province.id, target.id]
-  );
-  await logAction(province.id, 'train', null, 'success', `trained ${trainCount} ${target.name}`);
+  // Bots train through the same queue and batch times as players
+  const hours = batchHours(target.tier || 1, barracksRow.level, raceConfig[province.race]?.trainingSpeedMultiplier || 1);
+  const completesAt = new Date(Date.now() + hours * 3600000);
+  const failure = await withTransaction(async (client) => {
+    const { rowCount: paid } = await client.query(
+      `UPDATE provinces SET gold = gold - $1, updated_at = NOW() WHERE id = $2 AND gold >= $1`,
+      [cost, province.id]
+    );
+    if (!paid) return 'not enough gold';
+    return queueBatch(client, { provinceId: province.id, troopTypeId: target.id, quantity: trainCount, completesAt });
+  });
+  if (failure) return;
+  await logAction(province.id, 'train', null, 'success', `queued ${trainCount} ${target.name}`);
 }
 
 // ─── Attack ───────────────────────────────────────────────────────────────────

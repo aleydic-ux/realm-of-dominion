@@ -23,7 +23,7 @@ const TAB_CONTENT = [
         <h3 className="text-realm-gold font-bold">Your First Steps</h3>
         <ol className="text-realm-text-muted text-xs space-y-1 list-decimal list-inside">
           <li><strong>Explore Territory</strong> on the Province tab — spend 1 AP to gain 5–25 acres of land.</li>
-          <li><strong>Train troops</strong> in the Military tab — you need an army to attack and defend.</li>
+          <li><strong>Train troops</strong> in the Military tab — you need an army to attack and defend. A batch of any size takes 1–5 hours by tier, so plan ahead: losses take time to replace.</li>
           <li><strong>Upgrade buildings</strong> to boost resource income and unlock new abilities.</li>
           <li><strong>Research tech</strong> — the Library tab unlocks powerful permanent bonuses.</li>
           <li><strong>Launch an attack</strong> — raid enemies for gold and conquer their land.</li>
@@ -53,13 +53,13 @@ const TAB_CONTENT = [
   () => (
     <div className="space-y-3 text-sm">
       {[
-        { icon: '💰', name: 'Gold', color: '#c8a048', earn: 'Land (income scales with acres), Treasury building, trade, Human bonus', spend: 'Training troops, buildings, research, crafting' },
+        { icon: '💰', name: 'Gold', color: '#c8a048', earn: 'Land (income scales with acres), Treasury building, trade, Human bonus', spend: 'Training troops, troop wages (paid hourly), buildings, research, crafting' },
         { icon: '🌾', name: 'Food', color: '#2a8a48', earn: 'Farm building, Crop Rotation research, Harvest Tonic potion, land', spend: 'Consumed by troops every hour. If food hits 0, morale drops.' },
         { icon: '🔮', name: 'Mana', color: '#8830cc', earn: 'Arcane Sanctum (+5%/lvl), Temple/Altar (+10%/lvl), Ancient Grove (Elf), land, Ley Lines spell', spend: 'Casting spells, crafting potions' },
         { icon: '⚙️', name: 'Industry', color: '#c8d8e8', earn: 'Mine/Quarry (+8%/lvl), Industry Surge potion', spend: 'Building upgrades (alongside Gold), crafting' },
         { icon: '🗺️', name: 'Land', color: '#c8d8e8', earn: 'Explore Territory (1 AP = 5–25 ac), Conquest attacks', spend: 'More land = more gold, food, mana and industry income' },
         { icon: '👥', name: 'Population', color: '#c8d8e8', earn: 'Starts at 500. Late joiners get a head-start bonus.', spend: 'Eats food every hour. Massacre attacks kill it.' },
-        { icon: '❤️', name: 'Morale', color: '#cc4444', earn: 'Recovers 2%/hr toward 100%, +1%/hr per Temple/Altar level.', spend: 'Drops 5%/hr while food is below zero, and from some enemy units\' morale drain. Scales your attack and defense power.' },
+        { icon: '❤️', name: 'Morale', color: '#cc4444', earn: 'Recovers 2%/hr toward 100%, +1%/hr per Temple/Altar level.', spend: 'Drops 5%/hr while food is below zero or troop wages go unpaid, and from some enemy units\' morale drain. Scales your attack and defense power.' },
       ].map(r => (
         <div key={r.name} className="realm-panel flex gap-3">
           <span className="text-2xl">{r.icon}</span>
@@ -174,6 +174,10 @@ const TAB_CONTENT = [
     <div className="space-y-4 text-sm">
       <div className="realm-panel space-y-2">
         <h3 className="text-realm-gold font-bold">Key Buildings</h3>
+        <p className="text-xs text-realm-text-dim">
+          Buildings go up to <strong className="text-realm-text">level 8</strong> (War Hall: 5). Levels 6–8 cost far
+          more and take hours, so they are long-term goals. A building's bonus starts when its upgrade finishes.
+        </p>
         <div className="space-y-1 text-xs text-realm-text-muted">
           {[
             { name: 'Arcane Sanctum', desc: 'Unlocks spells at L1/L3/L5. +5% mana regen/lvl. Essential for magic builds.' },
@@ -181,7 +185,7 @@ const TAB_CONTENT = [
             { name: 'Barracks', desc: '+10% training speed/lvl.' },
             { name: 'Mine/Quarry', desc: '+8% Industry Points/lvl. Needed for all building upgrades.' },
             { name: 'Walls', desc: '+15% defense/lvl. Best value for passive defense.' },
-            { name: 'Library', desc: '+10% research speed/lvl, -10% building time/lvl. Prioritize early if rushing techs.' },
+            { name: 'Library', desc: '+10% research speed/lvl, -10% building time/lvl (max -50%). Prioritize early if rushing techs.' },
             { name: 'Farm', desc: '+10% food production/lvl. Critical for large armies.' },
             { name: 'Temple/Altar', desc: '+10% mana regen/lvl. +1 morale/hr recovery/lvl.' },
             { name: 'Treasury', desc: '+4% gold income/lvl.' },
@@ -218,7 +222,7 @@ const TAB_CONTENT = [
         { icon: '🧪', tip: 'Craft before big attacks', detail: 'Queue a War Elixir (+25% ATK) or Berserker Brew (+50% ATK) in the Alchemist Tower before launching a Conquest. Also consider Plague Vials on rich targets.' },
         { icon: '🏪', tip: 'Check the Marketplace', detail: 'If you\'re low on Food or Mana, check if players are selling. You can also sell excess resources to fund troop training.' },
         { icon: '🛡️', tip: 'Build Arcane Sanctum early', detail: 'Even 1 level unlocks Clairvoyance (scout enemies) and Mana Shield (+15% DEF). The earlier you cast, the more intel you have.' },
-        { icon: '⚔️', tip: 'New player protection', detail: 'New provinces get a 24-hour shield: nobody can attack, spy on, or cast hostile spells at them (attacking someone yourself drops it). Bots also leave provinces alone for their first 48 hours. Use this window to build, explore, and prepare your defenses.' },
+        { icon: '⚔️', tip: 'New player protection', detail: 'New provinces get a 24-hour shield (+6h for each day you join late, up to 72h): nobody can attack, spy on, or cast hostile spells at them (attacking someone yourself drops it). Bots also leave provinces alone for their first 48 hours. Use this window to build, explore, and prepare your defenses.' },
         { icon: '🔔', tip: 'Check your notifications', detail: 'The bell icon shows incoming raids in real-time. Review the Reports page after being attacked to understand what you lost and adjust your defenses.' },
       ].map(t => (
         <div key={t.tip} className="realm-panel flex gap-3">

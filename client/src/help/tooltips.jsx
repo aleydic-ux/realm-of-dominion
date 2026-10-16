@@ -7,7 +7,7 @@ export const RESOURCE_TOOLTIPS = {
   gold: (
     <>
       <strong style={{color:'#c8a048'}}>Gold</strong> — Your treasury.<br/>
-      Earned from your land, Treasury building, and trade.<br/>
+      Earned from your land, Treasury building, and trade. Troops draw wages every hour.<br/>
       Spent on troops, buildings, research, and crafting.
     </>
   ),
@@ -50,7 +50,7 @@ export const RESOURCE_TOOLTIPS = {
 
 export const PROVINCE_TOOLTIPS = {
   population: 'Starts at 500. Eats food every hour; Massacre attacks kill it.',
-  morale: 'Province morale (0–100%). Recovers 2%/hr (+1%/hr per Temple/Altar level); drops 5%/hr while food is below zero. Scales attack and defense power.',
+  morale: 'Province morale (0–100%). Recovers 2%/hr (+1%/hr per Temple/Altar level); drops 5%/hr while food is below zero or wages go unpaid. Scales attack and defense power.',
   networth: 'Total value of your province — troops + buildings + land + resources. Used for leaderboard ranking.',
 };
 
@@ -70,7 +70,7 @@ export const BUILDING_TOOLTIPS = {
   war_hall: 'Unlocks T4 troops at L3, T5 troops at L5. Required for end-game military.',
   treasury: 'Boosts passive income. +4% gold income per level.',
   walls: '+15% defense bonus per level. Very cost-effective for defensive players.',
-  library: '+10% research speed and -10% building time per level. Prioritize early if rushing techs.',
+  library: '+10% research speed and -10% building time per level (building time max -50%). Prioritize early if rushing techs.',
   marketplace_stall: 'One trade slot per level (minimum 1) for selling to other players.',
   temple_altar: 'Boosts mana regen (+10%/lvl) and morale recovery (+1%/hr per level).',
   farm: 'Boosts food production +10%/lvl. Critical when running a large army.',
@@ -85,7 +85,7 @@ export const MILITARY_TOOLTIPS = {
   atk: 'Attack power per troop. Total attack = sum of (qty × ATK) for all deployed troops.',
   def: 'Defense power per troop. Total defense = sum of (qty × DEF) for troops at home.',
   food_hr: 'Food consumed per hour by this troop type. Watch total Food/hr vs. your production.',
-  train_time: 'Base time per troop. Reduced by Barracks level.',
+  train_time: 'Time per batch, any size (T1 1h up to T5 5h). Reduced by Barracks level and race training speed.',
   home: 'Troops available at home for defense and deployment.',
   training: 'Troops currently in the training queue.',
   deployed: 'Troops on an active attack mission. They return after about 8 hours (faster or slower by race).',

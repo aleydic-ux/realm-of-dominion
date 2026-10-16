@@ -5,6 +5,8 @@ const apRegen = require('../middleware/apRegen');
 const raceConfig = require('../config/raceConfig');
 const { calculateAndStoreNetworth } = require('../services/networthCalc');
 const { RECIPES } = require('../constants/craftingRecipes');
+const { getProvinceTechEffects, sumEffects } = require('../services/techEngine');
+const { EFFECTIVE_LEVEL_SQL } = require('../services/resourceEngine');
 
 const router = express.Router();
 router.use(authenticate, apRegen);
@@ -132,7 +134,7 @@ router.post('/list', async (req, res) => {
   const listDuration = validDurations.includes(parseInt(duration_hours)) ? parseInt(duration_hours) : 24;
 
   const { rows: [stall] } = await pool.query(
-    `SELECT level FROM province_buildings WHERE province_id = $1 AND building_type = 'marketplace_stall'`,
+    `SELECT ${EFFECTIVE_LEVEL_SQL} AS level FROM province_buildings WHERE province_id = $1 AND building_type = 'marketplace_stall'`,
     [province.id]
   );
   const maxSlots = Math.max(1, stall ? stall.level : 1);
@@ -244,8 +246,12 @@ router.post('/buy/:id', async (req, res) => {
     }
 
     // Seller receives gold minus 4% fee (handoff spec) — combined: buyer pays +5%, seller gets -4%
+    // Race sale bonus (Human) and Merchant Guild research both raise what the seller gets
     const sellerCfg = raceConfig[listing.seller_race];
-    const sellerReceives = Math.floor(totalCost * 0.96 * (1 + sellerCfg.marketplaceSaleBonus));
+    const sellerTechs = await getProvinceTechEffects(listing.seller_province_id, client);
+    const sellerReceives = Math.floor(
+      totalCost * 0.96 * (1 + sellerCfg.marketplaceSaleBonus + sumEffects('marketplace_sale', sellerTechs))
+    );
 
     // Lock buyer and seller in id order so crossing trades can't deadlock
     await client.query(

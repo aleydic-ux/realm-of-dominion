@@ -138,14 +138,14 @@ const raceConfig = {
   },
 
   tidewarden: {
-    goldIncomeMultiplier: 1.20,       // +20% gold production
-    foodProductionMultiplier: 1.20,   // +20% food production
+    goldIncomeMultiplier: 1.10,       // +10% gold production (Phase 2 B3: was +20% gold and +20% food)
+    foodProductionMultiplier: 1.00,
     troopAttackMultiplier: 1.00,
     trainingSpeedMultiplier: 1.00,
     researchSpeedMultiplier: 1.00,
     manaRegenMultiplier: 1.10,
     buildingCostMultiplier: 1.00,
-    marketplaceSaleBonus: 0.10,       // +10% marketplace proceeds
+    marketplaceSaleBonus: 0.00,       // B3: market bonus dropped so Tidewarden isn't a better Human
     marketplaceBlocked: false,
     siegeDamageReduction: 0.00,
     troopFoodUpkeepMultiplier: 1.00,

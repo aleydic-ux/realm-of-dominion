@@ -161,7 +161,7 @@ export default function Spells({ province, buildings }) {
                 <SpellCard
                   key={spell.key}
                   spell={spell}
-                  locked={sanctumLevel < spell.requires_arcane_sanctum}
+                  locked={sanctumLevel < spell.requires_arcane_sanctum || !!spell.tech_locked}
                   onCooldown={isCoolingDown(spell.key)}
                   cdRemaining={cdRemaining(spell.key)}
                   result={results[spell.key]}
@@ -235,7 +235,7 @@ function SpellCard({ spell, locked, onCooldown, cdRemaining, result, error, isCa
         )}
         {locked && (
           <div className="text-red-400 text-xs pt-0.5">
-            🔒 Requires Arcane Sanctum L{spell.requires_arcane_sanctum}
+            🔒 Requires {spell.tech_locked ? `research: ${spell.requires_tech_name}` : `Arcane Sanctum L${spell.requires_arcane_sanctum}`}
           </div>
         )}
       </div>

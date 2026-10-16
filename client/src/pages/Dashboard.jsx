@@ -203,8 +203,8 @@ export default function Dashboard({ province, loading, refresh }) {
   const statCards = [
     { label: 'Land', icon: '🗺️', value: `${formatNumber(province.land)} acres`, color: 'text-amber-400' },
     { label: 'Gold', icon: '💰', value: formatNumber(province.gold), color: 'text-yellow-400',
-      sub: rates && `+${formatNumber(rates.gold_per_hour)}/hr`,
-      tip: rates && `+${formatNumber(rates.gold_per_hour)}/hr` },
+      sub: rates && `${rates.gold_per_hour >= 0 ? '+' : ''}${formatNumber(rates.gold_per_hour)}/hr`,
+      tip: rates && `+${formatNumber(rates.gold_income)}/hr income\n-${formatNumber(rates.troop_wages)}/hr troop wages\nNet: ${rates.gold_per_hour >= 0 ? '+' : ''}${formatNumber(rates.gold_per_hour)}/hr` },
     { label: 'Food', icon: '🌾', value: formatNumber(province.food), color: province.food < 0 ? 'text-red-400' : 'text-green-400',
       sub: rates && `Net: ${rates.food_per_hour >= 0 ? '+' : ''}${formatNumber(rates.food_per_hour)}/hr`,
       tip: rates && `+${formatNumber(rates.food_production)}/hr production\n-${formatNumber(rates.food_upkeep)}/hr upkeep\nNet: ${rates.food_per_hour >= 0 ? '+' : ''}${formatNumber(rates.food_per_hour)}/hr` },
@@ -380,7 +380,7 @@ export default function Dashboard({ province, loading, refresh }) {
           fontSize: '11px'
         }}>
           <span className="text-realm-text-dim">Income/hr:</span>
-          <span><span className="text-yellow-400">+{formatNumber(rates.gold_per_hour)}g</span> <span className="text-realm-text-dim">gold</span></span>
+          <span><span className="text-yellow-400">{rates.gold_per_hour >= 0 ? '+' : ''}{formatNumber(rates.gold_per_hour)}g</span> <span className="text-realm-text-dim">gold</span>{rates.troop_wages > 0 && <span className="text-realm-text-dim"> (after {formatNumber(rates.troop_wages)}g wages)</span>}</span>
           <span style={{ color: rates.food_per_hour >= 0 ? 'rgb(74,222,128)' : 'rgb(248,113,113)' }}>
             {rates.food_per_hour >= 0 ? '+' : ''}{formatNumber(rates.food_per_hour)} <span className="text-realm-text-dim">food</span>
           </span>
