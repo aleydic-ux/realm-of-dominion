@@ -1,6 +1,6 @@
 const pool = require('../config/db');
 const raceConfig = require('../config/raceConfig');
-const { applyTechModifiers, sumEffects, allianceBuffMultiplier } = require('./techEngine');
+const { getProvinceTechEffects, applyTechModifiers, sumEffects, allianceBuffMultiplier } = require('./techEngine');
 const { completeTraining } = require('./trainingQueue');
 
 // Base resource generation rates (per hour)
@@ -197,7 +197,9 @@ async function getBuildingLevels(provinceId, db = pool) {
  * Lazily updates resources based on time elapsed since last_resource_update.
  * Also handles lazy troop training completion, building completion, research completion.
  */
-async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
+// techEffects: the province's completed research; loaded here when not passed (the cron tick and
+// bots call without it, and used to accrue income as if nothing were researched)
+async function lazyResourceUpdate(provinceId, techEffects = null, io = null) {
   const nowTs = new Date();
 
   // Complete finished timers in parallel (independent updates, no transaction needed)
@@ -245,6 +247,7 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
 
     if (hoursElapsed <= 0) { await client.query('ROLLBACK'); return; }
 
+    if (!techEffects) techEffects = await getProvinceTechEffects(provinceId, client);
     const buildings = await getBuildingLevels(provinceId, client);
     const { troopUpkeepRaw, troopWages } = await loadTroopTotals(provinceId, client);
     const { spellModifiers, activeEffects } = await loadRateEffects(provinceId, client);
