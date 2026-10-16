@@ -48,7 +48,7 @@ const RACES = [
   },
   {
     id: 'tidewarden', label: 'Tidewarden', icon: '🌊',
-    bonuses: '+20% gold & food, phantom attack once/season, +10% marketplace, attackers suffer extra losses',
+    bonuses: '+10% gold, +10% mana, phantom attack once/season, attackers suffer +10% losses',
     lore: 'The tide comes in. The tide goes out. So does our mercy.',
   },
 ];
