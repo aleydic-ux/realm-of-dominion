@@ -67,10 +67,14 @@ router.post('/register', async (req, res) => {
       ? Math.floor((Date.now() - new Date(activeAge.starts_at).getTime()) / msPerDay)
       : 0;
     const joinedOnDay = daysLate + 1;
-    const applyBonus = daysLate > 0 && daysLate <= 4;
+    // Late joiners always get a catch-up bonus (B5): per-day amounts x days late, +15% for each
+    // day past day 5, so a day-9 joiner gets 8 x 1.45 = 11.6 days' worth
+    const applyBonus = daysLate > 0;
+    const bonusDays = daysLate * (1 + 0.15 * Math.max(0, daysLate - 5));
 
-    // Create province with 24-hour newbie shield
-    const protectionEndsAt = new Date(Date.now() + parseInt(process.env.NEWBIE_PROTECTION_HOURS || 24) * 3600000);
+    // Newbie shield: 24h, +6h per day late (max 72h) so late joiners can spend their bonus safely
+    const protectionHours = Math.min(72, parseInt(process.env.NEWBIE_PROTECTION_HOURS || 24) + 6 * daysLate);
+    const protectionEndsAt = new Date(Date.now() + protectionHours * 3600000);
     const { rows: [province] } = await client.query(
       `INSERT INTO provinces (user_id, age_id, name, race, protection_ends_at, joined_on_day, late_join_bonus_applied, late_join_bonus_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
@@ -81,12 +85,12 @@ router.post('/register', async (req, res) => {
     let lateJoinBonus = null;
     if (applyBonus) {
       lateJoinBonus = {
-        gold: daysLate * 8000,
-        food: daysLate * 2500,
-        mana: daysLate * 1500,
-        industry_points: daysLate * 3000,
-        population: daysLate * 150,
-        gems: daysLate * 3,
+        gold: Math.round(bonusDays * 8000),
+        food: Math.round(bonusDays * 2500),
+        mana: Math.round(bonusDays * 1500),
+        industry_points: Math.round(bonusDays * 3000),
+        population: Math.round(bonusDays * 150),
+        gems: Math.round(bonusDays * 3),
       };
       await client.query(
         `UPDATE provinces SET
@@ -126,7 +130,7 @@ router.post('/register', async (req, res) => {
 
     res.status(201).json({
       user: { id: user.id, username, email }, province_id: province.id,
-      late_join: applyBonus ? { joined_on_day: joinedOnDay, days_late: daysLate, bonus: lateJoinBonus } : null,
+      late_join: applyBonus ? { joined_on_day: joinedOnDay, days_late: daysLate, bonus: lateJoinBonus, protection_hours: protectionHours } : null,
     });
   } catch (err) {
     await client.query('ROLLBACK');

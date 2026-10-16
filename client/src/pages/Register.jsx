@@ -139,8 +139,8 @@ export default function Register({ onLogin }) {
           </div>
 
           <div className="bg-realm-surface border border-realm-border/50 rounded p-3 text-xs text-realm-text-dim">
-            Your province will start with a <span className="text-blue-300">24-hour newbie shield</span>.
-            You will not be attackable during this time.
+            Your province will start with a <span className="text-blue-300">24-hour newbie shield</span>
+            (longer if you join after the season starts). You will not be attackable during this time.
           </div>
 
           <button type="submit" className="realm-btn-gold w-full" disabled={loading}>
@@ -186,6 +186,11 @@ export default function Register({ onLogin }) {
                   )}
                 </tbody>
               </table>
+              {lateJoin.protection_hours && (
+                <p className="text-xs text-realm-text-dim mt-2">
+                  🛡️ Your newbie shield lasts <span className="text-blue-300">{lateJoin.protection_hours} hours</span>.
+                </p>
+              )}
             </div>
             <button
               onClick={() => { onLogin(pendingLogin.user); }}

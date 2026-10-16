@@ -222,7 +222,7 @@ const TAB_CONTENT = [
         { icon: '🧪', tip: 'Craft before big attacks', detail: 'Queue a War Elixir (+25% ATK) or Berserker Brew (+50% ATK) in the Alchemist Tower before launching a Conquest. Also consider Plague Vials on rich targets.' },
         { icon: '🏪', tip: 'Check the Marketplace', detail: 'If you\'re low on Food or Mana, check if players are selling. You can also sell excess resources to fund troop training.' },
         { icon: '🛡️', tip: 'Build Arcane Sanctum early', detail: 'Even 1 level unlocks Clairvoyance (scout enemies) and Mana Shield (+15% DEF). The earlier you cast, the more intel you have.' },
-        { icon: '⚔️', tip: 'New player protection', detail: 'New provinces get a 24-hour shield: nobody can attack, spy on, or cast hostile spells at them (attacking someone yourself drops it). Bots also leave provinces alone for their first 48 hours. Use this window to build, explore, and prepare your defenses.' },
+        { icon: '⚔️', tip: 'New player protection', detail: 'New provinces get a 24-hour shield (+6h for each day you join late, up to 72h): nobody can attack, spy on, or cast hostile spells at them (attacking someone yourself drops it). Bots also leave provinces alone for their first 48 hours. Use this window to build, explore, and prepare your defenses.' },
         { icon: '🔔', tip: 'Check your notifications', detail: 'The bell icon shows incoming raids in real-time. Review the Reports page after being attacked to understand what you lost and adjust your defenses.' },
       ].map(t => (
         <div key={t.tip} className="realm-panel flex gap-3">
