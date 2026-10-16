@@ -1,5 +1,5 @@
 const raceConfig = require('../config/raceConfig');
-const { applyTechModifiers } = require('./techEngine');
+const { applyTechModifiers, troopModifier, sumEffects } = require('./techEngine');
 
 const BASE_RETURN_HOURS = 8;
 
@@ -12,7 +12,7 @@ const BASE_RETURN_HOURS = 8;
  * @param {Array} attackerTechs - attacker's tech effects
  * @param {Array} defenderTechs - defender's tech effects
  */
-function resolveAttack({ attacker, defender, attackType, troopsDeployed, attackerTroopTypes, defenderTroops, defenderTroopTypes, buildings, attackerBuildings = {}, defenderWatchtowerDebuff = 0, defenderWallDebuff = 0, attackerTechs, defenderTechs, attackerSpellEffects = [], defenderSpellEffects = [] }) {
+function resolveAttack({ attacker, defender, attackType, troopsDeployed, attackerTroopTypes, defenderTroops, defenderTroopTypes, buildings, attackerBuildings = {}, defenderWatchtowerDebuff = 0, defenderWallDebuff = 0, attackerTechs, defenderTechs, attackerSpellEffects = [], defenderSpellEffects = [], attackingEnemy = false }) {
   const attackerCfg = raceConfig[attacker.race];
   const defenderCfg = raceConfig[defender.race];
 
@@ -35,16 +35,25 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
 
     let offense = troopType.offense_power;
 
-    // Runic Forge (Dwarf): +3 ATK per level to Runic Warriors
-    if (troopType.name === 'Runic Warrior') offense += 3 * (attackerBuildings['runic_forge'] || 0);
+    // Runic Warriors: +3 ATK per Runic Forge level, + Runic Inscription I; Inscription III vs Undead/Elf
+    if (troopType.name === 'Runic Warrior') {
+      offense += 3 * (attackerBuildings['runic_forge'] || 0) + sumEffects('runic_warrior_bonus', attackerTechs);
+      if (defender.race === 'undead' || defender.race === 'elf') {
+        offense *= 1 + sumEffects('runic_warrior_vs_magic', attackerTechs);
+      }
+    }
+    // Endless Legion: Skeletons +1 ATK
+    if (troopType.name === 'Skeleton') offense += sumEffects('skeleton_bonus', attackerTechs);
+    // Troop-scoped research, e.g. Chivalric Code on Knights
+    offense *= troopModifier(troopType.name, 'troop_attack', attackerTechs);
     // Warchief Pit (Orc): +10% Warchief and Berserker attack per level
     if (troopType.name === 'Warchief' || troopType.name === 'Berserker') {
       offense *= 1 + 0.10 * (attackerBuildings['warchief_pit'] || 0);
     }
 
-    // Warchief bonus: +5% to all units in same army
+    // Warchief bonus: +5% to all units in same army (Warchief Dominance adds +5%)
     const warchiefCount = troopsDeployed[nameToId.get('Warchief')] || 0;
-    if (warchiefCount > 0) offense *= 1.05;
+    if (warchiefCount > 0) offense *= 1.05 + sumEffects('warchief_bonus', attackerTechs);
 
     deployedDetails[troopTypeId] = { troopType, count };
     attackerPower += offense * count;
@@ -66,6 +75,12 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
 
   // Apply tech modifiers
   attackerPower = applyTechModifiers(attackerPower, 'troop_attack', attackerTechs);
+  // Siege Doctrine: Conquest and Raze attacks only
+  if (attackType === 'conquest' || attackType === 'raze') {
+    attackerPower = applyTechModifiers(attackerPower, 'siege_attack', attackerTechs);
+  }
+  // Diplomacy II: against provinces you've marked as enemies
+  if (attackingEnemy) attackerPower = applyTechModifiers(attackerPower, 'enemy_attack', attackerTechs);
   // Apply active spell buffs (e.g. War Cry)
   attackerPower = applyTechModifiers(attackerPower, 'troop_attack', attackerSpellEffects);
 
@@ -81,23 +96,28 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
 
     let defense = troopType.defense_power;
 
-    // Runic Forge (Dwarf): +3 DEF per level to Runic Warriors
-    if (troopType.name === 'Runic Warrior') defense += 3 * (buildings['runic_forge'] || 0);
-
-    // Orc Berserker dies when defending (special rule)
-    if (troopType.name === 'Berserker' && !hasResearch(defenderTechs, 'berserker_survives_defense')) {
-      defense = 0;
+    // Runic Warriors: +3 DEF per Runic Forge level, + Runic Inscription I
+    if (troopType.name === 'Runic Warrior') {
+      defense += 3 * (buildings['runic_forge'] || 0) + sumEffects('runic_warrior_bonus', defenderTechs);
     }
+    // Endless Legion: Skeletons +1 DEF
+    if (troopType.name === 'Skeleton') defense += sumEffects('skeleton_bonus', defenderTechs);
+
+    // Orc Berserkers can't defend; Blood Frenzy lets them defend at half their attack
+    if (troopType.name === 'Berserker') {
+      defense = troopType.offense_power * sumEffects('berserker_survives_defense', defenderTechs);
+    }
+    defense *= troopModifier(troopType.name, 'troop_defense', defenderTechs);
 
     defenderPower += defense * troop.count_home;
   }
 
   // Apply wall bonus
   const wallLevel = buildings['walls'] || 0;
-  const fortressBonus = hasResearch(defenderTechs, 'wall_level_bonus') ? 1 : 0;
+  const fortressBonus = sumEffects('wall_level_bonus', defenderTechs); // Fortress Doctrine: walls count 1 level higher
   const effectiveWallLevel = wallLevel + fortressBonus;
-  // Ironclad debuffs (negative, stacking) cut wall effectiveness, floor 0
-  const wallEffectiveness = Math.max(0, 1 + defenderWallDebuff);
+  // Fortification research raises wall effectiveness; Ironclad debuffs (negative, stacking) cut it, floor 0
+  const wallEffectiveness = Math.max(0, 1 + defenderWallDebuff) * (1 + sumEffects('wall_effectiveness', defenderTechs));
   const wallBonus = 1 + (effectiveWallLevel * 0.15 * wallEffectiveness);
 
   // Tunnel Rat bypasses walls
@@ -120,7 +140,8 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
 
   // Apply watchtower defense bonus, reduced by War Colossus debuffs (negative, stacking, floor 0)
   const watchtowerLevel = buildings['watchtower'] || 0;
-  const watchtowerEffectiveness = Math.max(0, 1 + defenderWatchtowerDebuff);
+  // Scouting Network research raises it
+  const watchtowerEffectiveness = Math.max(0, 1 + defenderWatchtowerDebuff) * (1 + sumEffects('watchtower_bonus', defenderTechs));
   defenderPower *= 1 + (watchtowerLevel * 0.05 * watchtowerEffectiveness);
 
   // Apply war hall attack bonus for attacker
@@ -131,7 +152,6 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
   defenderPower = applyTechModifiers(defenderPower, 'troop_defense', defenderTechs);
   // Apply active spell buffs (e.g. Mana Shield)
   defenderPower = applyTechModifiers(defenderPower, 'troop_defense', defenderSpellEffects);
-  attackerPower = applyTechModifiers(attackerPower, 'wall_effectiveness', defenderTechs); // inverse
 
   // 3. Determine outcome
   let outcome;
@@ -187,7 +207,7 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
   // Calculate attacker losses
   const attackerLosses = {};
   for (const [troopTypeId, { troopType, count }] of Object.entries(deployedDetails)) {
-    const lost = Math.floor(count * attackerCasualtyRateAdjusted);
+    const lost = Math.floor(count * attackerCasualtyRateAdjusted * unitLossFactor(troopType.name, attackerTechs));
     if (lost > 0) attackerLosses[troopTypeId] = lost;
   }
 
@@ -196,8 +216,9 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
   for (const troop of defenderTroops) {
     if (troop.count_home <= 0) continue;
     const troopType = defenderTroopTypes.find(t => t.id === troop.troop_type_id);
-    if (!troopType || troopType.defense_power === 0) continue;
-    const lost = Math.floor(troop.count_home * defenderCasualtyRate);
+    // Berserkers have no defense but still fall when their province is hit
+    if (!troopType || (troopType.defense_power === 0 && troopType.name !== 'Berserker')) continue;
+    const lost = Math.floor(troop.count_home * defenderCasualtyRate * unitLossFactor(troopType.name, defenderTechs));
     if (lost > 0) defenderLosses[troop.troop_type_id] = lost;
   }
 
@@ -250,6 +271,19 @@ function resolveAttack({ attacker, defender, attackType, troopsDeployed, attacke
   const warColossusCount = troopsDeployed[nameToId.get('War Colossus')] || 0;
   if (outcome === 'win' && warColossusCount > 0) {
     specialEffects.push({ type: 'watchtower_debuff', value: 0.15 });
+  }
+
+  // Plague Carrier: winning attacks burn enemy food
+  const plague = -sumEffects('enemy_food', attackerTechs);
+  if (outcome === 'win' && plague > 0) {
+    specialEffects.push({ type: 'food_burn', value: plague });
+  }
+
+  // Soul Drain: Banshees cut enemy gold income for 12 hours on a win
+  const soulDrain = sumEffects('enemy_gold_income', attackerTechs);
+  const bansheeCount = troopsDeployed[nameToId.get('Banshee')] || 0;
+  if (outcome === 'win' && bansheeCount > 0 && soulDrain < 0) {
+    specialEffects.push({ type: 'gold_income_debuff', value: soulDrain, hours: 12 });
   }
 
   // Archmage: reduces enemy DEF by 15% (already handled in power calc conceptually)
@@ -352,8 +386,11 @@ function getIdByName(troopTypes, name) {
   return t ? t.id : -1;
 }
 
-function hasResearch(techs, target) {
-  return techs.some(e => e && e.modifier_type === 'unlock' && e.target === target);
+// Research that cuts one unit's losses: Runic Inscription II, Phylactery
+function unitLossFactor(troopName, techs) {
+  if (troopName === 'Runic Warrior') return Math.max(0, 1 - sumEffects('runic_warrior_damage_reduction', techs));
+  if (troopName === 'Lich') return Math.max(0, 1 + sumEffects('lich_casualties', techs));
+  return 1;
 }
 
 module.exports = { resolveAttack };

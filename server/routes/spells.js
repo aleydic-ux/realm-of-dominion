@@ -4,6 +4,7 @@ const authenticate = require('../middleware/auth');
 const apRegen = require('../middleware/apRegen');
 const { SPELLS, SPELL_MAP } = require('../constants/spells');
 const { getBuildingLevels } = require('../services/resourceEngine');
+const { getProvinceTechEffects, hasUnlock } = require('../services/techEngine');
 
 const router = express.Router();
 router.use(authenticate, apRegen);
@@ -14,7 +15,7 @@ router.get('/', async (req, res) => {
   const provinceId = req.province.id;
 
   try {
-    const [cooldownsRes, effectsRes] = await Promise.all([
+    const [cooldownsRes, effectsRes, techEffects] = await Promise.all([
       pool.query(
         `SELECT spell_key, cooldown_ends_at FROM spell_cooldowns
          WHERE province_id = $1 AND cooldown_ends_at > NOW()`,
@@ -27,12 +28,18 @@ router.get('/', async (req, res) => {
          ) ORDER BY created_at DESC`,
         [provinceId]
       ),
+      getProvinceTechEffects(provinceId),
     ]);
 
     const cooldowns = {};
     for (const row of cooldownsRes.rows) cooldowns[row.spell_key] = row.cooldown_ends_at;
 
-    res.json({ spells: SPELLS, cooldowns, active_effects: effectsRes.rows });
+    // Racial spells show only for that race, locked until their tech is researched
+    const spells = SPELLS
+      .filter(s => !s.race || s.race === req.province.race)
+      .map(s => (s.requires_tech ? { ...s, tech_locked: !hasUnlock(s.requires_tech, techEffects) } : s));
+
+    res.json({ spells, cooldowns, active_effects: effectsRes.rows });
   } catch (err) {
     console.error('Spells GET error:', err);
     res.status(500).json({ error: 'Failed to load spells' });
@@ -85,6 +92,16 @@ router.post('/cast', async (req, res) => {
     if (!paid) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: `Not enough mana or AP (need ${spell.mana_cost} mana, ${spell.ap_cost} AP)` });
+    }
+
+    // Racial spells: right race and its unlocking research
+    if (spell.race && spell.race !== caster.race) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Your race cannot cast this spell' });
+    }
+    if (spell.requires_tech && !hasUnlock(spell.requires_tech, await getProvinceTechEffects(caster.id, client))) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: `Requires research: ${spell.requires_tech_name}` });
     }
 
     // Check Arcane Sanctum level
@@ -295,8 +312,39 @@ async function applyAttackSpell(client, caster, target, spell) {
     };
   }
 
+  if (effect.type === 'drain_gold_mana') {
+    const goldDrained = Math.floor(target.gold * effect.value);
+    const manaDrained = Math.floor(target.mana * effect.value);
+    await client.query(
+      `UPDATE provinces SET gold = GREATEST(0, gold - $1), mana = GREATEST(0, mana - $2), updated_at = NOW() WHERE id = $3`,
+      [goldDrained, manaDrained, target.id]
+    );
+    await client.query(
+      `UPDATE provinces SET gold = gold + $1, mana = mana + $2, updated_at = NOW() WHERE id = $3`,
+      [goldDrained, manaDrained, caster.id]
+    );
+    return {
+      message: `Drained ${goldDrained} gold and ${manaDrained} mana from ${target.name}.`,
+      gold_drained: goldDrained, mana_drained: manaDrained,
+    };
+  }
+
+  if (effect.type === 'shatter') {
+    const { rows: [hit] } = await client.query(
+      `UPDATE province_buildings SET level = level - 1, updated_at = NOW()
+       WHERE id = (SELECT id FROM province_buildings
+                   WHERE province_id = $1 AND level > 0
+                   ORDER BY RANDOM() LIMIT 1)
+       RETURNING building_type, level`,
+      [target.id]
+    );
+    return hit
+      ? { message: `Shatter cracked ${target.name}'s ${hit.building_type.replace(/_/g, ' ')} down to level ${hit.level}.`, building: hit.building_type, new_level: hit.level }
+      : { message: `${target.name} has no buildings to shatter.` };
+  }
+
   if (effect.modifier_type === 'multiplier') {
-    // Lasting debuff (e.g. famine_curse)
+    // Lasting debuff (e.g. famine_curse, weaken)
     const expiresAt = new Date(Date.now() + spell.duration_hours * 3600000);
     await client.query(
       `INSERT INTO spell_effects (caster_province_id, target_province_id, spell_key, category, effect_json, expires_at)

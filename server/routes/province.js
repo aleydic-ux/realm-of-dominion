@@ -3,8 +3,8 @@ const pool = require('../config/db');
 const withTransaction = require('../db/withTransaction');
 const authenticate = require('../middleware/auth');
 const apRegen = require('../middleware/apRegen');
-const { lazyResourceUpdate, calculateBuildingCost, getBuildingLevels } = require('../services/resourceEngine');
-const { getProvinceTechEffects, applyTechModifiers } = require('../services/techEngine');
+const { lazyResourceUpdate, calculateBuildingCost, getBuildingLevels, computeRates, loadRateEffects } = require('../services/resourceEngine');
+const { getProvinceTechEffects, applyTechModifiers, allianceBuffMultiplier } = require('../services/techEngine');
 const { calculateAndStoreNetworth } = require('../services/networthCalc');
 const { checkAndReturnTroops } = require('../services/troopReturn');
 const raceConfig = require('../config/raceConfig');
@@ -113,102 +113,26 @@ router.get('/rates', async (req, res) => {
   const provinceId = req.province.id;
   try {
     const province = req.province;
-    const race = province.race;
-    const cfg = raceConfig[race];
-    const techEffects = await getProvinceTechEffects(provinceId);
-    const buildings = await getBuildingLevels(provinceId);
-
-    const BASE_GOLD_PER_LAND = 1.65;
-    const BASE_FOOD_PER_LAND = 0.88;
-    const BASE_MANA_PER_HOUR = 3.3;
-    const BASE_MANA_PER_LAND = 0.04;
-    const BASE_PRODUCTION_PER_LAND = 0.55;
-    const FOOD_PER_POPULATION_HOUR = 0.02;
-
-    const farmLevel = buildings['farm'] || 0;
-    const treasuryLevel = buildings['treasury'] || 0;
-    const mineLevel = buildings['mine_quarry'] || 0;
-    const templeLevel = buildings['temple_altar'] || 0;
-    const ancientGroveLevel = buildings['ancient_grove'] || 0;
-    const royalBankLevel = buildings['royal_bank'] || 0;
-    const arcaneSanctumLevel = buildings['arcane_sanctum'] || 0;
-    const tidalBasinLevel = buildings['tidal_basin'] || 0;
-    const artificersFoundryLevel = buildings['artificers_foundry'] || 0;
-    const shadowveilDenLevel = buildings['shadowveil_den'] || 0;
-
-    let goldRate = province.land * BASE_GOLD_PER_LAND;
-    goldRate *= 1 + (treasuryLevel * 0.04);
-    if (royalBankLevel > 0) goldRate *= 1 + (royalBankLevel * 0.15);
-    if (tidalBasinLevel > 0) goldRate *= 1 + (tidalBasinLevel * 0.12);
-    goldRate *= cfg.goldIncomeMultiplier;
-    goldRate = applyTechModifiers(goldRate, 'gold_income', techEffects);
-
-    let foodRate = province.land * BASE_FOOD_PER_LAND;
-    foodRate *= 1 + (farmLevel * 0.10);
-    if (ancientGroveLevel > 0) foodRate *= 1 + (ancientGroveLevel * 0.10);
-    foodRate *= cfg.foodProductionMultiplier;
-    foodRate = applyTechModifiers(foodRate, 'food_production', techEffects);
-
-    const { rows: troops } = await pool.query(
-      `SELECT SUM(pt.count_home * tt.food_upkeep) as total_upkeep
-       FROM province_troops pt
-       JOIN troop_types tt ON tt.id = pt.troop_type_id
-       WHERE pt.province_id = $1`, [provinceId]
-    );
-    const troopUpkeep = (parseFloat(troops[0].total_upkeep || 0)) * cfg.troopFoodUpkeepMultiplier;
-    const popUpkeep = province.population * FOOD_PER_POPULATION_HOUR;
-    const foodProduction = foodRate;
-    foodRate -= (troopUpkeep + popUpkeep);
-
-    let manaRate = BASE_MANA_PER_HOUR + (province.land * BASE_MANA_PER_LAND);
-    manaRate *= 1 + (templeLevel * 0.10);
-    if (ancientGroveLevel > 0) manaRate *= 1 + (ancientGroveLevel * 0.15);
-    if (arcaneSanctumLevel > 0) manaRate *= 1 + (arcaneSanctumLevel * 0.05);
-    if (shadowveilDenLevel > 0) manaRate *= 1 + (shadowveilDenLevel * 0.07);
-    manaRate *= cfg.manaRegenMultiplier;
-    manaRate = applyTechModifiers(manaRate, 'mana_regen', techEffects);
-
-    let industryRate = province.land * BASE_PRODUCTION_PER_LAND;
-    industryRate *= 1 + (mineLevel * 0.08);
-    if (artificersFoundryLevel > 0) industryRate *= 1 + (artificersFoundryLevel * 0.10);
-    industryRate = applyTechModifiers(industryRate, 'industry_points', techEffects);
-
-    // Apply spell effects
-    try {
-      const { rows: spellRows } = await pool.query(
-        `SELECT effect_json FROM spell_effects
-         WHERE target_province_id = $1 AND expires_at > NOW()
-           AND effect_json->>'modifier_type' IS NOT NULL`, [provinceId]
-      );
-      const mods = spellRows.map(r => r.effect_json).filter(Boolean);
-      if (mods.length > 0) {
-        manaRate = applyTechModifiers(manaRate, 'mana_regen', mods);
-        foodRate = applyTechModifiers(foodRate, 'food_production', mods);
-        goldRate = applyTechModifiers(goldRate, 'gold_income', mods);
-      }
-    } catch (_) {}
-
-    // Apply crafting effects
-    try {
-      const { rows: craftRows } = await pool.query(
-        `SELECT modifier_key, modifier_value FROM active_effects
-         WHERE province_id = $1 AND expires_at > NOW()`, [provinceId]
-      );
-      for (const row of craftRows) {
-        switch (row.modifier_key) {
-          case 'food_production_pct': foodRate *= (1 + row.modifier_value); break;
-          case 'gold_income_pct':     goldRate *= (1 + row.modifier_value); break;
-          case 'mana_regen_pct':      manaRate *= (1 + row.modifier_value); break;
-          case 'industry_pct':        industryRate *= (1 + row.modifier_value); break;
-        }
-      }
-    } catch (_) {}
+    const [techEffects, buildings, { rows: [{ total_upkeep }] }, { spellModifiers, activeEffects }] = await Promise.all([
+      getProvinceTechEffects(provinceId),
+      getBuildingLevels(provinceId),
+      pool.query(
+        `SELECT SUM(pt.count_home * tt.food_upkeep) as total_upkeep
+         FROM province_troops pt
+         JOIN troop_types tt ON tt.id = pt.troop_type_id
+         WHERE pt.province_id = $1`, [provinceId]
+      ),
+      loadRateEffects(provinceId),
+    ]);
+    const { goldRate, foodRate, foodProduction, foodUpkeep, manaRate, industryRate } = computeRates({
+      province, buildings, techEffects, troopUpkeepRaw: parseFloat(total_upkeep || 0), spellModifiers, activeEffects,
+    });
 
     res.json({
       gold_per_hour: Math.floor(goldRate),
       food_per_hour: Math.floor(foodRate),
       food_production: Math.floor(foodProduction),
-      food_upkeep: Math.floor(troopUpkeep + popUpkeep),
+      food_upkeep: Math.floor(foodUpkeep),
       mana_per_hour: Math.floor(manaRate),
       industry_per_hour: Math.floor(industryRate),
     });
@@ -277,13 +201,11 @@ router.post('/explore', async (req, res) => {
   }
 
   const techEffects = await getProvinceTechEffects(province.id);
-  // Cartography: -20% AP cost (floor to 1 min)
-  // Handled implicitly via tech — for simplicity we check if research gives AP reduction
-  // (Full implementation would reduce cost to 0 if -100%, but min 1 AP)
 
   const landGained = 5 + Math.floor(Math.random() * 21); // 5-25 acres
   const cfg = raceConfig[province.race];
-  const adjustedLand = Math.floor(landGained * cfg.landResourceYieldMultiplier);
+  // Cartography: +20% land from exploring
+  const adjustedLand = Math.floor(applyTechModifiers(landGained * cfg.landResourceYieldMultiplier, 'explore_yield', techEffects));
 
   const { rows: [explored] } = await pool.query(
     `UPDATE provinces SET
@@ -651,9 +573,20 @@ router.post('/research', async (req, res) => {
 
   if (province.gold < goldCost) return res.status(400).json({ error: `Not enough gold (need ${goldCost})` });
 
-  // Research time: hours / (library_bonus * race_research_speed)
+  // Scholar's Call alliance buff: +research speed (Diplomacy strengthens it)
+  const { rows: speedRows } = await pool.query(
+    `SELECT modifier_value, effect_type FROM active_effects
+     WHERE province_id = $1 AND modifier_key = 'research_speed_pct' AND expires_at > NOW()`,
+    [province.id]
+  );
+  const allianceMult = allianceBuffMultiplier(techEffects);
+  const researchBuff = speedRows.reduce(
+    (sum, r) => sum + r.modifier_value * (r.effect_type === 'alliance_buff' ? allianceMult : 1), 0
+  );
+
+  // Research time: hours / (library_bonus * race_research_speed * buffs)
   const libraryBonus = 1 + (libraryLevel * 0.10);
-  const researchHours = tech.research_hours / (libraryBonus * cfg.researchSpeedMultiplier);
+  const researchHours = tech.research_hours / (libraryBonus * cfg.researchSpeedMultiplier * (1 + researchBuff));
   const completesAt = new Date(Date.now() + researchHours * 3600000);
 
   const researchFailure = await withTransaction(async (client) => {

@@ -237,6 +237,11 @@ function SpyResult({ actionType, data }) {
             Troops: {data.troops.map(t => `${t.name} ×${formatNumber(t.count_home + t.count_away)}`).join(', ')}
           </div>
         )}
+        {data.research && (
+          <div className="text-realm-text-dim mt-1">
+            Research: {data.research.length > 0 ? data.research.join(', ') : 'none'}
+          </div>
+        )}
       </div>
     );
   }

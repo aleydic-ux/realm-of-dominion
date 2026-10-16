@@ -3,7 +3,7 @@ const pool = require('../config/db');
 const authenticate = require('../middleware/auth');
 const apRegen = require('../middleware/apRegen');
 const { resolveAttack } = require('../services/combatEngine');
-const { getProvinceTechEffects } = require('../services/techEngine');
+const { getProvinceTechEffects, sumEffects, allianceBuffMultiplier } = require('../services/techEngine');
 const { calculateAndStoreNetworth } = require('../services/networthCalc');
 const { checkAndReturnTroops } = require('../services/troopReturn');
 const { getBuildingLevels } = require('../services/resourceEngine');
@@ -57,22 +57,22 @@ router.post('/', async (req, res) => {
     return res.status(500).json({ error: 'Attack failed' });
   }
 
-  // Load active spell buffs for combat (graceful fallback if table not yet migrated)
+  // Load active spell buffs and debuffs for combat (graceful fallback if table not yet migrated)
   let attackerSpellEffects = [], defenderSpellEffects = [];
   try {
     const [attackerSpellRes, defenderSpellRes] = await Promise.all([
       pool.query(
         `SELECT effect_json FROM spell_effects
-         WHERE caster_province_id = $1 AND target_province_id = $1
-           AND category = 'buff' AND expires_at > NOW()
-           AND effect_json->>'modifier_type' IS NOT NULL`,
+         WHERE target_province_id = $1 AND expires_at > NOW()
+           AND effect_json->>'modifier_type' IS NOT NULL
+           AND ((category = 'buff' AND caster_province_id = $1) OR category = 'debuff')`,
         [attacker.id]
       ),
       pool.query(
         `SELECT effect_json FROM spell_effects
-         WHERE caster_province_id = $1 AND target_province_id = $1
-           AND category = 'buff' AND expires_at > NOW()
-           AND effect_json->>'modifier_type' IS NOT NULL`,
+         WHERE target_province_id = $1 AND expires_at > NOW()
+           AND effect_json->>'modifier_type' IS NOT NULL
+           AND ((category = 'buff' AND caster_province_id = $1) OR category = 'debuff')`,
         [target_id]
       ),
     ]);
@@ -89,28 +89,37 @@ router.post('/', async (req, res) => {
   try {
     const [acRes, dcRes] = await Promise.all([
       pool.query(
-        `SELECT modifier_key, SUM(modifier_value) as total FROM active_effects
+        `SELECT modifier_key, modifier_value, effect_type FROM active_effects
          WHERE province_id = $1 AND modifier_key IN ('attack_pct','defense_pct')
-           AND (expires_at IS NULL OR expires_at > NOW())
-         GROUP BY modifier_key`,
+           AND (expires_at IS NULL OR expires_at > NOW())`,
         [attacker.id]
       ),
       pool.query(
-        `SELECT modifier_key, SUM(modifier_value) as total FROM active_effects
+        `SELECT modifier_key, modifier_value, effect_type FROM active_effects
          WHERE province_id = $1 AND modifier_key IN ('attack_pct','defense_pct','watchtower_debuff','wall_debuff')
-           AND (expires_at IS NULL OR expires_at > NOW())
-         GROUP BY modifier_key`,
+           AND (expires_at IS NULL OR expires_at > NOW())`,
         [target_id]
       ),
     ]);
-    attackerCraftEffects = acRes.rows
-      .filter(r => CRAFT_COMBAT_MAP[r.modifier_key])
-      .map(r => ({ modifier_type: 'multiplier', target: CRAFT_COMBAT_MAP[r.modifier_key], value: parseFloat(r.total) }));
-    defenderCraftEffects = dcRes.rows
-      .filter(r => CRAFT_COMBAT_MAP[r.modifier_key])
-      .map(r => ({ modifier_type: 'multiplier', target: CRAFT_COMBAT_MAP[r.modifier_key], value: parseFloat(r.total) }));
-    defenderWatchtowerDebuff = parseFloat(dcRes.rows.find(r => r.modifier_key === 'watchtower_debuff')?.total || 0);
-    defenderWallDebuff = parseFloat(dcRes.rows.find(r => r.modifier_key === 'wall_debuff')?.total || 0);
+    // Sum per modifier; alliance buffs are scaled by the province's Diplomacy research
+    const totals = (rows, techs) => {
+      const allianceMult = allianceBuffMultiplier(techs);
+      const out = {};
+      for (const r of rows) {
+        out[r.modifier_key] = (out[r.modifier_key] || 0)
+          + r.modifier_value * (r.effect_type === 'alliance_buff' ? allianceMult : 1);
+      }
+      return out;
+    };
+    const toCombat = (t) => Object.entries(t)
+      .filter(([key]) => CRAFT_COMBAT_MAP[key])
+      .map(([key, value]) => ({ modifier_type: 'multiplier', target: CRAFT_COMBAT_MAP[key], value }));
+    const aTotals = totals(acRes.rows, attackerTechs);
+    const dTotals = totals(dcRes.rows, defenderTechs);
+    attackerCraftEffects = toCombat(aTotals);
+    defenderCraftEffects = toCombat(dTotals);
+    defenderWatchtowerDebuff = dTotals.watchtower_debuff || 0;
+    defenderWallDebuff = dTotals.wall_debuff || 0;
   } catch (_) { /* active_effects table may not exist yet */ }
 
   const client = await pool.connect();
@@ -259,8 +268,10 @@ router.post('/', async (req, res) => {
     }
 
     // Check enemy morale bonus
-    const isEnemy = relation.length && relation[0].status === 'enemy';
-    const attackerMoraleBonus = isEnemy ? 10 : 0;
+    const isEnemy = relation.length > 0 && relation[0].status === 'enemy';
+    // Chivalric Code: +10 army morale when attacking
+    const chivalryMorale = attackerTechs.reduce((sum, e) => sum + (e?.attack_morale_bonus || 0), 0);
+    const attackerMoraleBonus = (isEnemy ? 10 : 0) + chivalryMorale;
     const attackerWithBonus = { ...attacker, morale: attacker.morale + attackerMoraleBonus };
 
     // Resolve combat
@@ -274,6 +285,7 @@ router.post('/', async (req, res) => {
       defenderTroopTypes,
       buildings: defenderBuildings,
       attackerBuildings,
+      attackingEnemy: isEnemy,
       defenderWatchtowerDebuff,
       defenderWallDebuff,
       attackerTechs,
@@ -405,6 +417,16 @@ router.post('/', async (req, res) => {
           );
         }
 
+        // Soul Drain: cuts the defender's gold income for a while
+        if (effect.type === 'gold_income_debuff') {
+          await client.query(
+            `INSERT INTO active_effects
+               (province_id, source_province_id, item_key, effect_type, modifier_key, modifier_value, expires_at)
+             VALUES ($1, $2, 'soul_drain', 'debuff', 'gold_income_pct', $3, NOW() + make_interval(hours => $4))`,
+            [target_id, attacker.id, effect.value, effect.hours]
+          );
+        }
+
         // Ironclad: cuts the defender's wall effectiveness by 20% for 24h
         if (effect.type === 'wall_debuff') {
           await client.query(
@@ -427,17 +449,21 @@ router.post('/', async (req, res) => {
         }
       }
 
-      // Undead skeleton raise: one roll per win, 10% base +7% per level of the attacker's Crypt
+      // Undead raise: one roll per win, 10% base +7% per level of the attacker's Crypt,
+      // + Dark Necromancy I/III. Necromancy II raises 50% more; III raises Ghouls instead of Skeletons.
       if (attacker.race === 'undead') {
-        const raiseChance = 0.10 + 0.07 * (attackerBuildings['crypt'] || 0);
+        const raiseChance = 0.10 + 0.07 * (attackerBuildings['crypt'] || 0)
+          + sumEffects('skeleton_raise_chance', attackerTechs);
+        const raiseUnit = attackerTechs.some(e => e?.raise_unit === 'Ghoul') ? 'Ghoul' : 'Skeleton';
         if (Math.random() < raiseChance) {
           const { rows: [skeleton] } = await client.query(
             `SELECT pt.troop_type_id FROM province_troops pt
              JOIN troop_types tt ON tt.id = pt.troop_type_id
-             WHERE pt.province_id = $1 AND tt.name = 'Skeleton'`, [attacker.id]
+             WHERE pt.province_id = $1 AND tt.name = $2`, [attacker.id, raiseUnit]
           );
           if (skeleton) {
-            const raisedCount = Math.floor(Math.random() * 10) + 1;
+            const raisedCount = Math.floor((Math.floor(Math.random() * 10) + 1)
+              * (1 + sumEffects('skeleton_raise_count', attackerTechs)));
             await client.query(
               `UPDATE province_troops SET count_home = count_home + $1, updated_at = NOW()
                WHERE province_id = $2 AND troop_type_id = $3`,

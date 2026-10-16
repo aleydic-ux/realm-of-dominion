@@ -1,6 +1,6 @@
 const pool = require('../config/db');
 const raceConfig = require('../config/raceConfig');
-const { applyTechModifiers } = require('./techEngine');
+const { applyTechModifiers, sumEffects, allianceBuffMultiplier } = require('./techEngine');
 
 // Base resource generation rates (per hour)
 const BASE_GOLD_PER_LAND = 1.65;
@@ -21,19 +21,120 @@ const MORALE_STARVATION_PER_HOUR = 5;
 /**
  * Returns { morale, moraleProgress } after hoursElapsed.
  */
-function computeMorale(morale, progress, hoursElapsed, starving, templeLevel) {
+function computeMorale(morale, progress, hoursElapsed, starving, templeLevel, cap = MORALE_MAX) {
   let rate = 0;
+  let floor = 0;
   if (starving) rate = -MORALE_STARVATION_PER_HOUR;
-  else if (morale < MORALE_MAX) rate = MORALE_REGEN_PER_HOUR + templeLevel * MORALE_REGEN_PER_TEMPLE_LEVEL;
+  else if (morale < cap) rate = MORALE_REGEN_PER_HOUR + templeLevel * MORALE_REGEN_PER_TEMPLE_LEVEL;
+  else if (morale > cap) { rate = -MORALE_REGEN_PER_HOUR; floor = cap; } // drift down to a lowered cap
   if (rate === 0) return { morale, moraleProgress: 0 };
 
   const total = (progress || 0) + rate * hoursElapsed;
   const whole = Math.trunc(total);
   let next = morale + whole;
   let remainder = total - whole;
-  if (rate > 0 && next >= MORALE_MAX) { next = Math.max(morale, MORALE_MAX); remainder = 0; }
-  if (rate < 0 && next <= 0) { next = 0; remainder = 0; }
+  if (rate > 0 && next >= cap) { next = Math.max(morale, cap); remainder = 0; }
+  if (rate < 0 && next <= floor) { next = floor; remainder = 0; }
   return { morale: next, moraleProgress: remainder };
+}
+
+/**
+ * Hourly rates for a province. Shared by the resource tick and GET /province/rates so the
+ * numbers players see are the numbers they get.
+ * @param {Object} p.province - province row (land, population, race)
+ * @param {Object} p.buildings - { building_type: level }
+ * @param {Array}  p.techEffects - completed research effects
+ * @param {number} p.troopUpkeepRaw - SUM(count_home * food_upkeep) before race modifiers
+ * @param {Array}  p.spellModifiers - active spell effect_json rows targeting this province
+ * @param {Array}  p.activeEffects - active_effects rows (modifier_key, modifier_value, effect_type)
+ */
+function computeRates({ province, buildings, techEffects, troopUpkeepRaw, spellModifiers = [], activeEffects = [] }) {
+  const cfg = raceConfig[province.race];
+  const lvl = (b) => buildings[b] || 0;
+  // Nature Bond doubles the Ancient Grove's output
+  const groveMult = 1 + sumEffects('ancient_grove_output', techEffects);
+
+  // --- Gold ---
+  let goldRate = province.land * BASE_GOLD_PER_LAND;
+  goldRate *= 1 + (lvl('treasury') * 0.04); // +4% per level passive income
+  goldRate *= 1 + (lvl('royal_bank') * 0.15); // Human royal bank
+  goldRate *= 1 + (lvl('tidal_basin') * 0.12); // Tidewarden tidal basin
+  goldRate *= cfg.goldIncomeMultiplier;
+  goldRate = applyTechModifiers(goldRate, 'gold_income', techEffects);
+
+  // --- Food ---
+  let foodRate = province.land * BASE_FOOD_PER_LAND;
+  foodRate *= 1 + (lvl('farm') * 0.10); // +10% per farm level
+  foodRate *= 1 + (lvl('ancient_grove') * 0.10 * groveMult); // Elf grove
+  foodRate *= cfg.foodProductionMultiplier;
+  foodRate = applyTechModifiers(foodRate, 'food_production', techEffects);
+
+  // --- Mana ---
+  let manaRate = BASE_MANA_PER_HOUR + (province.land * BASE_MANA_PER_LAND);
+  manaRate *= 1 + (lvl('temple_altar') * 0.10); // +10% per temple level
+  manaRate *= 1 + (lvl('ancient_grove') * 0.15 * groveMult); // Elf grove
+  manaRate *= 1 + (lvl('arcane_sanctum') * 0.05); // +5% per sanctum level
+  manaRate *= 1 + (lvl('shadowveil_den') * 0.07); // Serpathi shadowveil den
+  manaRate *= cfg.manaRegenMultiplier;
+  manaRate = applyTechModifiers(manaRate, 'mana_regen', techEffects);
+
+  // --- Industry ---
+  let industryRate = province.land * BASE_PRODUCTION_PER_LAND;
+  industryRate *= 1 + (lvl('mine_quarry') * 0.08); // +8% per mine level
+  industryRate *= 1 + (lvl('artificers_foundry') * 0.10); // Ironveil foundry
+  industryRate = applyTechModifiers(industryRate, 'industry_points', techEffects);
+
+  // --- Active spells (buffs/debuffs on this province) ---
+  manaRate = applyTechModifiers(manaRate, 'mana_regen', spellModifiers);
+  foodRate = applyTechModifiers(foodRate, 'food_production', spellModifiers);
+  goldRate = applyTechModifiers(goldRate, 'gold_income', spellModifiers);
+
+  // --- Potions, debuffs and alliance buffs (Diplomacy strengthens alliance buffs) ---
+  const allianceMult = allianceBuffMultiplier(techEffects);
+  for (const row of activeEffects) {
+    const value = row.modifier_value * (row.effect_type === 'alliance_buff' ? allianceMult : 1);
+    switch (row.modifier_key) {
+      case 'food_production_pct': foodRate     *= (1 + value); break;
+      case 'gold_income_pct':     goldRate     *= (1 + value); break;
+      case 'mana_regen_pct':      manaRate     *= (1 + value); break;
+      case 'industry_pct':        industryRate *= (1 + value); break;
+    }
+  }
+
+  // --- Food upkeep: troops + population (Population Boom cuts what the population eats) ---
+  const foodProduction = foodRate;
+  const troopUpkeep = troopUpkeepRaw * cfg.troopFoodUpkeepMultiplier;
+  const popUpkeep = province.population * FOOD_PER_POPULATION_HOUR * Math.max(0, 1 + sumEffects('population_food', techEffects));
+  foodRate -= troopUpkeep + popUpkeep;
+
+  // Imperial Taxation: morale recovers only to its cap
+  const caps = techEffects.filter(e => e && typeof e.morale_cap === 'number').map(e => e.morale_cap);
+  const moraleCap = caps.length ? Math.min(MORALE_MAX, ...caps) : MORALE_MAX;
+
+  return { goldRate, foodRate, foodProduction, foodUpkeep: troopUpkeep + popUpkeep, manaRate, industryRate, moraleCap };
+}
+
+// Active spell modifiers and active_effects rows for a province (tolerates missing tables)
+async function loadRateEffects(provinceId, db = pool) {
+  let spellModifiers = [], activeEffects = [];
+  try {
+    const { rows } = await db.query(
+      `SELECT effect_json FROM spell_effects
+       WHERE target_province_id = $1 AND expires_at > NOW()
+         AND effect_json->>'modifier_type' IS NOT NULL`,
+      [provinceId]
+    );
+    spellModifiers = rows.map(r => r.effect_json).filter(Boolean);
+  } catch (_) { /* spell_effects table may not exist yet during migration */ }
+  try {
+    const { rows } = await db.query(
+      `SELECT modifier_key, modifier_value, effect_type FROM active_effects
+       WHERE province_id = $1 AND expires_at > NOW()`,
+      [provinceId]
+    );
+    activeEffects = rows;
+  } catch (_) { /* active_effects table may not exist yet during migration */ }
+  return { spellModifiers, activeEffects };
 }
 
 /**
@@ -112,95 +213,18 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
     if (hoursElapsed <= 0) { await client.query('ROLLBACK'); return; }
 
     const buildings = await getBuildingLevels(provinceId, client);
-    const race = province.race;
-    const cfg = raceConfig[race];
-
-    // Building bonuses (per level multipliers)
-    const farmLevel = buildings['farm'] || 0;
-    const treasuryLevel = buildings['treasury'] || 0;
-    const mineLevel = buildings['mine_quarry'] || 0;
-    const templeLevel = buildings['temple_altar'] || 0;
-    const ancientGroveLevel = buildings['ancient_grove'] || 0; // Elf only
-    const royalBankLevel = buildings['royal_bank'] || 0; // Human only
-    const arcaneSanctumLevel = buildings['arcane_sanctum'] || 0;
-    const tidalBasinLevel = buildings['tidal_basin'] || 0;         // Tidewarden only
-    const artificersFoundryLevel = buildings['artificers_foundry'] || 0; // Ironveil only
-    const shadowveilDenLevel = buildings['shadowveil_den'] || 0;   // Serpathi only
-
-    // --- Gold ---
-    let goldRate = province.land * BASE_GOLD_PER_LAND;
-    goldRate *= 1 + (treasuryLevel * 0.04); // +4% per level passive income
-    if (royalBankLevel > 0) goldRate *= 1 + (royalBankLevel * 0.15); // Human royal bank
-    if (tidalBasinLevel > 0) goldRate *= 1 + (tidalBasinLevel * 0.12); // Tidewarden tidal basin
-    goldRate *= cfg.goldIncomeMultiplier;
-    goldRate = applyTechModifiers(goldRate, 'gold_income', techEffects);
-
-    // --- Food ---
-    let foodRate = province.land * BASE_FOOD_PER_LAND;
-    foodRate *= 1 + (farmLevel * 0.10); // +10% per farm level
-    if (ancientGroveLevel > 0) foodRate *= 1 + (ancientGroveLevel * 0.10); // Elf grove
-    foodRate *= cfg.foodProductionMultiplier;
-    foodRate = applyTechModifiers(foodRate, 'food_production', techEffects);
-
-    // Food consumption: troops + population
-    const { rows: troops } = await client.query(
+    const { rows: [{ total_upkeep }] } = await client.query(
       `SELECT SUM(pt.count_home * tt.food_upkeep) as total_upkeep
        FROM province_troops pt
        JOIN troop_types tt ON tt.id = pt.troop_type_id
        WHERE pt.province_id = $1`,
       [provinceId]
     );
-    const troopFoodConsumption = (parseFloat(troops[0].total_upkeep || 0)) * cfg.troopFoodUpkeepMultiplier;
-    const populationFoodConsumption = province.population * FOOD_PER_POPULATION_HOUR;
-    foodRate -= (troopFoodConsumption + populationFoodConsumption);
-
-    // --- Mana ---
-    let manaRate = BASE_MANA_PER_HOUR + (province.land * BASE_MANA_PER_LAND);
-    manaRate *= 1 + (templeLevel * 0.10); // +10% per temple level
-    if (ancientGroveLevel > 0) manaRate *= 1 + (ancientGroveLevel * 0.15); // Elf grove
-    if (arcaneSanctumLevel > 0) manaRate *= 1 + (arcaneSanctumLevel * 0.05); // +5% per sanctum level
-    if (shadowveilDenLevel > 0) manaRate *= 1 + (shadowveilDenLevel * 0.07); // Serpathi shadowveil den
-    manaRate *= cfg.manaRegenMultiplier;
-    manaRate = applyTechModifiers(manaRate, 'mana_regen', techEffects);
-
-    // --- Production Points ---
-    let productionRate = province.land * BASE_PRODUCTION_PER_LAND;
-    productionRate *= 1 + (mineLevel * 0.08); // +8% per mine level
-    if (artificersFoundryLevel > 0) productionRate *= 1 + (artificersFoundryLevel * 0.10); // Ironveil foundry
-    productionRate = applyTechModifiers(productionRate, 'industry_points', techEffects);
-
-    // --- Active spell effects (buffs/debuffs affecting this province's resources) ---
-    try {
-      const { rows: spellRows } = await client.query(
-        `SELECT effect_json FROM spell_effects
-         WHERE target_province_id = $1 AND expires_at > NOW()
-           AND effect_json->>'modifier_type' IS NOT NULL`,
-        [provinceId]
-      );
-      const spellModifiers = spellRows.map(r => r.effect_json).filter(Boolean);
-      if (spellModifiers.length > 0) {
-        manaRate = applyTechModifiers(manaRate, 'mana_regen', spellModifiers);
-        foodRate = applyTechModifiers(foodRate, 'food_production', spellModifiers);
-        goldRate = applyTechModifiers(goldRate, 'gold_income', spellModifiers);
-      }
-    } catch (_) { /* spell_effects table may not exist yet during migration */ }
-
-    // --- Active crafting effects (potions/elixirs applied to this province) ---
-    try {
-      const { rows: craftRows } = await client.query(
-        `SELECT modifier_key, modifier_value FROM active_effects
-         WHERE province_id = $1 AND expires_at > NOW()`,
-        [provinceId]
-      );
-      for (const row of craftRows) {
-        switch (row.modifier_key) {
-          case 'food_production_pct': foodRate       *= (1 + row.modifier_value); break;
-          case 'gold_income_pct':     goldRate        *= (1 + row.modifier_value); break;
-          case 'mana_regen_pct':      manaRate        *= (1 + row.modifier_value); break;
-          case 'industry_pct':        productionRate  *= (1 + row.modifier_value); break;
-        }
-      }
-    } catch (_) { /* active_effects table may not exist yet during migration */ }
+    const { spellModifiers, activeEffects } = await loadRateEffects(provinceId, client);
+    const { goldRate, foodRate, manaRate, industryRate: productionRate, moraleCap } = computeRates({
+      province, buildings, techEffects, troopUpkeepRaw: parseFloat(total_upkeep || 0), spellModifiers, activeEffects,
+    });
+    const templeLevel = buildings['temple_altar'] || 0;
 
     // Calculate totals
     const goldGained = Math.floor(goldRate * hoursElapsed);
@@ -210,7 +234,7 @@ async function lazyResourceUpdate(provinceId, techEffects = [], io = null) {
 
     const { morale, moraleProgress } = computeMorale(
       province.morale ?? MORALE_MAX, province.morale_progress, hoursElapsed,
-      Number(province.food) + foodGained < 0, templeLevel
+      Number(province.food) + foodGained < 0, templeLevel, moraleCap
     );
 
     // Apply resource changes (gold/mana/production never go below 0, food can go negative).
@@ -289,4 +313,4 @@ function getLandForBuildingLevel(level) {
   return 5 + (level - 1) * 3;
 }
 
-module.exports = { lazyResourceUpdate, calculateBuildingCost, getLandForBuildingLevel, getBuildingLevels };
+module.exports = { lazyResourceUpdate, calculateBuildingCost, getLandForBuildingLevel, getBuildingLevels, computeRates, loadRateEffects };

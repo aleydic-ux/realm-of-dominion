@@ -3,6 +3,7 @@ const pool = require('../config/db');
 const authenticate = require('../middleware/auth');
 const apRegen = require('../middleware/apRegen');
 const { getBuildingLevels } = require('../services/resourceEngine');
+const { getProvinceTechEffects, sumEffects, hasUnlock } = require('../services/techEngine');
 
 const router = express.Router();
 router.use(authenticate, apRegen);
@@ -157,6 +158,10 @@ router.post('/execute', async (req, res) => {
     // Defender watchtower boosts detection
     const defBuildings = await getBuildingLevels(defender.id, client);
     const watchtowerLevel = defBuildings['watchtower'] || 0;
+    const [atkTechs, defTechs] = await Promise.all([
+      getProvinceTechEffects(attacker.id, client),
+      getProvinceTechEffects(defender.id, client),
+    ]);
 
     // Resolve success chance
     let successChance = action.base_success;
@@ -167,7 +172,8 @@ router.post('/execute', async (req, res) => {
     let detectionChance = action.base_detection;
     if (atkBuffs.has('espionage_t1_shadow_cloak')) detectionChance = Math.max(0, detectionChance - 0.30);
     if (defBuffs.has('espionage_t1_counterintelligence')) detectionChance = Math.min(1, detectionChance + 0.25);
-    detectionChance = Math.min(1, detectionChance + watchtowerLevel * 0.05);
+    // Watchtower: +5% detection per level; Scouting Network makes it 20% more effective
+    detectionChance = Math.min(1, detectionChance + watchtowerLevel * 0.05 * (1 + sumEffects('watchtower_bonus', defTechs)));
 
     // Ghost Network: guaranteed success, consumed by this op (only if we actually removed it)
     let hasGhostNetwork = false;
@@ -223,6 +229,15 @@ router.post('/execute', async (req, res) => {
           mana: Math.floor(defender.mana),
           troops: defTroops,
         };
+        // Farsight (Elf): recon also reveals the target's completed research
+        if (hasUnlock('scout_reveals_tech', atkTechs)) {
+          const { rows: research } = await client.query(
+            `SELECT tt.name FROM province_research pr JOIN tech_tree tt ON tt.id = pr.tech_id
+             WHERE pr.province_id = $1 AND pr.status = 'complete' ORDER BY tt.tier, tt.name`,
+            [defender.id]
+          );
+          result.research = research.map(r => r.name);
+        }
       } else if (action_type === 'steal_gold') {
         const stealPct = 0.04 + Math.random() * 0.04;
         const stolen = Math.floor(defender.gold * stealPct);
